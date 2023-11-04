@@ -29,6 +29,17 @@ export const useCarplayStore = create<CarplayStore>()((set) =>({
   }
 }))
 
+export const socketActions = create(() => {
+  return {
+    actions: {
+      sendMessage(functionName, type, data=[]) {
+        console.log("sending", functionName, type, data)
+        socket.emit("runFkt", {type: type, functionName: functionName, data: data})
+      }
+    }
+  }
+})
+
 const URL = 'http://localhost:4000'
 const socket = io(URL)
 

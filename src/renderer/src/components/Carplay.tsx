@@ -206,7 +206,7 @@ function Carplay({ receivingVideo, setReceivingVideo, settings, command, command
 
   return (
     <div
-      style={pathname === '/' ? { height: '100%', touchAction: 'none' } : { height: '1px' }}
+      style={pathname === '/carplay' ? { height: '100%', touchAction: 'none' } : { height: '1px' }}
       id={'main'}
       className="App"
       ref={mainElem}
