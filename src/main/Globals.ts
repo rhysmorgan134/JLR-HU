@@ -39,3 +39,12 @@ export interface CanConfig {
   reverse?: CanMessage,
   lights?: CanMessage
 }
+
+export interface FktIdPartMessage {
+  fktId: number
+  opType: number
+  data: number[]
+}
+export interface Subscriptions {
+
+}

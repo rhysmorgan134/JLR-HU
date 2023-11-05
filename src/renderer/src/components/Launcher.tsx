@@ -5,6 +5,7 @@ import {Backdrop, Modal, Slide,  Stack} from "@mui/material";
 import {ExitToApp} from "@mui/icons-material";
 import React from "react";
 import AudioSettings from "./settingsComponents/AudioSettings";
+import { useNavigate } from "react-router-dom";
 
 const style = {
     position: 'absolute',
@@ -22,10 +23,17 @@ const style = {
 
 export default function Launcher() {
     const [openSettings, setOpenSettings] = React.useState(false)
+  const navigate = useNavigate()
 
     return (
         <Box sx={{height: '100%', overflow: 'hidden'}}>
             <Grid container spacing={2} sx={{height: '100%', minHeight: '100%', display: 'flex', flexGrow: 1}}>
+              <Grid xs={3} sx={{minHeight: '50%', maxHeight: '50%'}}>
+                <Button sx={{minHeight: '100%', maxHeight: '100%', width: '100%'}} onClick={() => navigate('/carplay')} variant={'contained'}>CARPLAY</Button>
+              </Grid>
+              <Grid xs={3} sx={{minHeight: '50%', maxHeight: '50%'}}>
+                <Button sx={{minHeight: '100%', maxHeight: '100%', width: '100%'}} onClick={() => navigate('/audioDiskPlayer')} variant={'contained'}>CARPLAY</Button>
+              </Grid>
                 <Grid xs={3} sx={{minHeight: '50%', maxHeight: '50%'}}>
                     <Button sx={{minHeight: '100%', maxHeight: '100%', width: '100%'}} onClick={() => setOpenSettings(true)} variant={'contained'}>Audio Settings</Button>
                 </Grid>

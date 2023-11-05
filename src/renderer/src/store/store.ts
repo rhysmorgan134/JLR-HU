@@ -15,6 +15,15 @@ interface StatusStore {
   lights: boolean,
 }
 
+interface AudioDiskPlayer {
+  trackNumber: number,
+  trackName: string,
+  albumName: string,
+  playTime: number,
+  trackTime: number,
+  deckState: number
+}
+
 export const useCarplayStore = create<CarplayStore>()((set) =>({
   settings: null,
   saveSettings: (settings) => {
@@ -39,6 +48,15 @@ export const socketActions = create(() => {
     }
   }
 })
+
+export const useAudioDiskPlayer = create<AudioDiskPlayer>()((set) => ({
+  trackNumber: 0,
+  trackName: 'no name available',
+  trackTime: 0,
+  albumName: 'no name available',
+  playTime: 0,
+  deckState: 0
+}))
 
 const URL = 'http://localhost:4000'
 const socket = io(URL)

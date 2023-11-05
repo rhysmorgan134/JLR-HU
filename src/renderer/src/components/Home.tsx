@@ -1,10 +1,10 @@
+import Launcher from "./Launcher";
 
 
 function Home() {
 
   return (
-    <div>
-    </div>
+    <Launcher />
   )
 }
 

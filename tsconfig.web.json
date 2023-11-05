@@ -9,7 +9,7 @@
   "compilerOptions": {
     "composite": false,
     "jsx": "react-jsx",
-    "target": "es5",
+    "target": "es2020",
     "lib": ["dom", "dom.iterable", "esnext", "WebWorker"],
     "allowJs": true,
     "skipLibCheck": true,

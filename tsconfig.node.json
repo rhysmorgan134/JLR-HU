@@ -1,6 +1,6 @@
 {
   "extends": "@electron-toolkit/tsconfig/tsconfig.node.json",
-  "include": ["electron.vite.config.*", "src/main/*", "src/preload/*"],
+  "include": ["electron.vite.config.*", "src/main/*", "src/main/PiMostFunctions/*/*", "src/preload/*"],
   "compilerOptions": {
     "composite": true,
     "types": ["electron-vite/node"],
@@ -15,6 +15,6 @@
     "moduleResolution": "Bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "target": "es5"
+    "target": "es2020"
   }
 }

@@ -2,11 +2,18 @@
     text-align: center;
 }
 
+html,
 body {
-    margin: 0px;
-    padding: 0px;
+  min-height: 100vh;
+  display: flex;
+  flex: 1;
+  margin: 0px;
+  padding: 0px;
 }
-
+#root {
+  display: flex;
+  flex: 1;
+}
 .App-logo {
     height: 40vmin;
     pointer-events: none;
@@ -31,6 +38,10 @@ body {
 
 .App-link {
     color: #61dafb;
+}
+
+#root {
+  height: 100%;
 }
 
 @keyframes App-logo-spin {
