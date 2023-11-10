@@ -1,21 +1,13 @@
-const FktIDs = require('../PiMostFunctions/Common/FktIDs')
-const Notification = require('../PiMostFunctions/Common/Notification')
-const GetNotifications = require('../PiMostFunctions/Common/GetNotifications')
-const MixerLevel = require('../PiMostFunctions/AudioDiskPlayer/MixerLevel')
-const ExternalTemp = require('./functions/ExternalTemp')
-const Fblock = require('../PiMostFunctions/Common/FBlock')
-const Volume = require('./functions/Volume')
-const SetSource = require('./functions/SetSource')
-const {fktList} = require('../enums')
-const CentralRegistryConfig = require("./functions/CentralRegistryConfig");
-const CentralRegistry = require("./functions/CentralRegistry");
+import { FBlock } from '../Common/FBlock'
+import { Volume } from './Volume'
+import { SetSource } from './SetSource'
 
-class u240 extends Fblock{
-    constructor(instID, writeMessage, sourceAddrHigh, sourceAddrLow, addressHigh, addressLow, fBlock) {
-        super(instID, writeMessage, sourceAddrHigh, sourceAddrLow, addressHigh, addressLow)
+export class u240 extends FBlock{
+    constructor(instanceID, writeMessage, sourceAddrHigh, sourceAddrLow, addressHigh, addressLow) {
+        super(instanceID, writeMessage, sourceAddrHigh, sourceAddrLow, addressHigh, addressLow)
         this.fBlockID = 0xF0
         this.writeMessage = writeMessage
-        this.instID = instID
+        this.instanceID = instanceID
         this.sourceAddrHigh = sourceAddrHigh
         this.sourceAddrLow = sourceAddrLow
         this.status = {}
@@ -83,5 +75,3 @@ class u240 extends Fblock{
     //     this.writeMessage({fBlockID: this.fBlockID, instanceID: this.instID, fktID, opType, data}, {sourceAddrHigh: this.sourceAddrHigh, sourceAddrLow: this.sourceAddrLow})
     // }
 }
-
-module.exports = u240

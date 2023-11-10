@@ -2,10 +2,6 @@ import { Fkt } from './Function'
 import { FktIdPartMessage } from '../../Globals'
 
 export class Notification extends Fkt {
-  writeMessage: (message: FktIdPartMessage) => void
-  fktId: number
-  updateStatus: (result: Object) => void
-
   constructor(
     fktId: number,
     writeMessage: (message: FktIdPartMessage) => void,

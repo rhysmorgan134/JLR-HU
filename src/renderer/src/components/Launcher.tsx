@@ -32,7 +32,7 @@ export default function Launcher() {
                 <Button sx={{minHeight: '100%', maxHeight: '100%', width: '100%'}} onClick={() => navigate('/carplay')} variant={'contained'}>CARPLAY</Button>
               </Grid>
               <Grid xs={3} sx={{minHeight: '50%', maxHeight: '50%'}}>
-                <Button sx={{minHeight: '100%', maxHeight: '100%', width: '100%'}} onClick={() => navigate('/audioDiskPlayer')} variant={'contained'}>CARPLAY</Button>
+                <Button sx={{minHeight: '100%', maxHeight: '100%', width: '100%'}} onClick={() => navigate('/audioDiskPlayer')} variant={'contained'}>CD PLAYER</Button>
               </Grid>
                 <Grid xs={3} sx={{minHeight: '50%', maxHeight: '50%'}}>
                     <Button sx={{minHeight: '100%', maxHeight: '100%', width: '100%'}} onClick={() => setOpenSettings(true)} variant={'contained'}>Audio Settings</Button>

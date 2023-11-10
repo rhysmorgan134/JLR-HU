@@ -19,6 +19,11 @@ export default defineConfig({
       }
     },
     optimizeDeps: {
+      include: [
+        '@emotion/react',
+        '@emotion/styled',
+        '@mui/material/Tooltip'
+      ],
       esbuildOptions: {
         define: {
           global: 'globalThis'
@@ -31,6 +36,11 @@ export default defineConfig({
         ]
       }
     },
-    plugins: [react()]
+    plugins: [react({
+      jsxImportSource: '@emotion/react',
+      babel: {
+        plugins: ['@emotion/babel-plugin'],
+      },
+    })]
   }
 })

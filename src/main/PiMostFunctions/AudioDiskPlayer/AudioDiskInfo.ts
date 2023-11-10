@@ -1,12 +1,8 @@
 import { FktIdPartMessage } from '../../Globals'
 import { Fkt } from '../Common/Function'
+import { AudioDiskInfoTypes } from "./AudioDiskPlayerTypes";
 
 export class AudioDiskInfo extends Fkt {
-
-  writeMessage: (message: FktIdPartMessage) => void
-  fktID: number
-  updateStatus: (result: Object) => void
-
   constructor(
     fktID: number,
     writeMessage: (message: FktIdPartMessage) => void,
@@ -18,15 +14,16 @@ export class AudioDiskInfo extends Fkt {
   async status(data, telLen) {
     let x = data.readUInt8(0)
     let y = data.readUint8()
+    console.log(data)
     let tempString = data.slice(2)
     let stringEnd = tempString.indexOf(0x00)
     tempString = tempString.slice(1, stringEnd)
-    let status = { media: {} }
-    console.log(data)
-    status.media.trackName = tempString.toString()
-    status.media.playTime = data.readUInt32BE(stringEnd + 3)
-    status.media.trackNumber = data.readUint16BE(stringEnd + 7)
-    status.media.fileName = data.slice(stringEnd + 10).toString()
+    let status: AudioDiskInfoTypes = {
+      trackName: tempString.toString(),
+      playTime: data.readUInt32BE(stringEnd + 3),
+      trackNumber: data.readUint16BE(stringEnd + 7),
+      fileName: data.slice(stringEnd + 10).toString(),
+    }
     // switch (x) {
     //     case 0:
     //         status.media.diskTime = data.readUInt32BE(2)

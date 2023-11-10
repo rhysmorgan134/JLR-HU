@@ -2,10 +2,6 @@ import { Fkt } from '../Common/Function'
 import { FktIdPartMessage } from '../../Globals'
 
 export class TrackPosition extends Fkt {
-  writeMessage: (message: FktIdPartMessage) => void
-  fktID: number
-  updateStatus: (result: Object) => void
-
   constructor(
     fktID: number,
     writeMessage: (message: FktIdPartMessage) => void,
@@ -16,7 +12,7 @@ export class TrackPosition extends Fkt {
 
   async status(data, telLen) {
     let x = data.readUInt16BE(0)
-    let status = { media: { trackPosition: x } }
+    let status = { trackPosition: x }
     this.updateStatus(status)
     this.responseReceived = true
   }

@@ -2,10 +2,6 @@ import { Fkt } from '../Common/Function'
 import { FktIdPartMessage } from "../../Globals";
 
 export class MediaInfo extends Fkt {
-  writeMessage: (message: FktIdPartMessage) => void
-  fktID: number
-  updateStatus: (result: Object) => void
-
   constructor(
     fktID: number,
     writeMessage: (message: FktIdPartMessage) => void,
@@ -14,23 +10,22 @@ export class MediaInfo extends Fkt {
     super(fktID, writeMessage, updateStatus)
   }
 
-  async status(data, telLen) {
+  async status(data: Buffer, _telLen: number) {
+    console.log(data)
     let x = data.readUInt8(0)
-    let y = data.readUint8()
     let tempString = data.slice(2)
     let stringEnd = tempString.indexOf(0x00)
     tempString = tempString.slice(1, stringEnd)
-    let status = { media: { disk: {} } }
-    console.log(data)
-    if (!status.media.disk[x]) {
-      status.media.disk[x] = {}
+    let status = { disks: {}}
+    if (!status.disks[x]) {
+      status.disks[x] = {}
     }
-    status.media.disk[x].albumName = tempString.toString()
-    status.media.disk[x].type = data.readUInt8(stringEnd + 3)
-    status.media.disk[x].fileSystem = data.readUInt8(stringEnd + 4)
-    status.media.disk[x].firstTrack = data.readUint16BE(stringEnd + 5)
-    status.media.disk[x].lastTrack = data.readUint16BE(stringEnd + 7)
-    status.media.disk[x].totalPlayTime = data.readUint32BE(stringEnd + 9)
+    status.disks[x].albumName = tempString.toString()
+    status.disks[x].type = data.readUInt8(stringEnd + 3)
+    status.disks[x].fileSystem = data.readUInt8(stringEnd + 4)
+    status.disks[x].firstTrack = data.readUint16BE(stringEnd + 5)
+    status.disks[x].lastTrack = data.readUint16BE(stringEnd + 7)
+    status.disks[x].totalPlayTime = data.readUint32BE(stringEnd + 9)
 
     // let status ={media: {}}
     // switch (x) {

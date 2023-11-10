@@ -2,7 +2,7 @@ const FktIDs = require('../PiMostFunctions/Common/FktIDs')
 const Notification = require('../PiMostFunctions/Common/Notification')
 const GetNotifications = require('../PiMostFunctions/Common/GetNotifications')
 const MixerLevel = require('../PiMostFunctions/AudioDiskPlayer/MixerLevel')
-const Volume = require('./functions/Volume')
+const Volume = require('../PiMostFunctions/JlrAudio/Volume')
 const Fblock = require('../PiMostFunctions/Common/FBlock')
 
 const {fktList} = require('../enums')

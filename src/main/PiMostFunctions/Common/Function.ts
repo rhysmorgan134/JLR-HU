@@ -9,6 +9,7 @@ export abstract class Fkt {
   messageSeq: number
   multipartLength: number
   multipartBuffer: Buffer
+  actionOpType: Record<string, ((data: number[])=> Promise<void>) | (()=> void)>
   constructor(fktId: number, writeMessage: (message: FktIdPartMessage) => void, updateStatus: (result: Object) => void) {
     this.writeMessage = writeMessage
     this.fktId = fktId
@@ -18,6 +19,17 @@ export abstract class Fkt {
     this.multipartLength = 0x00
     this.multipartBuffer = Buffer.alloc(65536)
     this.updateStatus = updateStatus
+    this.actionOpType = {
+      Set: this.set.bind(this),
+      Get: this.get.bind(this),
+      SetGet: this.setGet.bind(this),
+      Increment: this.increment.bind(this),
+      Decrement: this.decrement.bind(this),
+      GetInterface: this.getInterface.bind(this),
+      StartResultAck: this.startResultAck.bind(this),
+      Start: this.get.bind(this),
+      StartResult: this.startResult.bind(this),
+    }
   }
 
   async get(data: number[] = []) {
@@ -64,11 +76,10 @@ export abstract class Fkt {
 
   async getReq(data: number[] = [], telLen: number, sourceAddrHigh, sourceAddrLow) {}
 
-  async parseStatus(fktId, opType, telId, telLen, data, instanceID) {
+  async parseStatus({fktID, opType, telID, telLen, data, instanceID}) {
+    data = Buffer.from(data)
     let seq = data.readUint8(0)
-    console.log(data, telId, telLen)
-
-    switch (telId) {
+    switch (telID) {
       case 0:
         await this.status(data, telLen)
         break
@@ -89,7 +100,6 @@ export abstract class Fkt {
             this.multipartLength += telLen - 1
           } else {
             if (seq === this.messageSeq + 1) {
-              console.log('message sequence continuing')
               this.messageSeq = seq
               data.copy(this.multipartBuffer, this.multipartLength, 1, data.length)
               this.multipartLength += telLen - 1
@@ -102,7 +112,6 @@ export abstract class Fkt {
         break
       case 3:
         if (seq === this.messageSeq + 1 && this.multipartLength > 0) {
-          console.log('message sequence Ending')
           if (this.multipartLength === 0) {
             data.copy(this.multipartBuffer, this.multipartLength, 0, data.length)
             this.multipartLength = telLen

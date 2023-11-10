@@ -6,9 +6,10 @@ import Home from "./components/Home";
 import Nav from "./components/Nav";
 import Carplay from './components/Carplay'
 import Camera from './components/Camera'
-import { Box, createTheme, Modal, ThemeProvider } from "@mui/material";
-import { useCarplayStore } from "./store/store";
-import AudioDiskplayer from './components/mediaComponents/AudioDiskPlayer/AudioDiskplayer'
+import { Box, createTheme, CssBaseline, Modal, Slider, Stack, ThemeProvider } from '@mui/material'
+import { useCarplayStore, useVolumeStore } from "./store/store";
+import AudioDiskPlayerPage from './components/mediaComponents/AudioDiskPlayer/AudioDiskPlayerPage'
+import { VolumeDown, VolumeUp } from "@mui/icons-material";
 
 const ColorModeContext = createContext({ toggleColorMode: () => {} });
 
@@ -26,13 +27,28 @@ const style = {
   display: "flex"
 };
 
+const volumeStyle = {
+  position: 'absolute',
+  top: '50%',
+  left: '50%',
+  transform: 'translate(-50%, -50%)',
+  width: 400,
+  bgcolor: 'background.paper',
+  border: '2px solid #000',
+  boxShadow: 24,
+  p: 4,
+};
+
 function App() {
   const [receivingVideo, setReceivingVideo] = useState(false)
   const [commandCounter, setCommandCounter] = useState(0)
   const [keyCommand, setKeyCommand] = useState('')
   const [reverse, setReverse] = useState(false)
+  const [prevVolume, setPrevVolume] = useState(0)
   const settings = useCarplayStore((state) => state.settings)
+  const volume = useVolumeStore(state => state.audioVolume)
   const [mode, setMode] = useState('dark');
+  let volumeTimer
 
   const colorMode = useMemo(
     () => ({
@@ -43,11 +59,18 @@ function App() {
     [],
   );
 
+  useEffect(() => {
+    if(volumeTimer) {
+      clearTimeout(volumeTimer)
+    }
+    volumeTimer = setTimeout(() => setPrevVolume(volume), 1000)
+  }, [volume])
+
   const theme = useMemo(
     () =>
       createTheme({
         palette: {
-          mode,
+          mode: 'dark',
           primary: {
             main: '#37474f'
           }
@@ -97,6 +120,7 @@ function App() {
   return (
     <ColorModeContext.Provider value={colorMode}>
     <ThemeProvider theme={theme}>
+      <CssBaseline />
       <Router>
         <div
           style={{ height: '100%', touchAction: 'none' }}
@@ -111,7 +135,7 @@ function App() {
             <Route path={"/settings"} element={<Settings settings={settings!}/>} />
             <Route path={"/info"} element={<Info />} />
             <Route path={"/camera"} element={<Camera settings={settings!}/>} />
-            <Route path={"/audioDiskPlayer"} element={<AudioDiskplayer />} />
+            <Route path={"/audioDiskPlayer"} element={<AudioDiskPlayerPage />} />
           </Routes>
           <Modal
             open={reverse}
@@ -123,6 +147,26 @@ function App() {
           </Modal>
         </div>
       </Router>
+      <Modal
+        aria-labelledby="transition-modal-title"
+        aria-describedby="transition-modal-description"
+        open={volume !== prevVolume}
+        // closeAfterTransition
+        // slots={{ backdrop: Backdrop }}
+        // slotProps={{
+        //     backdrop: {
+        //         timeout: 500,
+        //     },
+        // }}
+      >
+        <Box sx={volumeStyle}>
+          <Stack spacing={2} direction="row" sx={{ mb: 1 }} alignItems="center">
+            <VolumeDown />
+            <Slider aria-label="Volume" value={volume} min={0} max={35} sx={{transition: 'none'}}/>
+            <VolumeUp />
+          </Stack>
+        </Box>
+      </Modal>
     </ThemeProvider>
     </ColorModeContext.Provider>
   )

@@ -7,8 +7,9 @@ import { Version } from './Version'
 import { SourceInfo } from './SourceInfo'
 import { Allocate } from './Allocate'
 import { Deallocate } from './Deallocate'
-import { SocketMostSendMessage } from "socketmost/dist/modules/Messages";
+import { RawMostRxMessage, SocketMostSendMessage } from "socketmost/dist/modules/Messages";
 import { Fkt } from "./Function";
+import {_} from 'lodash'
 
 export class FBlock extends EventEmitter {
     fBlockID: number
@@ -68,7 +69,7 @@ export class FBlock extends EventEmitter {
     }
 
     async allNotifcations() {
-       //console.log("running all functions")
+       console.log("running all functions", this.fBlockID)
         let tempFktId = Buffer.alloc(2)
         tempFktId.writeUint16BE(0)
         await this.functions[0x001].set([0x00, this.addressHigh, this.addressLow])
@@ -103,8 +104,8 @@ export class FBlock extends EventEmitter {
     }
 
     async updateStatus(data) {
-        console.log("status update", data)
-
+        this.state = _.merge(this.state, data)
+        this.emit('statusUpdate', data)
     }
 
     allocate(sourceNr: number) {
@@ -117,5 +118,9 @@ export class FBlock extends EventEmitter {
 
     sendMessage({fktId, opType, data}) {
         this.writeMessage({fBlockID: this.fBlockID, instanceID: this.instanceID, fktId, opType, data, targetAddressHigh: this.sourceAddrHigh, targetAddressLow: this.sourceAddrLow})
+    }
+
+    parseMessage(message: RawMostRxMessage) {
+        this.functions?.[message.fktID]?.parseStatus(message)
     }
 }

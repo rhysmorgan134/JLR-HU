@@ -6,13 +6,13 @@ import { DeckStatus } from './DeckStatus'
 import { TrackPosition} from "./TrackPosition";
 import { ActiveDisk } from './ActiveDisk'
 import { MediaInfo } from "./MediaInfo";
+import { RandomCd} from "./RandomCd";
+import { Repeat } from './Repeat';
 
 // JLR CD Player - 0x000, 0x001, 0x002, 0x090, 0x091, 0x092, 0x101, 0x102, 0x200
 // 0x201, 0x202, 0x412, 0x413, 0x420, 0x420, 0x431, 0x451, 0x452, 0xc11, 0xc12
 // 0xc13, 0xc14, 0xc20, 0xc21, 0xc31, 0xc33, 0xc34
 // 430 431 451 452
-const {fktList} = require('../enums')
-const RandomCd = require("../../interfaces/functions/RandomCd");
 
 export class AudioDiskPlayer extends FBlock{
     constructor(instanceID, writeMessage, sourceAddrHigh, sourceAddrLow, addressHigh, addressLow) {
@@ -31,6 +31,7 @@ export class AudioDiskPlayer extends FBlock{
             0x413: new MediaInfo(0x413, this.sendMessage.bind(this), this.updateStatus.bind(this)),
             0x420: new AudioDiskInfo(0x420, this.sendMessage.bind(this), this.updateStatus.bind(this)),
             0x450: new RandomCd(0x450, this.sendMessage.bind(this), this.updateStatus.bind(this)),
+            0x452: new Repeat(0x452, this.sendMessage.bind(this), this.updateStatus.bind(this)),
             0xc34: new NextTrack(0xc34, this.sendMessage.bind(this), this.updateStatus.bind(this)),
                 // 0x467: new MixerLevel(0x467, this.sendMessage.bind(this), this.updateStatus.bind(this)),
                 // 0x400: new Volume(0x400, this.sendMessage.bind(this), this.updateStatus.bind(this)),
@@ -49,48 +50,48 @@ export class AudioDiskPlayer extends FBlock{
             }
         }
        //console.log(this.sourceAddrHigh, this.sourceAddrLow)
-        this.availableFunctions = {...this.availableFunctions, ...{
-                getMixerLevels: this.getMixerLevels.bind(this),
-                getVolume: this.getVolume.bind(this),
-                nextTrack: this.nextTrack.bind(this),
-                prevTrack: this.prevTrack.bind(this),
-                getNextTrack: this.getTrack.bind(this),
-                getDiskInfo: this.getDiskInfo.bind(this),
-                getInterface: this.getInterface.bind(this),
-                getTimePosition: this.getTimePosition.bind(this),
-                play: this.play.bind(this),
-                stop: this.stop.bind(this),
-                pause: this.pause.bind(this),
-                load: this.load.bind(this),
-                unload: this.unload.bind(this),
-                searchForward: this.searchForward.bind(this),
-                searchBackward: this.searchBackward.bind(this),
-                fastForward: this.fastForwardTime.bind(this),
-                fastBackward: this.fastBackwardTime.bind(this),
-                empty: this.empty.bind(this),
-                retract: this.retract.bind(this),
-                slowForward: this.slowForward.bind(this),
-                slowBackward: this.slowBackward.bind(this),
-                stepByStep: this.stepByStep.bind(this),
-                preStop: this.preStop.bind(this),
-                rewindToStart: this.rewindToStart.bind(this),
-                forwardToEnd: this.forwardToEnd.bind(this),
-                searchNext: this.searchStartNext.bind(this),
-                searchLast: this.searchStartLast.bind(this),
-                filePlay: this.filePlay.bind(this),
-                fileTransfer: this.fileTransfer.bind(this),
-                getTrackPosition: this.getTrackPosition.bind(this),
-                setTrackPosition: this.setTrackPosition.bind(this),
-                getFramePosition: this.getFramePosition.bind(this),
-                setActiveDisk: this.setActiveDisk.bind(this),
-                getMediaInfo: this.getMediaInfo.bind(this),
-                getDiskCount: this.getDiskCount.bind(this),
-                getAudioDiskInfo: this.getAudioDiskInfo.bind(this),
-                randomDisk: this.randomDisk.bind(this),
-                randomMagazine: this.randomMagazine.bind(this),
-                randomOff: this.randomOff.bind(this)
-            }
-        }
+       //  this.availableFunctions = {...this.availableFunctions, ...{
+       //          getMixerLevels: this.getMixerLevels.bind(this),
+       //          getVolume: this.getVolume.bind(this),
+       //          nextTrack: this.nextTrack.bind(this),
+       //          prevTrack: this.prevTrack.bind(this),
+       //          getNextTrack: this.getTrack.bind(this),
+       //          getDiskInfo: this.getDiskInfo.bind(this),
+       //          getInterface: this.getInterface.bind(this),
+       //          getTimePosition: this.getTimePosition.bind(this),
+       //          play: this.play.bind(this),
+       //          stop: this.stop.bind(this),
+       //          pause: this.pause.bind(this),
+       //          load: this.load.bind(this),
+       //          unload: this.unload.bind(this),
+       //          searchForward: this.searchForward.bind(this),
+       //          searchBackward: this.searchBackward.bind(this),
+       //          fastForward: this.fastForwardTime.bind(this),
+       //          fastBackward: this.fastBackwardTime.bind(this),
+       //          empty: this.empty.bind(this),
+       //          retract: this.retract.bind(this),
+       //          slowForward: this.slowForward.bind(this),
+       //          slowBackward: this.slowBackward.bind(this),
+       //          stepByStep: this.stepByStep.bind(this),
+       //          preStop: this.preStop.bind(this),
+       //          rewindToStart: this.rewindToStart.bind(this),
+       //          forwardToEnd: this.forwardToEnd.bind(this),
+       //          searchNext: this.searchStartNext.bind(this),
+       //          searchLast: this.searchStartLast.bind(this),
+       //          filePlay: this.filePlay.bind(this),
+       //          fileTransfer: this.fileTransfer.bind(this),
+       //          getTrackPosition: this.getTrackPosition.bind(this),
+       //          setTrackPosition: this.setTrackPosition.bind(this),
+       //          getFramePosition: this.getFramePosition.bind(this),
+       //          setActiveDisk: this.setActiveDisk.bind(this),
+       //          getMediaInfo: this.getMediaInfo.bind(this),
+       //          getDiskCount: this.getDiskCount.bind(this),
+       //          getAudioDiskInfo: this.getAudioDiskInfo.bind(this),
+       //          randomDisk: this.randomDisk.bind(this),
+       //          randomMagazine: this.randomMagazine.bind(this),
+       //          randomOff: this.randomOff.bind(this)
+       //      }
+       //  }
     }
 
     // async getFunctions() {

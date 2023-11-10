@@ -2,11 +2,6 @@ import { Fkt } from '../Common/Function'
 import { FktIdPartMessage } from '../../Globals'
 
 export class DeckStatus extends Fkt {
-
-  writeMessage: (message: FktIdPartMessage) => void
-  fktID: number
-  updateStatus: (result: Object) => void
-
   constructor(
     fktID: number,
     writeMessage: (message: FktIdPartMessage) => void,
@@ -18,70 +13,70 @@ export class DeckStatus extends Fkt {
   async status(data, telLen) {
     console.log(data, telLen)
     let x = data.readUInt8(0)
-    let status = { deck: {} }
+    let status = { }
     switch (x) {
       case 0x00:
-        status.deck.state = 'Play'
+        status.deckState = 'Play'
         break
       case 0x01:
-        status.deck.state = 'Stop'
+        status.deckState = 'Stop'
         break
       case 0x02:
-        status.deck.state = 'Pause'
+        status.deckState = 'Pause'
         break
       case 0x03:
-        status.deck.state = 'Load'
+        status.deckState = 'Load'
         break
       case 0x04:
-        status.deck.state = 'Unload'
+        status.deckState = 'Unload'
         break
       case 0x05:
-        status.deck.state = 'Search Forward'
+        status.deckState = 'Search Forward'
         break
       case 0x06:
-        status.deck.state = 'Search Backward'
+        status.deckState = 'Search Backward'
         break
       case 0x07:
-        status.deck.state = 'Fast Forward By Time'
+        status.deckState = 'Fast Forward By Time'
         break
       case 0x08:
-        status.deck.state = 'Fast Back By Time'
+        status.deckState = 'Fast Back By Time'
         break
       case 0x09:
-        status.deck.state = 'Empty'
+        status.deckState = 'Empty'
         break
       case 0x0a:
-        status.deck.state = 'Retract'
+        status.deckState = 'Retract'
         break
       case 0x20:
-        status.deck.state = 'Slow Forward'
+        status.deckState = 'Slow Forward'
         break
       case 0x21:
-        status.deck.state = 'Slow Backward'
+        status.deckState = 'Slow Backward'
         break
       case 0x22:
-        status.deck.state = 'Step By Step'
+        status.deckState = 'Step By Step'
         break
       case 0x23:
-        status.deck.state = 'PreStop'
+        status.deckState = 'PreStop'
         break
       case 0x30:
-        status.deck.state = 'Rewind To Start'
+        status.deckState = 'Rewind To Start'
         break
       case 0x31:
-        status.deck.state = 'Forward To End'
+        status.deckState = 'Forward To End'
         break
       case 0x32:
-        status.deck.state = 'Search Start Position Next'
+        status.deckState = 'Search Start Position Next'
         break
       case 0x33:
-        status.deck.state = 'Search Start Position Last'
+        status.deckState = 'Search Start Position Last'
         break
       case 0x40:
-        status.deck.state = 'File Play'
+        status.deckState = 'File Play'
         break
       case 0x41:
-        status.deck.state = 'File Transfer'
+        status.deckState = 'File Transfer'
         break
     }
     this.updateStatus(status)

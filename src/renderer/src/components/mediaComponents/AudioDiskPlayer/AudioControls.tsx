@@ -6,16 +6,31 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import ShuffleIcon from '@mui/icons-material/Shuffle';
 import ShuffleOnIcon from '@mui/icons-material/ShuffleOn';
 import RepeatIcon from '@mui/icons-material/Repeat';
+import RepeatOnIcon from '@mui/icons-material/RepeatOn';
 import AlbumIcon from '@mui/icons-material/Album';
 import IconButton from "@mui/material/IconButton";
 import {useEffect, useState} from "react";
 import { useAudioDiskPlayer } from "../../../store/store";
+import { Button } from "@mui/material";
 
 
 
 export default function AudioControls({sendMessage}) {
     const [width, setWidth] = useState(100);
     const [height, setHeight] = useState(100);
+    const [deckState, setActiveDisk, nextTrack, prevTrack, setRandom, setRepeat, play, pause, shuffle, repeat] =
+      useAudioDiskPlayer((state) => [
+          state.deckState,
+          state.setActiveDisk,
+          state.nextTrack,
+          state.prevTrack,
+          state.setRandom,
+          state.setRepeat,
+        state.play,
+        state.pause,
+        state.shuffle,
+        state.repeat
+      ])
     // const state = useAudioDiskPlayer(state => state.deckState)
     // const shuffle = useAudioDiskPlayer(state => state.shuffle)
     //socket.emit("runFkt", {address: selectedFunction, type: chosenType.split("_")[0], instance: chosenType.split("_")[1], functionName: alignment})
@@ -40,21 +55,21 @@ export default function AudioControls({sendMessage}) {
     }
 
     const setShuffle = () => {
-        switch ('off') {
+        switch (shuffle) {
             case 'off':
-                sendMessage('randomDisk')
+                setRandom('disk')
                 break
             case 'disk':
-                sendMessage('randomMagazine')
+                setRandom('magazine')
                 break
             case 'magazine':
-                sendMessage('randomOff')
+                setRandom('off')
                 break
         }
     }
 
     const renderShuffle = () => {
-        switch('off') {
+        switch(shuffle) {
             case 'off':
                 return <IconButton onClick={() => setShuffle()}><ShuffleIcon fontSize={'large'} /></IconButton>
             case 'disk':
@@ -64,24 +79,45 @@ export default function AudioControls({sendMessage}) {
         }
     }
 
-    const handleClick = (e, message) => {
-        e.stopPropagation()
-        sendMessage(message)
+    const setRepeatTemp = () => {
+        switch (repeat) {
+            case 'off':
+                setRepeat('track')
+                break
+            case 'track':
+                setRepeat('disk')
+                break
+            case 'disk':
+                setRepeat('off')
+                break
+        }
     }
+
+    const renderRepeat = () => {
+        switch(repeat) {
+            case 'off':
+                return <IconButton onClick={() => setRepeatTemp()}><RepeatIcon fontSize={'large'} /></IconButton>
+            case 'track':
+                return <IconButton onClick={() => setRepeatTemp()}><RepeatOnIcon fontSize={'large'} /></IconButton>
+            case 'disk':
+                return <IconButton onClick={() => setRepeatTemp()}><RepeatIcon fontSize={'large'} /><AlbumIcon /></IconButton>
+        }
+    }
+
 
     return(
         <Box sx={{display: 'flex', justifyContent: 'space-around', flexDirection: 'row'}} id={'AudioControls'}>
-            <IconButton onClick={(e) => handleClick(e,'prevTrack')}>
+            <IconButton onClick={() => prevTrack()}>
                 <FastRewindIcon fontSize={'large'}  />
             </IconButton>
             <IconButton>
-                {'play' === "Play" ? <PauseIcon fontSize={'large'} onClick={(e) => handleClick(e,'pause')}/> : <PlayArrowIcon fontSize={'large'} onClick={(e) => handleClick(e,'play')}/>}
+                {deckState === "Play" ? <PauseIcon fontSize={'large'} onClick={(e) => play()}/> : <PlayArrowIcon fontSize={'large'} onClick={(e) => pause()}/>}
             </IconButton>
-            <IconButton onClick={(e) => handleClick(e, 'nextTrack')}>
+            <IconButton onClick={() => nextTrack()}>
                 <FastForwardIcon fontSize={'large'} />
             </IconButton>
             {width > 500 ? renderShuffle(): null}
-            {width > 500 ? <IconButton><RepeatIcon fontSize={'large'}/></IconButton> : null}
+            {width > 500 ? renderRepeat() : null}
         </Box>
     )
 }

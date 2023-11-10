@@ -1,4 +1,4 @@
-import { ExtraConfig } from "./Globals";
+import { Action, ExtraConfig } from "./Globals";
 import { Server } from 'socket.io'
 import { EventEmitter } from 'events'
 import { Stream } from "socketmost/dist/modules/Messages";
@@ -7,7 +7,8 @@ export enum MessageNames {
   Connection = 'connection',
   GetSettings = 'getSettings',
   SaveSettings = 'saveSettings',
-  Stream = 'stream'
+  Stream = 'stream',
+  Action = 'action'
 }
 
 export class Socket extends EventEmitter {
@@ -26,7 +27,8 @@ export class Socket extends EventEmitter {
 
     this.io.on(MessageNames.Connection, (socket) => {
       this.sendSettings()
-
+      this.emit("newConnection")
+      console.log("new connection")
       socket.on(MessageNames.GetSettings, () => {
         this.sendSettings()
       })
@@ -37,6 +39,14 @@ export class Socket extends EventEmitter {
 
       socket.on(MessageNames.Stream, (stream: Stream) => {
         this.emit(MessageNames.Stream, stream)
+      })
+
+      socket.on(MessageNames.Action, (action: Action) => {
+        this.emit(MessageNames.Action, action)
+      })
+
+      socket.on('testMessage', () => {
+        this.emit('testMessage')
       })
     })
 
@@ -53,5 +63,9 @@ export class Socket extends EventEmitter {
 
   sendLights(lights: boolean) {
     this.io.emit('lights', lights)
+  }
+
+  sendStatusUpdate(type: string, data: Object) {
+    this.io.emit(type, data)
   }
 }

@@ -1,7 +1,7 @@
 import { Fkt } from '../Common/Function'
 import { FktIdPartMessage } from '../../Globals'
 
-export class TimePosition extends Fkt {
+export class RandomCd extends Fkt {
   constructor(
     fktID: number,
     writeMessage: (message: FktIdPartMessage) => void,
@@ -9,27 +9,26 @@ export class TimePosition extends Fkt {
   ) {
     super(fktID, writeMessage, updateStatus)
   }
-
   async status(data, telLen) {
     let x = data.readUInt8(0)
-    let status = {  }
+    let status = { }
     switch (x) {
-      case 0:
-        status.diskTime = data.readUInt32BE(2)
-        status.trackTime = data.readInt32BE(6)
-        status.titleTime = data.readUInt32BE(10)
+      case 0x00:
+        status.shuffle = 'off'
         break
-      case 1:
-        status.diskTime = data.readInt32BE(2)
+      case 0x02:
+        status.shuffle = 'disk'
         break
-      case 2:
-        status.trackTime = data.readInt32BE(2)
+      case 0x03:
+        status.shuffle = 'magazine'
         break
-      case 3:
-        status.titleTime = data.readInt32BE(2)
+      case 0x04:
+        status.shuffle = 'allMagazines'
         break
     }
+
     this.updateStatus(status)
     this.responseReceived = true
   }
 }
+

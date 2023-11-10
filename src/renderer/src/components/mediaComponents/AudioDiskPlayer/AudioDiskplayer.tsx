@@ -1,24 +1,20 @@
 import Grid from '@mui/material/Unstable_Grid2'
 // import Deck from './Deck'
 import Title from '../Common/Title'
-import AudioControls from '../Common/AudioControls'
+import AudioControls from './AudioControls'
 import MediaProgress from '../Common/MediaProgress'
 import visualiser from '../visualiser.gif'
-import { socketActions } from '../../../store/store'
 import Image from 'mui-image'
 import { useEffect, useState } from 'react'
 import { useAudioDiskPlayer } from '../../../store/store'
+import Deck from './Deck'
 
 function AudioDiskplayer() {
   const trackNumber = useAudioDiskPlayer((state) => state.trackNumber)
-  const trackName = useAudioDiskPlayer((state) => state.trackName)
-  const albumName = useAudioDiskPlayer((state) => state.albumName)
-  const playTime = useAudioDiskPlayer((state) => state.playTime)
-  const trackTime = useAudioDiskPlayer((state) => state.trackTime)
-  const deckState = useAudioDiskPlayer((state) => state.deckState)
-  const sendMessage = socketActions((state) => state.actions.sendMessage)
+  const [trackName, albumName, playTime, trackTime] = useAudioDiskPlayer((state) => [state.trackName, state.albumName, state.trackTime, state.playTime])
   const [width, setWidth] = useState(100)
   const [height, setHeight] = useState(100)
+  const nextTrack = useAudioDiskPlayer((state) => state.nextTrack)
   //socket.emit("runFkt", {address: selectedFunction, type: chosenType.split("_")[0], instance: chosenType.split("_")[1], functionName: alignment})
 
   useEffect(() => {
@@ -43,7 +39,8 @@ function AudioDiskplayer() {
   const renderDeck = () => {
     if (width > 500) {
       return (
-        <Grid xs={12} flexGrow={0}>
+        <Grid xs={12} flexGrow={0} sx={{height: 0.1}}>
+          <Deck sendMessage={preSendMessage}/>
         </Grid>
       )
     } else {
@@ -66,7 +63,7 @@ function AudioDiskplayer() {
   const renderProgess = () => {
     if (width > 500) {
       return (
-        <Grid xs={12}>
+        <Grid xs={12} sx={{height: 0.1}}>
           <MediaProgress trackTime={trackTime} playTime={playTime} />
         </Grid>
       )
@@ -77,8 +74,8 @@ function AudioDiskplayer() {
 
   return (
     <Grid container justifyContent="center" direction={'row'} id={'AudioDiskPlayer'} sx={{height: '100%'}}>
-      {/*{renderDeck()}*/}
-      <Grid container xs={12}>
+      {renderDeck()}
+      <Grid container xs={12} sx={{flexGrow: 1, height: 0.7}}>
         <Grid container xs={width > 500 ? 6 : 12}>
           <Grid xs={12}>
             <Title type={'album'} title={albumName} />
@@ -93,8 +90,8 @@ function AudioDiskplayer() {
         {renderVisualiser()}
       </Grid>
       {renderProgess()}
-      <Grid xs={12}>
-        <AudioControls sendMessage={preSendMessage} />
+      <Grid xs={12} sx={{height: 0.1}}>
+        <AudioControls sendMessage={preSendMessage}/>
       </Grid>
     </Grid>
   )
