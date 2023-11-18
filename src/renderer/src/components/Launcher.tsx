@@ -4,7 +4,7 @@ import Button from "@mui/material/Button";
 import {Backdrop, Modal, Slide,  Stack} from "@mui/material";
 import {ExitToApp} from "@mui/icons-material";
 import React from "react";
-import AudioSettings from "./settingsComponents/AudioSettings";
+import AudioSettings from "./mediaComponents/Amplifier/AudioSettings";
 import { useNavigate } from "react-router-dom";
 
 const style = {
@@ -38,7 +38,7 @@ export default function Launcher() {
                     <Button sx={{minHeight: '100%', maxHeight: '100%', width: '100%'}} onClick={() => setOpenSettings(true)} variant={'contained'}>Audio Settings</Button>
                 </Grid>
                 <Grid xs={3} sx={{minHeight: '50%', maxHeight: '50%'}}>
-                    <Button sx={{minHeight: '100%', maxHeight: '100%', width: '100%'}} variant={'contained'}>Vehicle Settings</Button>
+                    <Button sx={{minHeight: '100%', maxHeight: '100%', width: '100%'}} onClick={() => navigate('/amFmTuner')} variant={'contained'}>AmFmTuner</Button>
                 </Grid>
                 <Grid xs={3} sx={{minHeight: '50%', maxHeight: '50%'}}>
                     <Button sx={{minHeight: '100%', maxHeight: '100%', width: '100%'}} variant={'contained'}>MOST Settings</Button>

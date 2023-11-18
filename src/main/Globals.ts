@@ -53,7 +53,7 @@ export type Action = {
   opType: number
   data: number[]
   type: string
-  method: 'properties' | 'method'
+  method: 'properties' | 'methods'
 }
 
 export interface FktIdPartMessage {

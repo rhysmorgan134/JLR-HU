@@ -1,7 +1,7 @@
 import { Fkt } from '../Common/Function'
 import { FktIdPartMessage } from "../../Globals";
 
-class MixerLevel extends Fkt {
+export class MixerLevel extends Fkt {
 
   constructor(
     fktID: number,
@@ -24,5 +24,3 @@ class MixerLevel extends Fkt {
     this.responseReceived = true
   }
 }
-
-module.exports = MixerLevel

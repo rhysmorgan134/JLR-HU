@@ -11,7 +11,7 @@ export class AudioDiskInfo extends Fkt {
     super(fktID, writeMessage, updateStatus)
   }
 
-  async status(data, telLen) {
+  async status(data) {
     let x = data.readUInt8(0)
     let y = data.readUint8()
     console.log(data)

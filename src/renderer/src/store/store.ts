@@ -10,12 +10,41 @@ import {
   PREV_TRACK, RANDOM, REPEAT,
 
 } from "../../../main/PiMostFunctions/AudioDiskPlayer/AudioDiskPlayerTypes";
+import {
+  AUTO_STORE, CHANGE_STATION,
+  GET_PRESETS,
+  PresetGroupType,
+  PresetList, SAVE_STATION, SEEK_BACK, SEEK_FORWARD, SET_PRESET_GROUP, SET_PRESET_GROUP1
+} from "../../../main/PiMostFunctions/AmFm/AmFmTunerTypes";
+import {
+  SET_BALANCE,
+  SET_BASS, SET_CENTRE, SET_FADER, SET_MODE, SET_SUBWOOFER,
+  SET_TREBLE,
+  SurroundEntry
+} from "../../../main/PiMostFunctions/Amplifier/AmplifierTypes";
 
 interface CarplayStore {
   settings: null | ExtraConfig,
   saveSettings: (settings: ExtraConfig) => void
   getSettings: () => void
   stream: (stream: Stream) => void
+}
+
+interface Amplifier {
+  balance: number
+  bass: number
+  treble: number
+  subwoofer: number
+  centre: number
+  fader: number
+  mode: SurroundEntry
+  setBalance: (balance: number) => void
+  setBass: (bass: number) => void
+  setTreble: (treble: number) => void
+  setSubwoofer: (subwoofer: number) => void
+  setCentre: (mode: SurroundEntry, centre: number) => void
+  setFader: (fader: number) => void
+  setMode: (mode: SurroundEntry) => void
 }
 
 interface AudioDiskPlayer {
@@ -37,6 +66,22 @@ interface AudioDiskPlayer {
   setActiveDisk: (activeDisk: number) => void
 }
 
+interface AmFmTuner {
+  currentPreset: number
+  frequency: number
+  presetList?: PresetList
+  chosenPreset: 0
+  currentStation: string
+  autoStore: boolean
+  getPresets: () => void
+  startAutoStore: () => void
+  setPresetGroup: (prevPreset: number, PresetGroupType: string) => void
+  changeStation: (preset: number, station: number) => void
+  saveStation: (preset: number, station: number) => void
+  seekForward: () => void
+  seekBack: () => void
+}
+
 interface Volume {
   audioVolume: number
   parkingVolume: number
@@ -55,6 +100,70 @@ export const useCarplayStore = create<CarplayStore>()((set) =>({
   },
   stream: (stream) => {
     socket.emit('stream', stream)
+  }
+}))
+
+export const useAmplifierStore = create<Amplifier>()((set) =>({
+  bass: 0,
+  setBass: (bass) => {
+    socket.emit('action', SET_BASS(bass))
+  },
+  treble: 0,
+  setTreble: (treble) => {
+    console.log("in store treble")
+    socket.emit('action', SET_TREBLE(treble))
+  },
+  balance: 0,
+  setBalance: (balance) => {
+    socket.emit('action', SET_BALANCE(balance))
+  },
+  subwoofer: 0,
+  setSubwoofer: (subwoofer) => {
+    socket.emit('action', SET_SUBWOOFER(subwoofer))
+  },
+  centre: 0,
+  setCentre: (mode, centre) => {
+    socket.emit('action', SET_CENTRE(mode, centre))
+  },
+  mode: 'stereo',
+  setMode: (mode) => {
+    socket.emit('action', SET_MODE(mode))
+  },
+  fader: 0,
+  setFader: (fader) => {
+    socket.emit('action', SET_FADER(fader))
+  }
+}))
+
+export const useAmFmStore = create<AmFmTuner>()((set) => ({
+  currentPreset: 0,
+  frequency: 90000,
+  currentStation: '',
+  chosenPreset: 0,
+  autoStore: false,
+  getPresets: () => {
+    console.log("getting presets")
+    socket.emit('action', GET_PRESETS)
+  },
+  startAutoStore: () => {
+    socket.emit('action', AUTO_STORE)
+  },
+  setPresetGroup: (prevPreset, preset) => {
+    console.log("setting preset", preset)
+    socket.emit('action', SET_PRESET_GROUP1(prevPreset))
+    socket.emit('action', SET_PRESET_GROUP(prevPreset, preset))
+  },
+  changeStation: (preset: number, station: number) => {
+    socket.emit('action', CHANGE_STATION(preset, station))
+  },
+  saveStation: (preset: number, station: number) => {
+    socket.emit('action', SAVE_STATION(preset, station))
+  },
+  seekForward: () => {
+    socket.emit('action', SEEK_FORWARD)
+  },
+  seekBack: () => {
+    socket.emit('action', SEEK_BACK)
   }
 }))
 
@@ -132,6 +241,36 @@ socket.on('audioDiskPlayerUpdate', (data) => {
   })
 })
 
+socket.on('amFmTunerUpdate', (data) => {
+  // for(const [k, v] of Object.entries(data)) {
+  //   console.log(k, v)
+  //   useAudioDiskPlayer.setState(produce((state: AudioDiskPlayer) => (state[k] = v)))
+  // }
+  // console.log(useAudioDiskPlayer.getState())
+  useAmFmStore.setState((state) => {
+    return produce(state, draft => {
+      _.merge(draft, data)
+    })
+  })
+  //console.log(useAmFmStore.getState())
+
+})
+
+socket.on('amplifierUpdate', (data) => {
+  // for(const [k, v] of Object.entries(data)) {
+  //   console.log(k, v)
+  //   useAudioDiskPlayer.setState(produce((state: AudioDiskPlayer) => (state[k] = v)))
+  // }
+  // console.log(useAudioDiskPlayer.getState())
+  useAmplifierStore.setState((state) => {
+    return produce(state, draft => {
+      _.merge(draft, data)
+    })
+  })
+  //console.log(useAmFmStore.getState())
+
+})
+
 socket.on('volumeUpdate', (data) => {
   for(const [k, v] of Object.entries(data)) {
     useVolumeStore.setState(() => ({[k]: v}))
@@ -144,6 +283,14 @@ socket.on('volumeFullUpdate', (data) => {
 
 socket.on('audioDiskPlayerFullUpdate', (data) => {
   useAudioDiskPlayer.setState(() => (data))
+})
+
+socket.on('amplifierFullUpdate', (data) => {
+  useAmplifierStore.setState(() => (data))
+})
+
+socket.on('amFmTunerFullUpdate', (data) => {
+  useAmFmStore.setState(() => (data))
 })
 
 

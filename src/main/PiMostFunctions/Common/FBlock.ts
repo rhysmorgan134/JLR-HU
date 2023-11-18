@@ -42,7 +42,7 @@ export class FBlock extends EventEmitter {
             0x010: new Version(0x010, this.sendMessage.bind(this), this.updateStatus.bind(this)),
             0x100: new SourceInfo(0x100, this.sendMessage.bind(this), this.updateStatus.bind(this)),
             0x101: new Allocate(0x101, this.sendMessage.bind(this), this.updateStatus.bind(this)),
-            0x102: new Deallocate(0x102, this.sendMessage.bind(this), this.updateStatus.bind(this))
+            0x102: new Deallocate(0x102, this.sendMessage.bind(this), this.updateStatus.bind(this)),
         }
         this.state = {}
         this.availableFunctions = {

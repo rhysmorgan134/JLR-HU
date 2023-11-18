@@ -10,6 +10,8 @@ import { Box, createTheme, CssBaseline, Modal, Slider, Stack, ThemeProvider } fr
 import { useCarplayStore, useVolumeStore } from "./store/store";
 import AudioDiskPlayerPage from './components/mediaComponents/AudioDiskPlayer/AudioDiskPlayerPage'
 import { VolumeDown, VolumeUp } from "@mui/icons-material";
+import AmFmTuner from './components/mediaComponents/AmFm/AmFmTuner'
+import AudioSettings from './components/mediaComponents/Amplifier/AudioSettings'
 
 const ColorModeContext = createContext({ toggleColorMode: () => {} });
 
@@ -136,6 +138,8 @@ function App() {
             <Route path={"/info"} element={<Info />} />
             <Route path={"/camera"} element={<Camera settings={settings!}/>} />
             <Route path={"/audioDiskPlayer"} element={<AudioDiskPlayerPage />} />
+            <Route path={"/amFmTuner"} element={<AmFmTuner />} />
+            <Route path={"/audioSettings"} element={<AudioSettings />} />
           </Routes>
           <Modal
             open={reverse}
