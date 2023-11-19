@@ -9,7 +9,7 @@
 
 import { Action } from '../../Globals'
 export const NEXT_TRACK: Action = {
-  fktId: 0x202,
+  fktID: 0x202,
   opType: 0x03,
   data: [1],
   type: 'AudioDiskPlayer',
@@ -17,7 +17,7 @@ export const NEXT_TRACK: Action = {
 }
 
 export const PREV_TRACK: Action = {
-  fktId: 0x202,
+  fktID: 0x202,
   opType: 0x04,
   data: [1],
   type: 'AudioDiskPlayer',
@@ -25,7 +25,7 @@ export const PREV_TRACK: Action = {
 }
 
 export const PLAY: Action = {
-  fktId: 0x200,
+  fktID: 0x200,
   opType: 0x00,
   data: [0x00],
   type: 'AudioDiskPlayer',
@@ -33,7 +33,7 @@ export const PLAY: Action = {
 }
 
 export const PAUSE: Action = {
-  fktId: 0x200,
+  fktID: 0x200,
   opType: 0x00,
   data: [0x00],
   type: 'AudioDiskPlayer',
@@ -51,7 +51,7 @@ export type RandomType = Record<RandomTypes, string>
 
 export const RANDOM = (randomType: string): Action => {
   return {
-    fktId: 0x450,
+    fktID: 0x450,
     opType: 0x00,
     data: [RandomTypes[randomType]],
     type: 'AudioDiskPlayer',
@@ -61,7 +61,7 @@ export const RANDOM = (randomType: string): Action => {
 
 export const ACTIVE_DISK = (activeDisk: number): Action => {
   return {
-    fktId: 0x412,
+    fktID: 0x412,
     opType: 0x00,
     data: [activeDisk],
     type: 'AudioDiskPlayer',
@@ -80,7 +80,7 @@ export type RepeatType = Record<RepeatTypes, string>
 
 export const REPEAT = (repeatType: string): Action => {
   return {
-    fktId: 0x452,
+    fktID: 0x452,
     opType: 0x00,
     data: [RepeatTypes[repeatType]],
     type: 'AudioDiskPlayer',

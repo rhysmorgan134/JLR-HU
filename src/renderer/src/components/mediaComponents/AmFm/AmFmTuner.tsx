@@ -5,11 +5,13 @@ import Typography from "@mui/material/Typography";
 import {useEffect, useState} from "react";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import ToggleButton from "@mui/material/ToggleButton";
+import ReplyIcon from '@mui/icons-material/Reply';
 import AmFmAudioControls from "./AmFmAudioControls";
 import Button from "@mui/material/Button";
-import {CircularProgress, Modal} from "@mui/material";
+import { CircularProgress, IconButton, Modal } from '@mui/material'
 import useLongPress from "../../hooks/useLongPress";
 import { useAmFmStore } from "../../../store/store";
+import { useNavigate } from "react-router-dom";
 
 const style = {
     position: 'absolute',
@@ -38,6 +40,7 @@ function AmFmTuner() {
     // const setAutoStore = useStatusStore(state => state.setAutoStore)
     const [chosenPreset, setChosenPreset] = useState(1)
     const [chosenStation, setChosenStation] = useState(1)
+    const navigate = useNavigate()
     //console.log(presetList)
     const fmMap = {
         1: 'fm1',
@@ -111,6 +114,11 @@ function AmFmTuner() {
 
     return (
                 <Grid container justifyContent="center" direction={'column'} id={'AudioDiskPlayer'} sx={{height: '100%', display: 'flex', flexGrow: 1}}>
+                    <Grid xs={12} sx={{justifyContent: 'right', display: 'flex'}}>
+                        <IconButton onClick={() => navigate('/')}>
+                            <ReplyIcon />
+                        </IconButton>
+                    </Grid>
                     <Button variant={'contained'} onClick={startAutoStore} sx={{maxWidth: '150px', marginLeft: 'auto', marginRight: 'auto', marginBottom: '1rem'}}>Auto Store</Button>
                     {/*{renderDeck()}*/}
                     <Grid xs={12}>

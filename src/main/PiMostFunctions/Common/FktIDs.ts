@@ -3,11 +3,11 @@ import { FktIdPartMessage } from '../../Globals'
 
 export class FktIDs extends Fkt {
   writeMessage: (message: FktIdPartMessage) => void
-  fktId: number
+  fktID: number
   updateStatus: (result: Object) => void
 
-  constructor(fktId: number , writeMessage: (message: FktIdPartMessage) => void, updateStatus: (result: Object) => void) {
-    super(fktId, writeMessage, updateStatus)
+  constructor(fktID: number , writeMessage: (message: FktIdPartMessage) => void, updateStatus: (result: Object) => void) {
+    super(fktID, writeMessage, updateStatus)
   }
 
   async status(data, telLen) {
@@ -36,7 +36,6 @@ export class FktIDs extends Fkt {
         activeData.push(i.toString(16))
       }
     }
-    console.log(activeData, functions)
     this.updateStatus(functions)
     this.responseReceived = true
   }

@@ -11,7 +11,6 @@ export class DeckStatus extends Fkt {
   }
 
   async status(data, telLen) {
-    console.log(data, telLen)
     let x = data.readUInt8(0)
     let status = { }
     switch (x) {

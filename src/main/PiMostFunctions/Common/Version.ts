@@ -3,15 +3,15 @@ import { FktIdPartMessage } from '../../Globals'
 
 export class Version extends Fkt {
   writeMessage: (message: FktIdPartMessage) => void
-  fktId: number
+  fktID: number
   updateStatus: (result: Object) => void
 
   constructor(
-    fktId: number,
+    fktID: number,
     writeMessage: (message: FktIdPartMessage) => void,
     updateStatus: (result: Object) => void
   ) {
-    super(fktId, writeMessage, updateStatus)
+    super(fktID, writeMessage, updateStatus)
   }
 
   async status(data, telLen) {

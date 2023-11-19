@@ -9,7 +9,7 @@ export enum SurroundType  {
 export type SurroundEntry = 'stereo' | 'surround' | 'dolbyProLogic'
 export const SET_BALANCE = (balance: number): Action => {
   return {
-    fktId: 0x200,
+    fktID: 0x200,
     opType: 0x00,
     data: [balance],
     type: 'Amplifier',
@@ -18,7 +18,7 @@ export const SET_BALANCE = (balance: number): Action => {
 }
 
 export const INC_BALANCE: Action = {
-  fktId: 0x200,
+  fktID: 0x200,
   opType: 0x03,
   data: [],
   type: 'Amplifier',
@@ -26,7 +26,7 @@ export const INC_BALANCE: Action = {
 }
 
 export const DEC_BALANCE: Action = {
-  fktId: 0x200,
+  fktID: 0x200,
   opType: 0x04,
   data: [],
   type: 'Amplifier',
@@ -35,7 +35,7 @@ export const DEC_BALANCE: Action = {
 
 export const SET_BASS = (bass: number): Action => {
   return {
-    fktId: 0x202,
+    fktID: 0x202,
     opType: 0x00,
     data: [bass],
     type: 'Amplifier',
@@ -44,7 +44,7 @@ export const SET_BASS = (bass: number): Action => {
 }
 
 export const INC_BASS: Action = {
-  fktId: 0x202,
+  fktID: 0x202,
   opType: 0x03,
   data: [],
   type: 'Amplifier',
@@ -52,7 +52,7 @@ export const INC_BASS: Action = {
 }
 
 export const DEC_BASS: Action = {
-  fktId: 0x202,
+  fktID: 0x202,
   opType: 0x04,
   data: [],
   type: 'Amplifier',
@@ -62,7 +62,7 @@ export const DEC_BASS: Action = {
 export const SET_TREBLE = (treble: number): Action => {
   console.log("setting treble")
   return {
-    fktId: 0x203,
+    fktID: 0x203,
     opType: 0x00,
     data: [treble],
     type: 'Amplifier',
@@ -72,7 +72,7 @@ export const SET_TREBLE = (treble: number): Action => {
 
 export const SET_FADER = (fader: number): Action => {
   return {
-    fktId: 0x204,
+    fktID: 0x204,
     opType: 0x00,
     data: [fader],
     type: 'Amplifier',
@@ -81,7 +81,7 @@ export const SET_FADER = (fader: number): Action => {
 }
 
 export const INC_TREBLE: Action = {
-  fktId: 0x203,
+  fktID: 0x203,
   opType: 0x03,
   data: [],
   type: 'Amplifier',
@@ -89,7 +89,7 @@ export const INC_TREBLE: Action = {
 }
 
 export const DEC_TRBLE: Action = {
-  fktId: 0x203,
+  fktID: 0x203,
   opType: 0x04,
   data: [],
   type: 'Amplifier',
@@ -98,7 +98,7 @@ export const DEC_TRBLE: Action = {
 
 export const SET_SUBWOOFER = (subwoofer: number): Action => {
   return {
-    fktId: 0x402,
+    fktID: 0x402,
     opType: 0x00,
     data: [subwoofer],
     type: 'Amplifier',
@@ -107,7 +107,7 @@ export const SET_SUBWOOFER = (subwoofer: number): Action => {
 }
 
 export const INC_SUBWOOFER: Action = {
-  fktId: 0x402,
+  fktID: 0x402,
   opType: 0x03,
   data: [],
   type: 'Amplifier',
@@ -115,7 +115,7 @@ export const INC_SUBWOOFER: Action = {
 }
 
 export const DEC_SUBWOOFER: Action = {
-  fktId: 0x402,
+  fktID: 0x402,
   opType: 0x04,
   data: [],
   type: 'Amplifier',
@@ -124,7 +124,7 @@ export const DEC_SUBWOOFER: Action = {
 
 export const SET_CENTRE = (mode: SurroundEntry, centre: number): Action => {
   return {
-    fktId: 0xE20,
+    fktID: 0xE20,
     opType: 0x00,
     data: [SurroundType[mode], centre],
     type: 'Amplifier',
@@ -135,7 +135,7 @@ export const SET_CENTRE = (mode: SurroundEntry, centre: number): Action => {
 export const SET_MODE = (mode: number): Action => {
   console.log("mode set", )
   return {
-    fktId: 0xE22,
+    fktID: 0xE22,
     opType: 0x00,
     data: [mode],
     type: 'Amplifier',

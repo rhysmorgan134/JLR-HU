@@ -11,7 +11,6 @@ export class MediaInfo extends Fkt {
   }
 
   async status(data: Buffer, _telLen: number) {
-    console.log(data)
     let x = data.readUInt8(0)
     let tempString = data.slice(2)
     let stringEnd = tempString.indexOf(0x00)

@@ -4,7 +4,7 @@ import {
   RawMostRxMessage,
   SocketMostSendMessage,
   Stream
-} from 'socketmost/dist/modules/Messages'
+} from 'socketmost/dist/src/modules/Messages'
 import { MessageNames, Socket } from './Socket'
 import { AudioDiskPlayer } from './PiMostFunctions/AudioDiskPlayer/AudioDiskPlayer'
 import { AmFmTuner } from './PiMostFunctions/AmFm/AmFmTuner'
@@ -12,8 +12,6 @@ import { fBlocks, opTypes } from './PiMostFunctions/Common/enums'
 import { Action, AvailableSources } from "./Globals";
 import { u240 } from './PiMostFunctions/JlrAudio/u240'
 import { Amplifier } from './PiMostFunctions/Amplifier/Amplifier'
-
-
 
 export class PiMost {
   socketMost: SocketMost
@@ -49,6 +47,7 @@ export class PiMost {
     this.currentSource = 'AmFmTuner'
 
     this.socketMostClient.on('connected', () => {
+      console.log("client connected")
       this.interfaces.AudioDiskPlayer = new AudioDiskPlayer(
         0x02,
         this.sendMessage.bind(this),
@@ -94,7 +93,6 @@ export class PiMost {
       })
       this.interfaces.Amplifier.on('statusUpdate', (data) => {
         socket.sendStatusUpdate('amplifierUpdate', data)
-        console.log(data)
       })
 
       socket.on('newConnection', () => {
@@ -107,9 +105,9 @@ export class PiMost {
 
       socket.on('action', (message: Action) => {
         console.log('action request', message)
-        const { fktId, opType, type, data, method } = message
+        const { fktID, opType, type, data, method } = message
         const opTypeString = opTypes[method][opType]
-        this.interfaces[type].functions[fktId].actionOpType[opTypeString](data)
+        this.interfaces[type].functions[fktID].actionOpType[opTypeString](data)
       })
 
       socket.on('allocate', (source) => {
@@ -118,6 +116,7 @@ export class PiMost {
       })
 
       this.socketMostClient.on(Os8104Events.Locked, () => {
+        console.log("locked")
         if (this.stabilityTimeout) clearTimeout(this.stabilityTimeout)
         this.stabilityTimeout = setTimeout(() => {
           console.log('locked, subscribing')
@@ -139,7 +138,6 @@ export class PiMost {
       this.socketMostClient.on(
         Os8104Events.SocketMostMessageRxEvent,
         (message: RawMostRxMessage) => {
-          console.log("message", message)
           const type = fBlocks[message.fBlockID]
           if (message.opType === 15) {
             console.log('most error', message)

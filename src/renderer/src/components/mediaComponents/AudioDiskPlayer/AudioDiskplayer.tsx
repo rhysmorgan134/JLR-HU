@@ -8,11 +8,15 @@ import Image from 'mui-image'
 import { useEffect, useState } from 'react'
 import { useAudioDiskPlayer } from '../../../store/store'
 import Deck from './Deck'
+import { IconButton } from "@mui/material";
+import ReplyIcon from "@mui/icons-material/Reply";
+import { useNavigate } from "react-router-dom";
 
 function AudioDiskplayer() {
   const trackNumber = useAudioDiskPlayer((state) => state.trackNumber)
   const [trackName, albumName, playTime, trackTime, allocate] = useAudioDiskPlayer((state) => [state.trackName, state.albumName, state.trackTime, state.playTime, state.allocate])
   const [width, setWidth] = useState(100)
+  const navigate = useNavigate()
   const [height, setHeight] = useState(100)
   const nextTrack = useAudioDiskPlayer((state) => state.nextTrack)
   //socket.emit("runFkt", {address: selectedFunction, type: chosenType.split("_")[0], instance: chosenType.split("_")[1], functionName: alignment})
@@ -28,7 +32,7 @@ function AudioDiskplayer() {
 
   useEffect(() => {
     console.log("running allocation")
-    allocate()
+    // allocate()
   }, []);
 
   // const sendMessage = (functionName, data=[]) => {
@@ -79,6 +83,11 @@ function AudioDiskplayer() {
 
   return (
     <Grid container justifyContent="center" direction={'row'} id={'AudioDiskPlayer'} sx={{height: '100%'}}>
+      <Grid xs={12} sx={{justifyContent: 'right', display: 'flex'}}>
+        <IconButton onClick={() => navigate('/')}>
+          <ReplyIcon />
+        </IconButton>
+      </Grid>
       {renderDeck()}
       <Grid container xs={12} sx={{flexGrow: 1, height: 0.7}}>
         <Grid container xs={width > 500 ? 6 : 12}>

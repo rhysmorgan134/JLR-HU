@@ -3,11 +3,11 @@ import { FktIdPartMessage } from '../../Globals'
 
 export class Notification extends Fkt {
   constructor(
-    fktId: number,
+    fktID: number,
     writeMessage: (message: FktIdPartMessage) => void,
     updateStatus: (result: Object) => void
   ) {
-    super(fktId, writeMessage, updateStatus)
+    super(fktID, writeMessage, updateStatus)
   }
 
   async status(data, telLen) {

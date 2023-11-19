@@ -14,7 +14,6 @@ export class AudioDiskInfo extends Fkt {
   async status(data) {
     let x = data.readUInt8(0)
     let y = data.readUint8()
-    console.log(data)
     let tempString = data.slice(2)
     let stringEnd = tempString.indexOf(0x00)
     tempString = tempString.slice(1, stringEnd)

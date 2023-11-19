@@ -3,7 +3,7 @@ import { EventEmitter } from "events";
 
 export abstract class Fkt extends EventEmitter {
   writeMessage: (message: FktIdPartMessage) => void
-  fktId: number
+  fktID: number
   updateStatus: (result: Object) => void
   responseReceived: boolean
   waiting: boolean
@@ -11,10 +11,10 @@ export abstract class Fkt extends EventEmitter {
   multipartLength: number
   multipartBuffer: Buffer
   actionOpType: Record<string, ((data: number[])=> Promise<void>) | (()=> void)>
-  constructor(fktId: number, writeMessage: (message: FktIdPartMessage) => void, updateStatus: (result: Object) => void) {
+  constructor(fktID: number, writeMessage: (message: FktIdPartMessage) => void, updateStatus: (result: Object) => void) {
     super()
     this.writeMessage = writeMessage
-    this.fktId = fktId
+    this.fktID = fktID
     this.responseReceived = false
     this.waiting = false
     this.messageSeq = 0x00
@@ -36,42 +36,42 @@ export abstract class Fkt extends EventEmitter {
 
   async get(data: number[] = []) {
     this.responseReceived = false
-    this.writeMessage({ fktId: this.fktId, opType: 0x01, data: data })
+    this.writeMessage({ fktID: this.fktID, opType: 0x01, data: data })
   }
 
   async getInterface(data: number[] = []) {
     this.responseReceived = false
-    this.writeMessage({ fktId: this.fktId, opType: 0x05, data: data })
+    this.writeMessage({ fktID: this.fktID, opType: 0x05, data: data })
   }
 
   async set(data: number[]) {
     this.responseReceived = false
-    this.writeMessage({ fktId: this.fktId, opType: 0x00, data: data })
+    this.writeMessage({ fktID: this.fktID, opType: 0x00, data: data })
   }
 
   async increment(data: number[]) {
     this.responseReceived = false
-    this.writeMessage({ fktId: this.fktId, opType: 0x03, data: data })
+    this.writeMessage({ fktID: this.fktID, opType: 0x03, data: data })
   }
 
   async decrement(data: number[]) {
     this.responseReceived = false
-    this.writeMessage({ fktId: this.fktId, opType: 0x04, data: data })
+    this.writeMessage({ fktID: this.fktID, opType: 0x04, data: data })
   }
 
   async startResult(data: number[]) {
     this.responseReceived = false
-    this.writeMessage({ fktId: this.fktId, opType: 0x02, data: data })
+    this.writeMessage({ fktID: this.fktID, opType: 0x02, data: data })
   }
 
   async startResultAck(data: number[]) {
     this.responseReceived = false
-    this.writeMessage({ fktId: this.fktId, opType: 0x06, data: data })
+    this.writeMessage({ fktID: this.fktID, opType: 0x06, data: data })
   }
 
   async setGet(data: number[]) {
     this.responseReceived = false
-    this.writeMessage({ fktId: this.fktId, opType: 0x02, data: data })
+    this.writeMessage({ fktID: this.fktID, opType: 0x02, data: data })
   }
 
   abstract status(data: Buffer, telLen: number): void

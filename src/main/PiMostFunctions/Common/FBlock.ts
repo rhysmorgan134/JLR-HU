@@ -123,8 +123,8 @@ export class FBlock extends EventEmitter {
         this.functions[0x102].startResult([sourceNr])
     }
 
-    sendMessage({fktId, opType, data}) {
-        this.writeMessage({fBlockID: this.fBlockID, instanceID: this.instanceID, fktId, opType, data, targetAddressHigh: this.sourceAddrHigh, targetAddressLow: this.sourceAddrLow})
+    sendMessage({fktID, opType, data}) {
+        this.writeMessage({fBlockID: this.fBlockID, instanceID: this.instanceID, fktID, opType, data, targetAddressHigh: this.sourceAddrHigh, targetAddressLow: this.sourceAddrLow})
     }
 
     parseMessage(message: RawMostRxMessage) {

@@ -49,7 +49,7 @@ export interface CanConfig {
 }
 
 export type Action = {
-  fktId: number
+  fktID: number
   opType: number
   data: number[]
   type: string
@@ -57,7 +57,7 @@ export type Action = {
 }
 
 export interface FktIdPartMessage {
-  fktId: number
+  fktID: number
   opType: number
   data: number[]
 }
