@@ -79,3 +79,5 @@ export interface AudioDiskPlayerActions  {
 export interface Subscriptions {
 
 }
+
+export type AvailableSources = "AudioDiskPlayer" | "AmFmTuner"

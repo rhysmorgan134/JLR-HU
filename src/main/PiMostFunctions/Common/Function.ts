@@ -1,6 +1,7 @@
 import { FktIdPartMessage } from "../../Globals";
+import { EventEmitter } from "events";
 
-export abstract class Fkt {
+export abstract class Fkt extends EventEmitter {
   writeMessage: (message: FktIdPartMessage) => void
   fktId: number
   updateStatus: (result: Object) => void
@@ -11,6 +12,7 @@ export abstract class Fkt {
   multipartBuffer: Buffer
   actionOpType: Record<string, ((data: number[])=> Promise<void>) | (()=> void)>
   constructor(fktId: number, writeMessage: (message: FktIdPartMessage) => void, updateStatus: (result: Object) => void) {
+    super()
     this.writeMessage = writeMessage
     this.fktId = fktId
     this.responseReceived = false

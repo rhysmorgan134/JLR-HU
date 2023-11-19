@@ -2,15 +2,14 @@ import Grid from "@mui/material/Unstable_Grid2";
 import Box from '@mui/material/Box'
 import Title from "../Common/Title";
 import Typography from "@mui/material/Typography";
-import React, {useEffect, useState} from "react";
+import {useEffect, useState} from "react";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import ToggleButton from "@mui/material/ToggleButton";
 import AmFmAudioControls from "./AmFmAudioControls";
 import Button from "@mui/material/Button";
-import {CircularProgress, Modal, Slider, Stack} from "@mui/material";
+import {CircularProgress, Modal} from "@mui/material";
 import useLongPress from "../../hooks/useLongPress";
 import { useAmFmStore } from "../../../store/store";
-import { PresetGroupTypes } from "../../../../../main/PiMostFunctions/AmFm/AmFmTunerTypes";
 
 const style = {
     position: 'absolute',
@@ -30,7 +29,6 @@ const style = {
 };
 
 function AmFmTuner() {
-    const sendMessage = () => {console.log("action")}
     const currentPreset = useAmFmStore(state => state.chosenPreset)
     const frequency = useAmFmStore(state => state.frequency)
     const presetList = useAmFmStore(state => state.presetList)
@@ -40,8 +38,6 @@ function AmFmTuner() {
     // const setAutoStore = useStatusStore(state => state.setAutoStore)
     const [chosenPreset, setChosenPreset] = useState(1)
     const [chosenStation, setChosenStation] = useState(1)
-    const [width, setWidth] = useState(100);
-    const [height, setHeight] = useState(100);
     //console.log(presetList)
     const fmMap = {
         1: 'fm1',
@@ -53,16 +49,6 @@ function AmFmTuner() {
         'fm2': 2,
         'am': 3
     }
-    //socket.emit("runFkt", {address: selectedFunction, type: chosenType.split("_")[0], instance: chosenType.split("_")[1], functionName: alignment})
-
-    useEffect(() => {
-        const resizeObserver = new ResizeObserver((event) => {
-            setWidth(event[0].contentBoxSize[0].inlineSize);
-            setHeight(event[0].contentBoxSize[0].blockSize);
-        });
-
-        resizeObserver.observe(document.getElementById("AudioDiskPlayer"));
-    });
 
     useEffect(() => {
         getPresets()
@@ -80,29 +66,13 @@ function AmFmTuner() {
                     }
                 })
             }
-            //sendMessage('getPresets', 'AmFmTuner', [0x00, 0x00, 0x00])
-
         }
 
     }, [frequency])
 
-    // const sendMessage = (functionName, data=[]) => {
-    //     let address = Buffer.from([sourceAddrHigh, sourceAddrLow])
-    //     address = address.readUint16BE(0)
-    //     socket.emit("runFkt", {address: address, type: 'AudioDiskPlayer', instance: instID, functionName: functionName, data: data})
-    // }
-
-    const preSendMessage = (functionName, data=[]) => {
-        sendMessage(functionName, 'AmFmTuner', data)
-    }
-
-    // const renderPresetList = () => {
-    //     return
-    // }
-
-    const chooseStation = ( data, alignment) => {
-        console.log("change station to: ", chosenPreset, alignment)
-        changeStation(chosenPreset, alignment)
+    const chooseStation = (_data, alignment) => {
+      console.log('change station to: ', chosenPreset, alignment)
+      changeStation(chosenPreset, alignment)
     }
 
     // const autoStoreStart = () => {
@@ -110,34 +80,13 @@ function AmFmTuner() {
     //     preSendMessage('autoStore')
     // }
 
-    const selType = (data, alignment) => {
-        console.log("setting type", alignment)
-        let dataOut
-        switch (alignment) {
-            case 'fm1':
-                dataOut = [0x01, 'fm1']
-                break
-            case 'fm2':
-                dataOut = [0x02, 'fm2']
-                break
-            case 'am':
-                dataOut = [0x03, 'am']
-            case 'fma':
-                dataOut = [0x04, 'fma']
-        }
-        // setChosenPreset(dataOut)
-        // setPreset(dataOut[0])
-        //preSendMessage('setPreset', dataOut)
-
-    }
-
-    const onLongPress = (data, alignment) => {
+    const onLongPress = (data) => {
         saveStation(chosenPreset, data.target.value)
         console.log("longpress", chosenPreset, data.target.value)
         // preSendMessage('savePreset', [chosenPreset, parseInt(data.target.value)])
     };
 
-    const setPresetGroupPreSend = (data, alignment) => {
+    const setPresetGroupPreSend = (data) => {
 
         console.log(chosenPreset, data.target.value)
         if(chosenPreset !== data.target.value) {
@@ -208,12 +157,12 @@ function AmFmTuner() {
                                     return <ToggleButton value={item} {...longPressEvent} aria-label="left aligned" sx={{width: '33.3333%', minWidth: '33.3333%'}}>
                                         {presetList[chosenPreset][item].name !== '' ? presetList[chosenPreset][item].name : (presetList[chosenPreset][item].frequency / 1000).toFixed(1)}
                                     </ToggleButton>
-                                }): <Typography>Loading Stations: {JSON.stringify(presetList[chosenPreset])} station:{chosenStation}</Typography>}
+                                }): <Typography>Loading Stations: {JSON.stringify(presetList![chosenPreset])} station:{chosenStation}</Typography>}
                             </ToggleButtonGroup>
                         </Grid>
                     </Grid>
                     <Grid xs={12} sx={{flexGrow: 0}}>
-                        <AmFmAudioControls sendMessage={preSendMessage}/>
+                        <AmFmAudioControls sendMessage={() => console.log("send message")}/>
                     </Grid>
                     <Modal
                         aria-labelledby="transition-modal-title"

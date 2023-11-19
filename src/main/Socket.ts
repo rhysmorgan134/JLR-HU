@@ -45,6 +45,10 @@ export class Socket extends EventEmitter {
         this.emit(MessageNames.Action, action)
       })
 
+      socket.on('allocate', (source) => {
+        this.emit('allocate', source)
+      })
+
       socket.on('testMessage', () => {
         this.emit('testMessage')
       })

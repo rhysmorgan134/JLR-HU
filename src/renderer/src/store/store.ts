@@ -64,6 +64,7 @@ interface AudioDiskPlayer {
   setRepeat: (repeatType: string) => void,
   setRandom: (randomType: string) => void,
   setActiveDisk: (activeDisk: number) => void
+  allocate: () => void
 }
 
 interface AmFmTuner {
@@ -217,6 +218,10 @@ export const useAudioDiskPlayer = create<AudioDiskPlayer>()(() => ({
   setActiveDisk: (activeDisk) => {
     console.log("active disk")
     socket.emit('action', ACTIVE_DISK(activeDisk))
+  },
+  allocate: () => {
+    console.log("sending allocate")
+    socket.emit('allocate', 'AudioDiskPlayer')
   }
 }))
 

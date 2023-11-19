@@ -111,7 +111,7 @@ export default function AudioControls({sendMessage}) {
                 <FastRewindIcon fontSize={'large'}  />
             </IconButton>
             <IconButton>
-                {deckState === "Play" ? <PauseIcon fontSize={'large'} onClick={(e) => play()}/> : <PlayArrowIcon fontSize={'large'} onClick={(e) => pause()}/>}
+                {deckState !== "Play" ? <PauseIcon fontSize={'large'} onClick={(e) => play()}/> : <PlayArrowIcon fontSize={'large'} onClick={(e) => play()}/>}
             </IconButton>
             <IconButton onClick={() => nextTrack()}>
                 <FastForwardIcon fontSize={'large'} />

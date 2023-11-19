@@ -2,10 +2,6 @@ import { Fkt } from './Function'
 import { FktIdPartMessage } from '../../Globals'
 
 export class Allocate extends Fkt {
-  writeMessage: (message: FktIdPartMessage) => void
-  fktId: number
-  updateStatus: (result: Object) => void
-
   constructor(
     fktId: number,
     writeMessage: (message: FktIdPartMessage) => void,
@@ -15,15 +11,16 @@ export class Allocate extends Fkt {
   }
 
   async status(data, telLen) {
-    // let functions = []
-    // for(let i=0;i<data.length;i+=3) {
-    //     functions.push((data.readUint16BE(i) >> 4))
-    //     if((i+1) < data.length-1) {
-    //         functions.push((data.readUint16BE(i+1) & 0xFFF))
-    //     }
-    // }
-    // this.updateStatus(functions)
     console.log("allocate status", data)
+    const allocResult = {
+      sourceNr: data.readUInt8(0),
+      srcDelay: data.readUInt8(1),
+      channelList: []
+    }
+    for(let i=2;i<telLen;i++) {
+      allocResult.channelList.push(data.readUInt8(i))
+    }
     this.responseReceived = true
+    this.emit('allocResult', allocResult)
   }
 }

@@ -9,9 +9,11 @@ import { MessageNames, Socket } from './Socket'
 import { AudioDiskPlayer } from './PiMostFunctions/AudioDiskPlayer/AudioDiskPlayer'
 import { AmFmTuner } from './PiMostFunctions/AmFm/AmFmTuner'
 import { fBlocks, opTypes } from './PiMostFunctions/Common/enums'
-import { Action } from './Globals'
+import { Action, AvailableSources } from "./Globals";
 import { u240 } from './PiMostFunctions/JlrAudio/u240'
 import { Amplifier } from './PiMostFunctions/Amplifier/Amplifier'
+
+
 
 export class PiMost {
   socketMost: SocketMost
@@ -28,7 +30,7 @@ export class PiMost {
   }
   stabilityTimeout: null | NodeJS.Timeout
   sourcesInterval: null | NodeJS.Timeout
-  currentSource?: "AudioDiskPlayer" | "AmFmTuner"
+  currentSource: AvailableSources
 
   constructor(socket: Socket) {
     console.log('creating client in PiMost')
@@ -40,9 +42,11 @@ export class PiMost {
     this.socket.on(MessageNames.Stream, (stream) => {
       this.stream(stream)
     })
+
     this.interfaces = {}
     this.stabilityTimeout = null
     this.sourcesInterval = null
+    this.currentSource = 'AmFmTuner'
 
     this.socketMostClient.on('connected', () => {
       this.interfaces.AudioDiskPlayer = new AudioDiskPlayer(
@@ -67,6 +71,14 @@ export class PiMost {
         this.sendMessage.bind(this),
         0x01,
         0x61,
+        0x01,
+        0x10
+      )
+      this.interfaces.secAmplifier = new Amplifier(
+        0x05,
+        this.sendMessage.bind(this),
+        0x01,
+        0x86,
         0x01,
         0x10
       )
@@ -100,6 +112,11 @@ export class PiMost {
         this.interfaces[type].functions[fktId].actionOpType[opTypeString](data)
       })
 
+      socket.on('allocate', (source) => {
+        console.log("received allocate")
+        this.changeSource(source)
+      })
+
       this.socketMostClient.on(Os8104Events.Locked, () => {
         if (this.stabilityTimeout) clearTimeout(this.stabilityTimeout)
         this.stabilityTimeout = setTimeout(() => {
@@ -122,6 +139,7 @@ export class PiMost {
       this.socketMostClient.on(
         Os8104Events.SocketMostMessageRxEvent,
         (message: RawMostRxMessage) => {
+          console.log("message", message)
           const type = fBlocks[message.fBlockID]
           if (message.opType === 15) {
             console.log('most error', message)
@@ -163,7 +181,48 @@ export class PiMost {
     })
   }
 
-  async changeSource() {
-
+  async changeSource(newSource: AvailableSources) {
+    console.log("new source", newSource)
+    await this.interfaces.secAmplifier!.functions[0x112].startResult([0x01])
+    console.log("deallocate requesting")
+    await this.disconnectSource()
+    console.log("waiting for result")
+    await this.waitForDealloc(this.currentSource)
+    console.log("deallocated")
+    console.log("allocating new")
+    await this.allocateSource(newSource)
+    console.log("allocated new")
+    let data = await this.waitForAlloc(newSource)
+    console.log("allocated", data)
+    console.log("connecting")
+    await this.interfaces.secAmplifier!.functions[0x111].startResult([0x01, data.srcDelay, ...data.channelList])
   }
+
+  async disconnectSource() {
+    console.log("disconnecting")
+    await this.interfaces[this.currentSource]!.functions[0x102].startResult([0x01])
+  }
+
+  waitForDealloc(source) {
+    return new Promise((resolve, reject) => {
+      this.interfaces[source].once('deallocResult', (source) => {
+        console.log("resolving deallocResult")
+        resolve(true)
+      })
+    })
+  }
+
+  async allocateSource(source) {
+    console.log("running allocate")
+    await this.interfaces[source].functions[0x101].startResult([0x01])
+  }
+
+  waitForAlloc(source) {
+    return new Promise((resolve, reject) => {
+      this.interfaces[source].once('allocResult', (results) => {
+        resolve(results)
+      })
+    })
+  }
+
 }

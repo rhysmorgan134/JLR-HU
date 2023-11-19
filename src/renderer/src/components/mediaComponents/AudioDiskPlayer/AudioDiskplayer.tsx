@@ -11,7 +11,7 @@ import Deck from './Deck'
 
 function AudioDiskplayer() {
   const trackNumber = useAudioDiskPlayer((state) => state.trackNumber)
-  const [trackName, albumName, playTime, trackTime] = useAudioDiskPlayer((state) => [state.trackName, state.albumName, state.trackTime, state.playTime])
+  const [trackName, albumName, playTime, trackTime, allocate] = useAudioDiskPlayer((state) => [state.trackName, state.albumName, state.trackTime, state.playTime, state.allocate])
   const [width, setWidth] = useState(100)
   const [height, setHeight] = useState(100)
   const nextTrack = useAudioDiskPlayer((state) => state.nextTrack)
@@ -25,6 +25,11 @@ function AudioDiskplayer() {
 
     resizeObserver.observe(document.getElementById('AudioDiskPlayer'))
   })
+
+  useEffect(() => {
+    console.log("running allocation")
+    allocate()
+  }, []);
 
   // const sendMessage = (functionName, data=[]) => {
   //     let address = Buffer.from([sourceAddrHigh, sourceAddrLow])

@@ -27,7 +27,7 @@ export const PREV_TRACK: Action = {
 export const PLAY: Action = {
   fktId: 0x200,
   opType: 0x00,
-  data: [0x01],
+  data: [0x00],
   type: 'AudioDiskPlayer',
   method: 'properties'
 }
@@ -35,7 +35,7 @@ export const PLAY: Action = {
 export const PAUSE: Action = {
   fktId: 0x200,
   opType: 0x00,
-  data: [0x02],
+  data: [0x00],
   type: 'AudioDiskPlayer',
   method: 'properties'
 }

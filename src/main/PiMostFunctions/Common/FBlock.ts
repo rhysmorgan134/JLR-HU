@@ -44,6 +44,13 @@ export class FBlock extends EventEmitter {
             0x101: new Allocate(0x101, this.sendMessage.bind(this), this.updateStatus.bind(this)),
             0x102: new Deallocate(0x102, this.sendMessage.bind(this), this.updateStatus.bind(this)),
         }
+        this.functions[0x102].on('deallocResult', (source) => {
+            console.log("dealloc response received, emitting")
+            this.emit('deallocResult', source)
+        })
+        this.functions[0x101].on('allocResult', (source) => {
+            this.emit('allocResult', source)
+        })
         this.state = {}
         this.availableFunctions = {
             getFunctions: this.getFunctions.bind(this),
