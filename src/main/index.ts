@@ -5,7 +5,7 @@ import { DEFAULT_CONFIG } from 'node-carplay/node'
 import { Socket } from './Socket'
 import * as fs from 'fs';
 import { PiMost } from './PiMost'
-// import {Canbus} from "./Canbus";
+import {Canbus} from "./Canbus";
 import { ExtraConfig, KeyBindings } from "./Globals";
 // import CarplayNode, {DEFAULT_CONFIG, CarplayMessage} from "node-carplay/node";
 
@@ -41,7 +41,7 @@ const EXTRA_CONFIG: ExtraConfig = {
 }
 
 let piMost: null | PiMost
-// let canbus: null | Canbus
+let canbus: null | Canbus
 
 let socket: null | Socket
 
@@ -68,15 +68,15 @@ fs.exists(configPath, (exists) => {
 
     }
     piMost = new PiMost(socket)
-    // if(config!.canbus) {
-    //   canbus = new Canbus('can0',  socket, config!.canConfig)
-    //   canbus.on('lights', (data) => {
-    //     console.log('lights', data)
-    //   })
-    //   canbus.on('reverse', (data) => {
-    //     mainWindow?.webContents?.send('reverse', data)
-    //   })
-    // }
+    if(config!.canbus) {
+      canbus = new Canbus('can0',  socket, config!.canConfig)
+      canbus.on('lights', (data) => {
+        console.log('lights', data)
+      })
+      canbus.on('reverse', (data) => {
+        mainWindow?.webContents?.send('reverse', data)
+      })
+    }
 
 })
 

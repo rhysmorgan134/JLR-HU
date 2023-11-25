@@ -6,6 +6,7 @@ import {ExitToApp} from "@mui/icons-material";
 import React from "react";
 import AudioSettings from "./mediaComponents/Amplifier/AudioSettings";
 import { useNavigate } from "react-router-dom";
+import { useCarplayStore } from "../store/store";
 
 const style = {
     position: 'absolute',
@@ -23,6 +24,7 @@ const style = {
 
 export default function Launcher() {
     const [openSettings, setOpenSettings] = React.useState(false)
+  const setShowSettings = useCarplayStore(state => state.setShowSettings)
   const navigate = useNavigate()
 
     return (
@@ -44,7 +46,7 @@ export default function Launcher() {
                     <Button sx={{minHeight: '100%', maxHeight: '100%', width: '100%'}} variant={'contained'}>MOST Settings</Button>
                 </Grid>
                 <Grid xs={3} sx={{minHeight: '50%', maxHeight: '50%'}}>
-                    <Button sx={{minHeight: '100%', maxHeight: '100%', width: '100%'}} variant={'contained'}>App Settings</Button>
+                    <Button sx={{minHeight: '100%', maxHeight: '100%', width: '100%'}} variant={'contained'} onClick={() => setShowSettings(true)}>App Settings</Button>
                 </Grid>
                 <Grid xs={3} sx={{minHeight: '50%', maxHeight: '50%'}}>
                     <Button sx={{minHeight: '100%', maxHeight: '100%', width: '100%'}} variant={'contained'}>Car Setup</Button>

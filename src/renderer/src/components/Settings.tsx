@@ -209,6 +209,7 @@ function Settings({ settings }: SettingsProps) {
           const microphones: MediaDeviceInfo[] = []
           const webcams: MediaDeviceInfo[] = []
           devices.forEach((device) => {
+            console.log(device)
             if(device.kind === "audioinput") {
               microphones.push(device)
             } else if (device.kind === "videoinput") {

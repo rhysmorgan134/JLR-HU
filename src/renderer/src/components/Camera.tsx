@@ -4,7 +4,6 @@ import {Typography} from "@mui/material";
 const Camera = ({settings}) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [cameraFound, setCameraFound] = useState(false)
-  console.log(settings)
 
   useEffect(() => {
     getVideo();

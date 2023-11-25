@@ -1,22 +1,22 @@
-import { useEffect, useState, useMemo, createContext } from "react";
-import { HashRouter as Router, Route, Routes } from "react-router-dom";
-import Settings from "./components/Settings";
-import Info from "./components/Info";
-import Home from "./components/Home";
-import Nav from "./components/Nav";
+import { useEffect, useState, useMemo, createContext } from 'react'
+import { HashRouter as Router, Route, Routes } from 'react-router-dom'
+import Settings from './components/Settings'
+import Info from './components/Info'
+import Home from './components/Home'
+import Nav from './components/Nav'
 import Carplay from './components/Carplay'
 import Camera from './components/Camera'
 import { Box, createTheme, CssBaseline, Modal, Slider, Stack, ThemeProvider } from '@mui/material'
-import { useCarplayStore, useVolumeStore } from "./store/store";
+import { useCarplayStore, useVolumeStore } from './store/store'
 import AudioDiskPlayerPage from './components/mediaComponents/AudioDiskPlayer/AudioDiskPlayerPage'
-import { VolumeDown, VolumeUp } from "@mui/icons-material";
+import { VolumeDown, VolumeUp } from '@mui/icons-material'
 import AmFmTuner from './components/mediaComponents/AmFm/AmFmTuner'
 import AudioSettings from './components/mediaComponents/Amplifier/AudioSettings'
+import { blue, cyan } from '@mui/material/colors'
 
-const ColorModeContext = createContext({ toggleColorMode: () => {} });
+const ColorModeContext = createContext({ toggleColorMode: () => {} })
 
 // rm -rf node_modules/.vite; npm run dev
-
 
 const style = {
   position: 'absolute',
@@ -26,8 +26,20 @@ const style = {
   height: '95%',
   width: '95%',
   boxShadow: 24,
-  display: "flex"
-};
+  display: 'flex'
+}
+
+const settingsStyle = {
+  position: 'absolute',
+  top: '50%',
+  left: '50%',
+  transform: 'translate(-50%, -50%)',
+  width: '70%',
+  bgcolor: 'background.paper',
+  border: '2px solid #000',
+  boxShadow: 24,
+  p: 4
+}
 
 const volumeStyle = {
   position: 'absolute',
@@ -38,31 +50,35 @@ const volumeStyle = {
   bgcolor: 'background.paper',
   border: '2px solid #000',
   boxShadow: 24,
-  p: 4,
-};
+  p: 4
+}
 
 function App() {
   const [receivingVideo, setReceivingVideo] = useState(false)
   const [commandCounter, setCommandCounter] = useState(0)
   const [keyCommand, setKeyCommand] = useState('')
-  const [reverse, setReverse] = useState(false)
+  const [reverse, setReverse] = useCarplayStore((state) => [state.reverse, state.setReverse])
   const [prevVolume, setPrevVolume] = useState(0)
-  const settings = useCarplayStore((state) => state.settings)
-  const volume = useVolumeStore(state => state.audioVolume)
-  const [mode, setMode] = useState('dark');
+  const [settings, showSettings, setShowSettings] = useCarplayStore((state) => [
+    state.settings,
+    state.showSettings,
+    state.setShowSettings
+  ])
+  const volume = useVolumeStore((state) => state.audioVolume)
+  const [mode, setMode] = useState('dark')
   let volumeTimer
 
   const colorMode = useMemo(
     () => ({
       toggleColorMode: () => {
-        setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'));
-      },
+        setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'))
+      }
     }),
-    [],
-  );
+    []
+  )
 
   useEffect(() => {
-    if(volumeTimer) {
+    if (volumeTimer) {
       clearTimeout(volumeTimer)
     }
     volumeTimer = setTimeout(() => setPrevVolume(volume), 1000)
@@ -72,10 +88,10 @@ function App() {
     () =>
       createTheme({
         palette: {
-          mode: 'dark',
           primary: {
-            main: '#37474f'
-          }
+            main: '#000000'
+          },
+          secondary: cyan
         },
         components: {
           // MuiCssBaseline: {
@@ -87,32 +103,29 @@ function App() {
           // }
         }
       }),
-    [],
-  );
-
-
+    []
+  )
 
   useEffect(() => {
     document.addEventListener('keydown', onKeyDown)
 
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [settings]);
-
+  }, [settings])
 
   const onKeyDown = (event: KeyboardEvent) => {
     console.log(event.code)
-    if(Object.values(settings!.bindings).includes(event.code)) {
-      let action = Object.keys(settings!.bindings).find(key =>
-        settings!.bindings[key] === event.code
+    if (Object.values(settings!.bindings).includes(event.code)) {
+      let action = Object.keys(settings!.bindings).find(
+        (key) => settings!.bindings[key] === event.code
       )
-      if(action !== undefined) {
+      if (action !== undefined) {
         setKeyCommand(action)
-        setCommandCounter(prev => prev +1)
-        if(action === 'selectDown') {
+        setCommandCounter((prev) => prev + 1)
+        if (action === 'selectDown') {
           console.log('select down')
           setTimeout(() => {
             setKeyCommand('selectUp')
-            setCommandCounter(prev => prev +1)
+            setCommandCounter((prev) => prev + 1)
           }, 200)
         }
       }
@@ -121,57 +134,82 @@ function App() {
 
   return (
     <ColorModeContext.Provider value={colorMode}>
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Router>
-        <div
-          style={{ height: '100%', touchAction: 'none' }}
-          id={'main'}
-          className="App"
-
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <Router>
+          <div style={{ height: '100%', touchAction: 'none' }} id={'main'} className="App">
+            {/*<Nav receivingVideo={receivingVideo} settings={settings}/>*/}
+            {settings ? (
+              <Carplay
+                receivingVideo={receivingVideo}
+                setReceivingVideo={setReceivingVideo}
+                settings={settings}
+                command={keyCommand}
+                commandCounter={commandCounter}
+              />
+            ) : null}
+            <Routes>
+              <Route path={'/'} element={<Home />} />
+              <Route path={'/settings'} element={<Settings settings={settings!} />} />
+              <Route path={'/info'} element={<Info />} />
+              <Route path={'/camera'} element={<Camera settings={settings!} />} />
+              <Route path={'/audioDiskPlayer'} element={<AudioDiskPlayerPage />} />
+              <Route path={'/amFmTuner'} element={<AmFmTuner />} />
+              <Route path={'/audioSettings'} element={<AudioSettings />} />
+            </Routes>
+            <Modal open={reverse} onClick={() => setReverse(false)}>
+              <Box sx={style}>
+                <Camera settings={settings} />
+              </Box>
+            </Modal>
+          </div>
+        </Router>
+        <Modal
+          aria-labelledby="transition-modal-title"
+          aria-describedby="transition-modal-description"
+          open={showSettings}
+          onClose={() => setShowSettings(false)}
+          // closeAfterTransition
+          // slots={{ backdrop: Backdrop }}
+          // slotProps={{
+          //     backdrop: {
+          //         timeout: 500,
+          //     },
+          // }}
         >
-          {/*<Nav receivingVideo={receivingVideo} settings={settings}/>*/}
-          {settings ? <Carplay  receivingVideo={receivingVideo} setReceivingVideo={setReceivingVideo} settings={settings} command={keyCommand} commandCounter={commandCounter}/> : null}
-          <Routes>
-            <Route path={"/"} element={<Home />} />
-            <Route path={"/settings"} element={<Settings settings={settings!}/>} />
-            <Route path={"/info"} element={<Info />} />
-            <Route path={"/camera"} element={<Camera settings={settings!}/>} />
-            <Route path={"/audioDiskPlayer"} element={<AudioDiskPlayerPage />} />
-            <Route path={"/amFmTuner"} element={<AmFmTuner />} />
-            <Route path={"/audioSettings"} element={<AudioSettings />} />
-          </Routes>
-          <Modal
-            open={reverse}
-            onClick={()=> setReverse(false)}
-          >
-            <Box sx={style}>
-              <Camera settings={settings}/>
-            </Box>
-          </Modal>
-        </div>
-      </Router>
-      <Modal
-        aria-labelledby="transition-modal-title"
-        aria-describedby="transition-modal-description"
-        open={volume !== prevVolume}
-        // closeAfterTransition
-        // slots={{ backdrop: Backdrop }}
-        // slotProps={{
-        //     backdrop: {
-        //         timeout: 500,
-        //     },
-        // }}
-      >
-        <Box sx={volumeStyle}>
-          <Stack spacing={2} direction="row" sx={{ mb: 1 }} alignItems="center">
-            <VolumeDown />
-            <Slider aria-label="Volume" value={volume} min={0} max={35} sx={{transition: 'none'}}/>
-            <VolumeUp />
-          </Stack>
-        </Box>
-      </Modal>
-    </ThemeProvider>
+          <Box sx={settingsStyle}>
+            <Stack spacing={2} direction="row" sx={{ mb: 1 }} alignItems="center">
+              <Settings settings={settings!} />
+            </Stack>
+          </Box>
+        </Modal>
+        <Modal
+          aria-labelledby="transition-modal-title"
+          aria-describedby="transition-modal-description"
+          open={volume !== prevVolume}
+          // closeAfterTransition
+          // slots={{ backdrop: Backdrop }}
+          // slotProps={{
+          //     backdrop: {
+          //         timeout: 500,
+          //     },
+          // }}
+        >
+          <Box sx={volumeStyle}>
+            <Stack spacing={2} direction="row" sx={{ mb: 1 }} alignItems="center">
+              <VolumeDown />
+              <Slider
+                aria-label="Volume"
+                value={volume}
+                min={0}
+                max={35}
+                sx={{ transition: 'none' }}
+              />
+              <VolumeUp />
+            </Stack>
+          </Box>
+        </Modal>
+      </ThemeProvider>
     </ColorModeContext.Provider>
   )
 }

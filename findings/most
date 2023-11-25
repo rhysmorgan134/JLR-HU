@@ -1,0 +1,16 @@
+temp = FBlockID: f5
+       InstanceID: 01
+       FktID: 0e0f
+       OpType: 0c
+       SourceAddress: 0161
+       Data: f18c00000000000000000000 -> word / 100
+
+ambientLight = FBlockID: f5
+               InstanceID: 01
+               FktID: 0e05
+               OpType: 0c
+               SourceAddress: 0161
+               Data: 000100ff0000000000000000 -> lowest screen brightness -> byte 1 on/off signal lights
+
+
+

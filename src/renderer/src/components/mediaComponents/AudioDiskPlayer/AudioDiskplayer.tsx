@@ -61,7 +61,7 @@ function AudioDiskplayer() {
     if (width > 500) {
       return (
         <Grid xs={6}>
-          <Image src={visualiser} style={{ maxHeight: '100%', objectFit: 'contain' }} />
+          Some cool image
         </Grid>
       )
     } else {
@@ -83,13 +83,13 @@ function AudioDiskplayer() {
 
   return (
     <Grid container justifyContent="center" direction={'row'} id={'AudioDiskPlayer'} sx={{height: '100%'}}>
-      <Grid xs={12} sx={{justifyContent: 'right', display: 'flex'}}>
+      <Grid xs={12} sx={{justifyContent: 'right', display: 'flex', height: 0.1}}>
         <IconButton onClick={() => navigate('/')}>
           <ReplyIcon />
         </IconButton>
       </Grid>
       {renderDeck()}
-      <Grid container xs={12} sx={{flexGrow: 1, height: 0.7}}>
+      <Grid container xs={12} sx={{flexGrow: 1, height: 0.6}}>
         <Grid container xs={width > 500 ? 6 : 12}>
           <Grid xs={12}>
             <Title type={'album'} title={albumName} />

@@ -114,14 +114,14 @@ function AmFmTuner() {
 
     return (
                 <Grid container justifyContent="center" direction={'column'} id={'AudioDiskPlayer'} sx={{height: '100%', display: 'flex', flexGrow: 1}}>
-                    <Grid xs={12} sx={{justifyContent: 'right', display: 'flex'}}>
+                    <Grid xs={12} sx={{justifyContent: 'right', display: 'flex', height: 0.1}}>
                         <IconButton onClick={() => navigate('/')}>
                             <ReplyIcon />
                         </IconButton>
                     </Grid>
                     <Button variant={'contained'} onClick={startAutoStore} sx={{maxWidth: '150px', marginLeft: 'auto', marginRight: 'auto', marginBottom: '1rem'}}>Auto Store</Button>
                     {/*{renderDeck()}*/}
-                    <Grid xs={12}>
+                    <Grid xs={12} sx={{height: 0.1}}>
                         <ToggleButtonGroup exclusive fullWidth={true} value={fmMap[1]} onChange={setPresetGroupPreSend}>
                             <ToggleButton value="fm1" aria-label="left aligned" sx={{width: '25%', minWidth: '25%'}}>
                                 FM1
@@ -137,7 +137,7 @@ function AmFmTuner() {
                             </ToggleButton>
                         </ToggleButtonGroup>
                     </Grid>
-                    <Grid  xs={12} sx={{alignItems: 'space-around', display: 'flex', flexDirection: 'column', flexGrow: 1}}>
+                    <Grid  xs={12} sx={{alignItems: 'space-around', display: 'flex', flexDirection: 'column', flexGrow: 1, height: 0.5}}>
                         <Grid container xs={12} sx={{display: 'flex', flexGrow: 0, marginRight: '1rem', justifyContent: 'space-around'}}>
                             <Grid xs={4} >
                                 <Title type={'radio'} title={'No Text'}/>
@@ -150,7 +150,7 @@ function AmFmTuner() {
                             </Grid>
 
                         </Grid>
-                        <Grid container xs={12} sx={{flexGrow: 5, display: 'flex'}}>
+                        <Grid container xs={12} sx={{flexGrow: 5, display: 'flex', height: 0.5}}>
                             <ToggleButtonGroup
                                 // value={alignment}
                                 exclusive
@@ -169,7 +169,7 @@ function AmFmTuner() {
                             </ToggleButtonGroup>
                         </Grid>
                     </Grid>
-                    <Grid xs={12} sx={{flexGrow: 0}}>
+                    <Grid xs={12} sx={{flexGrow: 0, height: 0.1}}>
                         <AmFmAudioControls sendMessage={() => console.log("send message")}/>
                     </Grid>
                     <Modal

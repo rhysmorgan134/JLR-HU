@@ -27,7 +27,11 @@ interface CarplayStore {
   settings: null | ExtraConfig,
   saveSettings: (settings: ExtraConfig) => void
   getSettings: () => void
-  stream: (stream: Stream) => void
+  stream: (stream: Stream) => void,
+  showSettings: boolean
+  setShowSettings: (show: boolean) => void
+  reverse: boolean
+  setReverse: (reverse: boolean) => void
 }
 
 interface Amplifier {
@@ -101,6 +105,14 @@ export const useCarplayStore = create<CarplayStore>()((set) =>({
   },
   stream: (stream) => {
     socket.emit('stream', stream)
+  },
+  showSettings: false,
+  setShowSettings: (show) => {
+    set(() => ({showSettings: show}))
+  },
+  reverse: false,
+  setReverse: (reverse) => {
+    set(() => ({reverse: reverse}))
   }
 }))
 
@@ -296,6 +308,10 @@ socket.on('amplifierFullUpdate', (data) => {
 
 socket.on('amFmTunerFullUpdate', (data) => {
   useAmFmStore.setState(() => (data))
+})
+
+socket.on('reverse', (data) => {
+  useCarplayStore.setState(() => ({ reverse: data }))
 })
 
 
