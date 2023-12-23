@@ -8,13 +8,19 @@ import Image from 'mui-image'
 import { useEffect, useState } from 'react'
 import { useAudioDiskPlayer } from '../../../store/store'
 import Deck from './Deck'
-import { IconButton } from "@mui/material";
-import ReplyIcon from "@mui/icons-material/Reply";
-import { useNavigate } from "react-router-dom";
+import { IconButton } from '@mui/material'
+import ReplyIcon from '@mui/icons-material/Reply'
+import { useNavigate } from 'react-router-dom'
 
 function AudioDiskplayer() {
   const trackNumber = useAudioDiskPlayer((state) => state.trackNumber)
-  const [trackName, albumName, playTime, trackTime, allocate] = useAudioDiskPlayer((state) => [state.trackName, state.albumName, state.trackTime, state.playTime, state.allocate])
+  const [trackName, albumName, playTime, trackTime, allocate] = useAudioDiskPlayer((state) => [
+    state.trackName,
+    state.albumName,
+    state.trackTime,
+    state.playTime,
+    state.allocate
+  ])
   const [width, setWidth] = useState(100)
   const navigate = useNavigate()
   const [height, setHeight] = useState(100)
@@ -31,9 +37,9 @@ function AudioDiskplayer() {
   })
 
   useEffect(() => {
-    console.log("running allocation")
+    console.log('running allocation')
     // allocate()
-  }, []);
+  }, [])
 
   // const sendMessage = (functionName, data=[]) => {
   //     let address = Buffer.from([sourceAddrHigh, sourceAddrLow])
@@ -48,8 +54,8 @@ function AudioDiskplayer() {
   const renderDeck = () => {
     if (width > 500) {
       return (
-        <Grid xs={12} flexGrow={0} sx={{height: 0.1}}>
-          <Deck sendMessage={preSendMessage}/>
+        <Grid xs={12} flexGrow={0} sx={{ height: 0.1 }}>
+          <Deck sendMessage={preSendMessage} />
         </Grid>
       )
     } else {
@@ -59,11 +65,7 @@ function AudioDiskplayer() {
 
   const renderVisualiser = () => {
     if (width > 500) {
-      return (
-        <Grid xs={6}>
-          Some cool image
-        </Grid>
-      )
+      return <Grid xs={6}>Some cool image</Grid>
     } else {
       return null
     }
@@ -72,7 +74,7 @@ function AudioDiskplayer() {
   const renderProgess = () => {
     if (width > 500) {
       return (
-        <Grid xs={12} sx={{height: 0.1}}>
+        <Grid xs={12} sx={{ height: 0.1 }}>
           <MediaProgress trackTime={trackTime} playTime={playTime} />
         </Grid>
       )
@@ -82,14 +84,15 @@ function AudioDiskplayer() {
   }
 
   return (
-    <Grid container justifyContent="center" direction={'row'} id={'AudioDiskPlayer'} sx={{height: '100%'}}>
-      <Grid xs={12} sx={{justifyContent: 'right', display: 'flex', height: 0.1}}>
-        <IconButton onClick={() => navigate('/')}>
-          <ReplyIcon />
-        </IconButton>
-      </Grid>
+    <Grid
+      container
+      justifyContent="center"
+      direction={'row'}
+      id={'AudioDiskPlayer'}
+      sx={{ height: '100%' }}
+    >
       {renderDeck()}
-      <Grid container xs={12} sx={{flexGrow: 1, height: 0.6}}>
+      <Grid container xs={12} sx={{ flexGrow: 1, height: 0.6 }}>
         <Grid container xs={width > 500 ? 6 : 12}>
           <Grid xs={12}>
             <Title type={'album'} title={albumName} />
@@ -104,8 +107,8 @@ function AudioDiskplayer() {
         {renderVisualiser()}
       </Grid>
       {renderProgess()}
-      <Grid xs={12} sx={{height: 0.1}}>
-        <AudioControls sendMessage={preSendMessage}/>
+      <Grid xs={12} sx={{ height: 0.1 }}>
+        <AudioControls sendMessage={preSendMessage} />
       </Grid>
     </Grid>
   )

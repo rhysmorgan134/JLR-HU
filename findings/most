@@ -12,5 +12,12 @@ ambientLight = FBlockID: f5
                SourceAddress: 0161
                Data: 000100ff0000000000000000 -> lowest screen brightness -> byte 1 on/off signal lights
 
+reverse = FBlockID: f5
+          InstanceID: 01
+          FktID: 0e14
+          OpType: 0c
+          SourceAddress: 0161
+          Data: 010000000000000000000000 -> byte 0 camera = 1
+
 
 

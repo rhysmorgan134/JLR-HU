@@ -4,14 +4,16 @@ import {
   RawMostRxMessage,
   SocketMostSendMessage,
   Stream
-} from 'socketmost/dist/src/modules/Messages'
+} from 'socketmost/dist/modules/Messages'
 import { MessageNames, Socket } from './Socket'
 import { AudioDiskPlayer } from './PiMostFunctions/AudioDiskPlayer/AudioDiskPlayer'
 import { AmFmTuner } from './PiMostFunctions/AmFm/AmFmTuner'
 import { fBlocks, opTypes } from './PiMostFunctions/Common/enums'
-import { Action, AvailableSources } from "./Globals";
+import { Action, AvailableSources } from './Globals'
 import { u240 } from './PiMostFunctions/JlrAudio/u240'
 import { Amplifier } from './PiMostFunctions/Amplifier/Amplifier'
+import { CanGateway } from './PiMostFunctions/CanGateway/CanGateway'
+import { Climate } from './PiMostFunctions/Climate/Climate'
 
 export class PiMost {
   socketMost: SocketMost
@@ -25,6 +27,8 @@ export class PiMost {
     AmFmTuner?: AmFmTuner
     Amplifier?: Amplifier
     secAmplifier?: Amplifier
+    CanGateway?: CanGateway
+    Climate?: Climate
   }
   stabilityTimeout: null | NodeJS.Timeout
   sourcesInterval: null | NodeJS.Timeout
@@ -47,7 +51,7 @@ export class PiMost {
     this.currentSource = 'AmFmTuner'
 
     this.socketMostClient.on('connected', () => {
-      console.log("client connected")
+      console.log('client connected')
       this.interfaces.AudioDiskPlayer = new AudioDiskPlayer(
         0x02,
         this.sendMessage.bind(this),
@@ -81,6 +85,23 @@ export class PiMost {
         0x01,
         0x10
       )
+      this.interfaces.CanGateway = new CanGateway(
+        0x01,
+        this.sendMessage.bind(this),
+        0x01,
+        0x61,
+        0x01,
+        0x10
+      )
+      this.interfaces.Climate = new Climate(
+        0xa1,
+        this.sendMessage.bind(this),
+        0x01,
+        0x61,
+        0x01,
+        0x10
+      )
+
       // this.interfaces.secAmplifier = new Amplifier(0x20, this.sendMessage.bind(this), 0x01, 0x86, 0x01, 0x10)
       this.interfaces.AudioDiskPlayer.on('statusUpdate', (data) => {
         socket.sendStatusUpdate('audioDiskPlayerUpdate', data)
@@ -94,6 +115,12 @@ export class PiMost {
       this.interfaces.Amplifier.on('statusUpdate', (data) => {
         socket.sendStatusUpdate('amplifierUpdate', data)
       })
+      this.interfaces.CanGateway.on('statusUpdate', (data) => {
+        socket.sendStatusUpdate('canGatewayUpdate', data)
+      })
+      this.interfaces.Climate.on('statusUpdate', (data) => {
+        socket.sendStatusUpdate('climateUpdate', data)
+      })
 
       socket.on('newConnection', () => {
         console.log('SENDING FULL UPDATE')
@@ -101,6 +128,8 @@ export class PiMost {
         socket.sendStatusUpdate('volumeFullUpdate', this.interfaces.u240!.state)
         socket.sendStatusUpdate('amFmTunerFullUpdate', this.interfaces.AmFmTuner!.state)
         socket.sendStatusUpdate('amplifierFullUpdate', this.interfaces.Amplifier!.state)
+        socket.sendStatusUpdate('canGatewayFullUpdate', this.interfaces.CanGateway!.state)
+        socket.sendStatusUpdate('climateFullUpdate', this.interfaces.Climate!.state)
       })
 
       socket.on('action', (message: Action) => {
@@ -111,12 +140,12 @@ export class PiMost {
       })
 
       socket.on('allocate', (source) => {
-        console.log("received allocate")
+        console.log('received allocate')
         this.changeSource(source)
       })
 
       this.socketMostClient.on(Os8104Events.Locked, () => {
-        console.log("locked")
+        console.log('locked')
         if (this.stabilityTimeout) clearTimeout(this.stabilityTimeout)
         this.stabilityTimeout = setTimeout(() => {
           console.log('locked, subscribing')
@@ -180,38 +209,42 @@ export class PiMost {
   }
 
   async changeSource(newSource: AvailableSources) {
-    console.log("new source", newSource)
+    console.log('new source', newSource)
     await this.interfaces.secAmplifier!.functions[0x112].startResult([0x01])
-    console.log("deallocate requesting")
+    console.log('deallocate requesting')
     await this.disconnectSource()
-    console.log("waiting for result")
+    console.log('waiting for result')
     await this.waitForDealloc(this.currentSource)
-    console.log("deallocated")
-    console.log("allocating new")
+    console.log('deallocated')
+    console.log('allocating new')
     await this.allocateSource(newSource)
-    console.log("allocated new")
+    console.log('allocated new')
     let data = await this.waitForAlloc(newSource)
-    console.log("allocated", data)
-    console.log("connecting")
-    await this.interfaces.secAmplifier!.functions[0x111].startResult([0x01, data.srcDelay, ...data.channelList])
+    console.log('allocated', data)
+    console.log('connecting')
+    await this.interfaces.secAmplifier!.functions[0x111].startResult([
+      0x01,
+      data.srcDelay,
+      ...data.channelList
+    ])
   }
 
   async disconnectSource() {
-    console.log("disconnecting")
+    console.log('disconnecting')
     await this.interfaces[this.currentSource]!.functions[0x102].startResult([0x01])
   }
 
   waitForDealloc(source) {
     return new Promise((resolve, reject) => {
       this.interfaces[source].once('deallocResult', (source) => {
-        console.log("resolving deallocResult")
+        console.log('resolving deallocResult')
         resolve(true)
       })
     })
   }
 
   async allocateSource(source) {
-    console.log("running allocate")
+    console.log('running allocate')
     await this.interfaces[source].functions[0x101].startResult([0x01])
   }
 
@@ -222,5 +255,4 @@ export class PiMost {
       })
     })
   }
-
 }

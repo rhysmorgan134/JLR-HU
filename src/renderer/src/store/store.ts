@@ -1,37 +1,69 @@
 import { create } from 'zustand'
-import { ExtraConfig } from "../../../main/Globals";
+import { ExtraConfig, ParkingSensors } from '../../../main/Globals'
 import { io } from 'socket.io-client'
-import { Stream } from "socketmost/dist/modules/Messages";
+import { Stream } from 'socketmost/dist/modules/Messages'
 import { produce } from 'immer'
 import _ from 'lodash'
 import {
   ACTIVE_DISK,
-  NEXT_TRACK, PAUSE, PLAY,
-  PREV_TRACK, RANDOM, REPEAT,
-
-} from "../../../main/PiMostFunctions/AudioDiskPlayer/AudioDiskPlayerTypes";
+  NEXT_TRACK,
+  PAUSE,
+  PLAY,
+  PREV_TRACK,
+  RANDOM,
+  REPEAT
+} from '../../../main/PiMostFunctions/AudioDiskPlayer/AudioDiskPlayerTypes'
 import {
-  AUTO_STORE, CHANGE_STATION,
+  AUTO_STORE,
+  CHANGE_STATION,
   GET_PRESETS,
   PresetGroupType,
-  PresetList, SAVE_STATION, SEEK_BACK, SEEK_FORWARD, SET_PRESET_GROUP, SET_PRESET_GROUP1
-} from "../../../main/PiMostFunctions/AmFm/AmFmTunerTypes";
+  PresetList,
+  SAVE_STATION,
+  SEEK_BACK,
+  SEEK_FORWARD,
+  SET_PRESET_GROUP,
+  SET_PRESET_GROUP1
+} from '../../../main/PiMostFunctions/AmFm/AmFmTunerTypes'
 import {
   SET_BALANCE,
-  SET_BASS, SET_CENTRE, SET_FADER, SET_MODE, SET_SUBWOOFER,
+  SET_BASS,
+  SET_CENTRE,
+  SET_FADER,
+  SET_MODE,
+  SET_SUBWOOFER,
   SET_TREBLE,
   SurroundEntry
-} from "../../../main/PiMostFunctions/Amplifier/AmplifierTypes";
+} from '../../../main/PiMostFunctions/Amplifier/AmplifierTypes'
+
+interface CanGatewayStore {
+  hours: number
+  minutes: number
+  parkingSensors: ParkingSensors
+  externalTemp: number
+  ambientLight: number
+  lights: boolean
+  parkingActive: boolean
+}
 
 interface CarplayStore {
-  settings: null | ExtraConfig,
+  settings: null | ExtraConfig
   saveSettings: (settings: ExtraConfig) => void
   getSettings: () => void
-  stream: (stream: Stream) => void,
+  stream: (stream: Stream) => void
   showSettings: boolean
   setShowSettings: (show: boolean) => void
   reverse: boolean
   setReverse: (reverse: boolean) => void
+}
+
+interface ClimateStore {
+  leftTemp: number
+  rightTemp: number
+  recirc: boolean
+  auto: boolean
+  maxDefrost: boolean
+  fanSpeed: number
 }
 
 interface Amplifier {
@@ -52,21 +84,21 @@ interface Amplifier {
 }
 
 interface AudioDiskPlayer {
-  trackNumber: number,
-  trackName: string,
-  albumName: string,
-  playTime: number,
-  trackTime: number,
-  deckState: string,
-  shuffle: string,
-  repeat: string,
-  disks: {},
-  nextTrack: () => void,
-  prevTrack: () => void,
-  play: () => void,
-  pause: () => void,
-  setRepeat: (repeatType: string) => void,
-  setRandom: (randomType: string) => void,
+  trackNumber: number
+  trackName: string
+  albumName: string
+  playTime: number
+  trackTime: number
+  deckState: string
+  shuffle: string
+  repeat: string
+  disks: {}
+  nextTrack: () => void
+  prevTrack: () => void
+  play: () => void
+  pause: () => void
+  setRepeat: (repeatType: string) => void
+  setRandom: (randomType: string) => void
   setActiveDisk: (activeDisk: number) => void
   allocate: () => void
 }
@@ -94,10 +126,29 @@ interface Volume {
   phoneVolume: number
 }
 
-export const useCarplayStore = create<CarplayStore>()((set) =>({
+export const useCanGatewayStore = create<CanGatewayStore>()(() => ({
+  hours: 0,
+  minutes: 0,
+  parkingSensors: {
+    frontLeft: 0,
+    frontCentreLeft: 0,
+    frontCentreRight: 0,
+    frontRight: 0,
+    rearLeft: 0,
+    rearCentreLeft: 0,
+    rearCentreRight: 0,
+    rearRight: 0
+  },
+  externalTemp: 0,
+  ambientLight: 0,
+  lights: false,
+  parkingActive: false
+}))
+
+export const useCarplayStore = create<CarplayStore>()((set) => ({
   settings: null,
   saveSettings: (settings) => {
-    set(() => ({settings: settings}))
+    set(() => ({ settings: settings }))
     socket.emit('saveSettings', settings)
   },
   getSettings: () => {
@@ -108,22 +159,22 @@ export const useCarplayStore = create<CarplayStore>()((set) =>({
   },
   showSettings: false,
   setShowSettings: (show) => {
-    set(() => ({showSettings: show}))
+    set(() => ({ showSettings: show }))
   },
   reverse: false,
   setReverse: (reverse) => {
-    set(() => ({reverse: reverse}))
+    set(() => ({ reverse: reverse }))
   }
 }))
 
-export const useAmplifierStore = create<Amplifier>()((set) =>({
+export const useAmplifierStore = create<Amplifier>()((set) => ({
   bass: 0,
   setBass: (bass) => {
     socket.emit('action', SET_BASS(bass))
   },
   treble: 0,
   setTreble: (treble) => {
-    console.log("in store treble")
+    console.log('in store treble')
     socket.emit('action', SET_TREBLE(treble))
   },
   balance: 0,
@@ -155,14 +206,14 @@ export const useAmFmStore = create<AmFmTuner>()((set) => ({
   chosenPreset: 0,
   autoStore: false,
   getPresets: () => {
-    console.log("getting presets")
+    console.log('getting presets')
     socket.emit('action', GET_PRESETS)
   },
   startAutoStore: () => {
     socket.emit('action', AUTO_STORE)
   },
   setPresetGroup: (prevPreset, preset) => {
-    console.log("setting preset", preset)
+    console.log('setting preset', preset)
     socket.emit('action', SET_PRESET_GROUP1(prevPreset))
     socket.emit('action', SET_PRESET_GROUP(prevPreset, preset))
   },
@@ -187,12 +238,21 @@ export const useVolumeStore = create<Volume>()(() => ({
   phoneVolume: 0
 }))
 
+export const useClimateStore = create<ClimateStore>()(() => ({
+  leftTemp: 0,
+  rightTemp: 0,
+  recirc: false,
+  auto: false,
+  maxDefrost: false,
+  fanSpeed: 0
+}))
+
 export const socketActions = create(() => {
   return {
     actions: {
-      sendMessage(functionName, type, data=[]) {
-        console.log("sending", functionName, type, data)
-        socket.emit("runFkt", {type: type, functionName: functionName, data: data})
+      sendMessage(functionName, type, data = []) {
+        console.log('sending', functionName, type, data)
+        socket.emit('runFkt', { type: type, functionName: functionName, data: data })
       }
     }
   }
@@ -209,10 +269,10 @@ export const useAudioDiskPlayer = create<AudioDiskPlayer>()(() => ({
   deckState: 'loading',
   disks: {},
   nextTrack: () => {
-    console.log("next track")
+    console.log('next track')
     socket.emit('action', NEXT_TRACK)
   },
-  prevTrack: () =>  {
+  prevTrack: () => {
     socket.emit('action', PREV_TRACK)
   },
   play: () => {
@@ -228,11 +288,11 @@ export const useAudioDiskPlayer = create<AudioDiskPlayer>()(() => ({
     socket.emit('action', REPEAT(repeatType))
   },
   setActiveDisk: (activeDisk) => {
-    console.log("active disk")
+    console.log('active disk')
     socket.emit('action', ACTIVE_DISK(activeDisk))
   },
   allocate: () => {
-    console.log("sending allocate")
+    console.log('sending allocate')
     socket.emit('allocate', 'AudioDiskPlayer')
   }
 }))
@@ -241,8 +301,8 @@ const URL = 'http://localhost:4000'
 const socket = io(URL)
 
 socket.on('settings', (settings: ExtraConfig) => {
-  console.log("received settings", settings)
-  useCarplayStore.setState(() => ({settings: settings}))
+  console.log('received settings', settings)
+  useCarplayStore.setState(() => ({ settings: settings }))
 })
 
 socket.on('audioDiskPlayerUpdate', (data) => {
@@ -252,7 +312,7 @@ socket.on('audioDiskPlayerUpdate', (data) => {
   // }
   // console.log(useAudioDiskPlayer.getState())
   useAudioDiskPlayer.setState((state) => {
-    return produce(state, draft => {
+    return produce(state, (draft) => {
       _.merge(draft, data)
     })
   })
@@ -265,12 +325,11 @@ socket.on('amFmTunerUpdate', (data) => {
   // }
   // console.log(useAudioDiskPlayer.getState())
   useAmFmStore.setState((state) => {
-    return produce(state, draft => {
+    return produce(state, (draft) => {
       _.merge(draft, data)
     })
   })
   //console.log(useAmFmStore.getState())
-
 })
 
 socket.on('amplifierUpdate', (data) => {
@@ -280,40 +339,66 @@ socket.on('amplifierUpdate', (data) => {
   // }
   // console.log(useAudioDiskPlayer.getState())
   useAmplifierStore.setState((state) => {
-    return produce(state, draft => {
+    return produce(state, (draft) => {
       _.merge(draft, data)
     })
   })
   //console.log(useAmFmStore.getState())
-
+})
+let parkingTimeout
+socket.on('canGatewayUpdate', (data) => {
+  useCanGatewayStore.setState((state) => {
+    return produce(state, (draft) => {
+      _.merge(draft, data)
+    })
+  })
+  if ('parkingSensors' in data) {
+    console.log('parking message', useCanGatewayStore.getState().parkingActive)
+    if (!useCanGatewayStore.getState().parkingActive) {
+      useCanGatewayStore.setState((state) => ({ ...state, parkingActive: true }))
+    }
+    if (parkingTimeout) {
+      clearTimeout(parkingTimeout)
+    }
+    parkingTimeout = setTimeout(() => {
+      useCanGatewayStore.setState((state) => ({ ...state, parkingActive: false }))
+    }, 1000)
+  }
 })
 
 socket.on('volumeUpdate', (data) => {
-  for(const [k, v] of Object.entries(data)) {
-    useVolumeStore.setState(() => ({[k]: v}))
+  for (const [k, v] of Object.entries(data)) {
+    useVolumeStore.setState(() => ({ [k]: v }))
+  }
+})
+
+socket.on('climateUpdate', (data) => {
+  console.log('received climate', data)
+  for (const [k, v] of Object.entries(data)) {
+    useClimateStore.setState(() => ({ [k]: v }))
   }
 })
 
 socket.on('volumeFullUpdate', (data) => {
-  useVolumeStore.setState(() => (data))
+  useVolumeStore.setState(() => data)
 })
 
 socket.on('audioDiskPlayerFullUpdate', (data) => {
-  useAudioDiskPlayer.setState(() => (data))
+  useAudioDiskPlayer.setState(() => data)
 })
 
 socket.on('amplifierFullUpdate', (data) => {
-  useAmplifierStore.setState(() => (data))
+  useAmplifierStore.setState(() => data)
 })
 
 socket.on('amFmTunerFullUpdate', (data) => {
-  useAmFmStore.setState(() => (data))
+  useAmFmStore.setState(() => data)
+})
+
+socket.on('climateFullUpdate', (data) => {
+  useClimateStore.setState(() => data)
 })
 
 socket.on('reverse', (data) => {
   useCarplayStore.setState(() => ({ reverse: data }))
 })
-
-
-
-

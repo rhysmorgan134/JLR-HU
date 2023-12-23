@@ -1,50 +1,50 @@
-import { Stream } from "socketmost/dist/modules/Messages";
+import { Stream } from 'socketmost/dist/modules/Messages'
 import { DongleConfig } from 'node-carplay/node'
-import { DeckStatus } from "./PiMostFunctions/AudioDiskPlayer/DeckStatus";
-import { TimePosition } from "./PiMostFunctions/AudioDiskPlayer/TimePosition";
-import { TrackPosition } from "./PiMostFunctions/AudioDiskPlayer/TrackPosition";
-import { ActiveDisk } from "./PiMostFunctions/AudioDiskPlayer/ActiveDisk";
-import { MediaInfo } from "./PiMostFunctions/AudioDiskPlayer/MediaInfo";
-import { AudioDiskInfo } from "./PiMostFunctions/AudioDiskPlayer/AudioDiskInfo";
-import { RandomCd } from "./PiMostFunctions/AudioDiskPlayer/RandomCd";
-import { NextTrack } from "./PiMostFunctions/AudioDiskPlayer/NextTrack";
+import { DeckStatus } from './PiMostFunctions/AudioDiskPlayer/DeckStatus'
+import { TimePosition } from './PiMostFunctions/AudioDiskPlayer/TimePosition'
+import { TrackPosition } from './PiMostFunctions/AudioDiskPlayer/TrackPosition'
+import { ActiveDisk } from './PiMostFunctions/AudioDiskPlayer/ActiveDisk'
+import { MediaInfo } from './PiMostFunctions/AudioDiskPlayer/MediaInfo'
+import { AudioDiskInfo } from './PiMostFunctions/AudioDiskPlayer/AudioDiskInfo'
+import { RandomCd } from './PiMostFunctions/AudioDiskPlayer/RandomCd'
+import { NextTrack } from './PiMostFunctions/AudioDiskPlayer/NextTrack'
 
 export type Most = {
   stream?: Stream
 }
 
 export type ExtraConfig = DongleConfig & {
-  kiosk: boolean,
-  camera: string,
-  microphone: string,
-  piMost: boolean,
-  canbus: boolean,
-  bindings: KeyBindings,
-  most?: Most,
+  kiosk: boolean
+  camera: string
+  microphone: string
+  piMost: boolean
+  canbus: boolean
+  bindings: KeyBindings
+  most?: Most
   canConfig?: CanConfig
 }
 
 export interface KeyBindings {
-  'left': string,
-  'right': string,
-  'selectDown': string,
-  'back': string,
-  'down': string,
-  'home': string,
-  'play': string,
-  'pause': string,
-  'next': string,
-  'prev': string
+  left: string
+  right: string
+  selectDown: string
+  back: string
+  down: string
+  home: string
+  play: string
+  pause: string
+  next: string
+  prev: string
 }
 
 export interface CanMessage {
-  canId: number,
-  byte: number,
+  canId: number
+  byte: number
   mask: number
 }
 
 export interface CanConfig {
-  reverse?: CanMessage,
+  reverse?: CanMessage
   lights?: CanMessage
 }
 
@@ -71,13 +71,27 @@ export interface FktIdPartMessage {
 //   0x450: new RandomCd(0x450, this.sendMessage.bind(this), this.updateStatus.bind(this)),
 //   0xc34: new NextTrack(0xc34, this.sendMessage.bind(this), this.updateStatus.bind(this)),
 
-export interface AudioDiskPlayerActions  {
-  fBlock: 'AudioDiskPlayer',
+export interface AudioDiskPlayerActions {
+  fBlock: 'AudioDiskPlayer'
   action: ''
 }
 
-export interface Subscriptions {
+export interface Subscriptions {}
 
+export type FrontSensorsType = {
+  frontLeft: number
+  frontCentreLeft: number
+  frontCentreRight: number
+  frontRight: number
 }
 
-export type AvailableSources = "AudioDiskPlayer" | "AmFmTuner"
+export type RearSensorsType = {
+  rearLeft: number
+  rearCentreLeft: number
+  rearCentreRight: number
+  rearRight: number
+}
+
+export type ParkingSensors = FrontSensorsType & RearSensorsType
+
+export type AvailableSources = 'AudioDiskPlayer' | 'AmFmTuner'

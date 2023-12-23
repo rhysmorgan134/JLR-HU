@@ -1,0 +1,40 @@
+.container {
+    background-color: rgba(255, 255, 255, .15);
+}
+
+.container {
+    background-color: rgba(255, 255, 255, .15);
+    backdrop-filter: blur(5px);
+}
+
+.glowText {
+    color: #d25b5b;
+    font-family: "Courier New";
+    font-size: 5rem;
+    margin: 0;
+    text-shadow: 0 0 10px #d25b5b
+}
+
+.svgButtonSelected {
+    fill: #FFFFFF;
+    font-size: 64px;
+}
+
+.fanSelected {
+    margin-left: -10px;
+    margin-right: -10px;
+}
+
+.svgButtonUnSelected {
+    fill: #6B768A;
+    font-size: 64px;
+}
+
+.fan {
+    flex-grow: 1;
+    border-top: solid 1px #3c4554;
+    border-bottom: solid 1px #3c4554;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

@@ -1,7 +1,6 @@
 .App {
     text-align: center;
     flex: 1;
-    overflow: hidden;
     padding: 0px;
 }
 
@@ -12,6 +11,7 @@ body {
   flex: 1;
   margin: 0px;
   padding: 0px;
+    background-image: linear-gradient(to top, #09101c, #0b1321, #0d1626, #0e192b, #0f1b30);
 }
 #root {
   display: flex;
@@ -27,6 +27,19 @@ body {
     .App-logo {
         animation: App-logo-spin infinite 20s linear;
     }
+}
+
+.mainView {
+    height: calc(100% - (38px + 56px));
+    margin-top: 0;
+}
+
+hr.style-two {
+    border: 0;
+    height: 1px;
+    margin: 0;
+    padding: 0;
+    background-image: linear-gradient(to right, rgba(48, 48, 48, 0.4), rgba(48, 48, 48, 0.75), rgba(48, 48, 48, 0.4));
 }
 
 .App-header {
@@ -56,3 +69,16 @@ body {
         transform: rotate(360deg);
     }
 }
+
+.bottom-tab {
+    background: rgb(10,18,32);
+    background: linear-gradient(0deg, rgba(10,18,32,1) 50%, rgba(13,23,37,1) 50%);
+
+}
+
+.bottom-button {
+    border-top: solid #1e2533 !important;
+    border-left: solid #00000055 1px !important;
+    border-right: solid #00000055 1px !important;
+}
+

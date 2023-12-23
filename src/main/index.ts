@@ -1,12 +1,20 @@
-import { app, shell, BrowserWindow, session, systemPreferences, IpcMainEvent, ipcMain } from 'electron'
+import {
+  app,
+  shell,
+  BrowserWindow,
+  session,
+  systemPreferences,
+  IpcMainEvent,
+  ipcMain
+} from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { DEFAULT_CONFIG } from 'node-carplay/node'
 import { Socket } from './Socket'
-import * as fs from 'fs';
+import * as fs from 'fs'
 import { PiMost } from './PiMost'
-import {Canbus} from "./Canbus";
-import { ExtraConfig, KeyBindings } from "./Globals";
+import { Canbus } from './Canbus'
+import { ExtraConfig, KeyBindings } from './Globals'
 // import CarplayNode, {DEFAULT_CONFIG, CarplayMessage} from "node-carplay/node";
 
 let mainWindow: BrowserWindow
@@ -46,55 +54,52 @@ let canbus: null | Canbus
 let socket: null | Socket
 
 fs.exists(configPath, (exists) => {
-    if(exists) {
-      config = JSON.parse(fs.readFileSync(configPath).toString())
-      let configKeys = JSON.stringify(Object.keys({...config}).sort())
-      let defaultKeys =  JSON.stringify(Object.keys({...EXTRA_CONFIG}).sort())
-      if(configKeys !== defaultKeys) {
-        console.log("config updating")
-        config = {...EXTRA_CONFIG, ...config}
-        console.log("new config", config)
-        fs.writeFileSync(configPath, JSON.stringify(config))
-      }
-      console.log("config read")
-    } else {
-      fs.writeFileSync(configPath, JSON.stringify(EXTRA_CONFIG))
-      config = JSON.parse(fs.readFileSync(configPath).toString())
-      console.log("config created and read")
+  if (exists) {
+    config = JSON.parse(fs.readFileSync(configPath).toString())
+    let configKeys = JSON.stringify(Object.keys({ ...config }).sort())
+    let defaultKeys = JSON.stringify(Object.keys({ ...EXTRA_CONFIG }).sort())
+    if (configKeys !== defaultKeys) {
+      console.log('config updating')
+      config = { ...EXTRA_CONFIG, ...config }
+      console.log('new config', config)
+      fs.writeFileSync(configPath, JSON.stringify(config))
     }
-    socket = new Socket(config!, saveSettings)
-    if(config!.most) {
-      console.log('creating pi most in main')
-
-    }
-    piMost = new PiMost(socket)
-    if(config!.canbus) {
-      canbus = new Canbus('can0',  socket, config!.canConfig)
-      canbus.on('lights', (data) => {
-        console.log('lights', data)
-      })
-      canbus.on('reverse', (data) => {
-        mainWindow?.webContents?.send('reverse', data)
-      })
-    }
-
+    console.log('config read')
+  } else {
+    fs.writeFileSync(configPath, JSON.stringify(EXTRA_CONFIG))
+    config = JSON.parse(fs.readFileSync(configPath).toString())
+    console.log('config created and read')
+  }
+  socket = new Socket(config!, saveSettings)
+  if (config!.most) {
+    console.log('creating pi most in main')
+  }
+  piMost = new PiMost(socket)
+  if (config!.canbus) {
+    canbus = new Canbus('can0', socket, config!.canConfig)
+    canbus.on('lights', (data) => {
+      console.log('lights', data)
+    })
+    canbus.on('reverse', (data) => {
+      mainWindow?.webContents?.send('reverse', data)
+    })
+  }
 })
 
-const handleSettingsReq = (_: IpcMainEvent ) => {
-  console.log("settings request")
+const handleSettingsReq = (_: IpcMainEvent) => {
+  console.log('settings request')
   mainWindow?.webContents.send('settings', config)
 }
 
-
-app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 app.commandLine.appendSwitch('disable-webusb-security', 'true')
 console.log(app.commandLine.hasSwitch('disable-webusb-security'))
 function createWindow(): void {
   // Create the browser window.
   mainWindow = new BrowserWindow({
-    width: config!.width,
-    height: config!.height,
-    kiosk: config!.kiosk,
+    width: 800, //config!.width,
+    height: 480, //config!.height,
+    kiosk: false, //config!.kiosk,
     show: false,
     frame: false,
     autoHideMenuBar: true,
@@ -106,7 +111,7 @@ function createWindow(): void {
       webSecurity: false
     }
   })
-  app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+  app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 
   // mainWindow.webContents.session.setDevicePermissionHandler((details) => {
   //   if (true) {
@@ -119,18 +124,16 @@ function createWindow(): void {
   // })
 
   mainWindow.webContents.session.setPermissionCheckHandler(() => {
-      return true
+    return true
   })
 
   mainWindow.webContents.session.setDevicePermissionHandler((details) => {
-    if(details.device.vendorId === 4884) {
+    if (details.device.vendorId === 4884) {
       return true
     } else {
       return false
     }
-
   })
-
 
   mainWindow.webContents.session.on('select-usb-device', (event, details, callback) => {
     event.preventDefault()
@@ -151,8 +154,6 @@ function createWindow(): void {
     return { action: 'deny' }
   })
 
-
-
   // HMR for renderer base on electron-vite cli.
   // Load the remote URL for development or the local html file for production.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
@@ -160,22 +161,21 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
-  app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
-  systemPreferences.askForMediaAccess("microphone")
+  app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
+  systemPreferences.askForMediaAccess('microphone')
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
-    details.responseHeaders!['Cross-Origin-Opener-Policy'] = ['same-origin'];
-    details.responseHeaders!['Cross-Origin-Embedder-Policy'] = ['require-corp'];
-    callback({ responseHeaders: details.responseHeaders });
-  });
+    details.responseHeaders!['Cross-Origin-Opener-Policy'] = ['same-origin']
+    details.responseHeaders!['Cross-Origin-Embedder-Policy'] = ['require-corp']
+    callback({ responseHeaders: details.responseHeaders })
+  })
 }
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.commandLine.appendSwitch('enable-experimental-web-platform-features');
-app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required")
+app.commandLine.appendSwitch('enable-experimental-web-platform-features')
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 app.whenReady().then(() => {
-
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
   // const carplay = new CarplayNode(DEFAULT_CONFIG)
@@ -222,7 +222,7 @@ app.whenReady().then(() => {
 })
 
 const saveSettings = (settings: ExtraConfig) => {
-  console.log("saving settings", settings)
+  console.log('saving settings', settings)
   fs.writeFileSync(configPath, JSON.stringify(settings))
 }
 
