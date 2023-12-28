@@ -1,7 +1,7 @@
 import { SocketMost, SocketMostClient } from 'socketmost'
 import {
   Os8104Events,
-  RawMostRxMessage,
+  MostRxMessage,
   SocketMostSendMessage,
   Stream
 } from 'socketmost/dist/modules/Messages'
@@ -10,7 +10,7 @@ import { AudioDiskPlayer } from './PiMostFunctions/AudioDiskPlayer/AudioDiskPlay
 import { AmFmTuner } from './PiMostFunctions/AmFm/AmFmTuner'
 import { fBlocks, opTypes } from './PiMostFunctions/Common/enums'
 import { Action, AvailableSources } from './Globals'
-import { u240 } from './PiMostFunctions/JlrAudio/u240'
+import { U240 } from './PiMostFunctions/JlrAudio/u240'
 import { Amplifier } from './PiMostFunctions/Amplifier/Amplifier'
 import { CanGateway } from './PiMostFunctions/CanGateway/CanGateway'
 import { Climate } from './PiMostFunctions/Climate/Climate'
@@ -22,13 +22,13 @@ export class PiMost {
   timeoutType: string
   subscriptionTimer: NodeJS.Timeout | null
   interfaces: {
-    AudioDiskPlayer?: AudioDiskPlayer
-    u240?: u240
-    AmFmTuner?: AmFmTuner
-    Amplifier?: Amplifier
-    secAmplifier?: Amplifier
-    CanGateway?: CanGateway
-    Climate?: Climate
+    audioDiskPlayer: AudioDiskPlayer
+    u240: U240
+    amFmTuner: AmFmTuner
+    amplifier: Amplifier
+    secAmplifier: Amplifier
+    canGateway: CanGateway
+    climate: Climate
   }
   stabilityTimeout: null | NodeJS.Timeout
   sourcesInterval: null | NodeJS.Timeout
@@ -44,92 +44,56 @@ export class PiMost {
     this.socket.on(MessageNames.Stream, (stream) => {
       this.stream(stream)
     })
-
-    this.interfaces = {}
+    const audioDiskPlayer = new AudioDiskPlayer(0x02, this.sendMessage, 0x01, 0x80, 0x01, 0x10)
+    const u240 = new U240(0x01, this.sendMessage, 0x01, 0x61, 0x01, 0x10)
+    const amFmTuner = new AmFmTuner(0x01, this.sendMessage, 0x01, 0x80, 0x01, 0x10)
+    const amplifier = new Amplifier(0xa1, this.sendMessage, 0x01, 0x61, 0x01, 0x10)
+    const secAmplifier = new Amplifier(0x05, this.sendMessage, 0x01, 0x86, 0x01, 0x10)
+    const canGateway = new CanGateway(0x01, this.sendMessage, 0x01, 0x61, 0x01, 0x10)
+    const climate = new Climate(0xa1, this.sendMessage, 0x01, 0x61, 0x01, 0x10)
+    // this.interfaces.secAmplifier = new Amplifier(0x20, this.sendMessage, 0x01, 0x86, 0x01, 0x10)
+    this.interfaces = {
+      audioDiskPlayer,
+      u240,
+      amFmTuner,
+      amplifier,
+      secAmplifier,
+      canGateway,
+      climate
+    }
     this.stabilityTimeout = null
     this.sourcesInterval = null
     this.currentSource = 'AmFmTuner'
 
     this.socketMostClient.on('connected', () => {
       console.log('client connected')
-      this.interfaces.AudioDiskPlayer = new AudioDiskPlayer(
-        0x02,
-        this.sendMessage.bind(this),
-        0x01,
-        0x80,
-        0x01,
-        0x10
-      )
-      this.interfaces.u240 = new u240(0x01, this.sendMessage.bind(this), 0x01, 0x61, 0x01, 0x10)
-      this.interfaces.AmFmTuner = new AmFmTuner(
-        0x01,
-        this.sendMessage.bind(this),
-        0x01,
-        0x80,
-        0x01,
-        0x10
-      )
-      this.interfaces.Amplifier = new Amplifier(
-        0xa1,
-        this.sendMessage.bind(this),
-        0x01,
-        0x61,
-        0x01,
-        0x10
-      )
-      this.interfaces.secAmplifier = new Amplifier(
-        0x05,
-        this.sendMessage.bind(this),
-        0x01,
-        0x86,
-        0x01,
-        0x10
-      )
-      this.interfaces.CanGateway = new CanGateway(
-        0x01,
-        this.sendMessage.bind(this),
-        0x01,
-        0x61,
-        0x01,
-        0x10
-      )
-      this.interfaces.Climate = new Climate(
-        0xa1,
-        this.sendMessage.bind(this),
-        0x01,
-        0x61,
-        0x01,
-        0x10
-      )
-
-      // this.interfaces.secAmplifier = new Amplifier(0x20, this.sendMessage.bind(this), 0x01, 0x86, 0x01, 0x10)
-      this.interfaces.AudioDiskPlayer.on('statusUpdate', (data) => {
+      this.interfaces.audioDiskPlayer.on('statusUpdate', (data) => {
         socket.sendStatusUpdate('audioDiskPlayerUpdate', data)
       })
       this.interfaces.u240.on('statusUpdate', (data) => {
         socket.sendStatusUpdate('volumeUpdate', data)
       })
-      this.interfaces.AmFmTuner.on('statusUpdate', (data) => {
+      this.interfaces.amFmTuner.on('statusUpdate', (data) => {
         socket.sendStatusUpdate('amFmTunerUpdate', data)
       })
-      this.interfaces.Amplifier.on('statusUpdate', (data) => {
+      this.interfaces.amplifier.on('statusUpdate', (data) => {
         socket.sendStatusUpdate('amplifierUpdate', data)
       })
-      this.interfaces.CanGateway.on('statusUpdate', (data) => {
+      this.interfaces.canGateway.on('statusUpdate', (data) => {
         socket.sendStatusUpdate('canGatewayUpdate', data)
       })
-      this.interfaces.Climate.on('statusUpdate', (data) => {
+      this.interfaces.climate.on('statusUpdate', (data) => {
         socket.sendStatusUpdate('climateUpdate', data)
       })
 
       socket.on('newConnection', () => {
         console.log('SENDING FULL UPDATE')
-        socket.sendStatusUpdate('audioDiskPlayerFullUpdate', this.interfaces.AudioDiskPlayer!.state)
-        socket.sendStatusUpdate('volumeFullUpdate', this.interfaces.u240!.state)
-        socket.sendStatusUpdate('amFmTunerFullUpdate', this.interfaces.AmFmTuner!.state)
-        socket.sendStatusUpdate('amplifierFullUpdate', this.interfaces.Amplifier!.state)
-        socket.sendStatusUpdate('canGatewayFullUpdate', this.interfaces.CanGateway!.state)
-        socket.sendStatusUpdate('climateFullUpdate', this.interfaces.Climate!.state)
+        socket.sendStatusUpdate('audioDiskPlayerFullUpdate', this.interfaces.audioDiskPlayer.state)
+        socket.sendStatusUpdate('volumeFullUpdate', this.interfaces.u240.state)
+        socket.sendStatusUpdate('amFmTunerFullUpdate', this.interfaces.amFmTuner.state)
+        socket.sendStatusUpdate('amplifierFullUpdate', this.interfaces.amplifier.state)
+        socket.sendStatusUpdate('canGatewayFullUpdate', this.interfaces.canGateway.state)
+        socket.sendStatusUpdate('climateFullUpdate', this.interfaces.climate.state)
       })
 
       socket.on('action', (message: Action) => {
@@ -164,26 +128,23 @@ export class PiMost {
         }
       })
 
-      this.socketMostClient.on(
-        Os8104Events.SocketMostMessageRxEvent,
-        (message: RawMostRxMessage) => {
-          const type = fBlocks[message.fBlockID]
-          if (message.opType === 15) {
-            console.log('most error', message)
-          }
-          if (type === this.timeoutType) {
-            this.subscriptionTimer!.refresh()
-          }
-          this.interfaces?.[type]?.parseMessage(message)
+      this.socketMostClient.on(Os8104Events.SocketMostMessageRxEvent, (message: MostRxMessage) => {
+        const type = fBlocks[message.fBlockID]
+        if (message.opType === 15) {
+          console.log('most error', message)
         }
-      )
+        if (type === this.timeoutType) {
+          this.subscriptionTimer!.refresh()
+        }
+        this.interfaces?.[type]?.parseMessage(message)
+      })
     })
   }
   stream(stream: Stream) {
     this.socketMostClient.stream(stream)
   }
 
-  sendMessage(message: SocketMostSendMessage) {
+  sendMessage = (message: SocketMostSendMessage) => {
     console.log('send message request', message)
     this.socketMostClient.sendControlMessage(message)
   }
@@ -198,7 +159,7 @@ export class PiMost {
     // this.socketMostClient.sendControlMessage()
     console.log('subscribing to ', interfaceType)
     this.interfaces[interfaceType]!.allNotifcations()
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       this.timeoutType = interfaceType
       this.subscriptionTimer = setTimeout(() => {
         console.log('subscription finished')
@@ -219,10 +180,10 @@ export class PiMost {
     console.log('allocating new')
     await this.allocateSource(newSource)
     console.log('allocated new')
-    let data = await this.waitForAlloc(newSource)
+    const data = await this.waitForAlloc(newSource)
     console.log('allocated', data)
     console.log('connecting')
-    await this.interfaces.secAmplifier!.functions[0x111].startResult([
+    await this.interfaces.secAmplifier.functions[0x111].startResult([
       0x01,
       data.srcDelay,
       ...data.channelList
@@ -235,9 +196,9 @@ export class PiMost {
   }
 
   waitForDealloc(source) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       this.interfaces[source].once('deallocResult', (source) => {
-        console.log('resolving deallocResult')
+        console.log(`resolving deallocResult - ${source}`)
         resolve(true)
       })
     })
@@ -249,7 +210,7 @@ export class PiMost {
   }
 
   waitForAlloc(source) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       this.interfaces[source].once('allocResult', (results) => {
         resolve(results)
       })

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { ExtraConfig, ParkingSensors } from '../../../main/Globals'
 import { io } from 'socket.io-client'
 import { Stream } from 'socketmost/dist/modules/Messages'
+
 import { produce } from 'immer'
 import _ from 'lodash'
 import {
@@ -344,6 +345,7 @@ socket.on('amplifierUpdate', (data) => {
     })
   })
   //console.log(useAmFmStore.getState())
+
 })
 let parkingTimeout
 socket.on('canGatewayUpdate', (data) => {

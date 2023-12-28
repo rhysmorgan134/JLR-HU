@@ -1,17 +1,21 @@
-import { FktIdPartMessage } from "../../Globals";
-import { EventEmitter } from "events";
+import { FktIdPartMessage } from '../../Globals'
+import { EventEmitter } from 'events'
 
 export abstract class Fkt extends EventEmitter {
   writeMessage: (message: FktIdPartMessage) => void
   fktID: number
-  updateStatus: (result: Object) => void
+  updateStatus: (result: object) => void
   responseReceived: boolean
   waiting: boolean
   messageSeq: number
   multipartLength: number
   multipartBuffer: Buffer
-  actionOpType: Record<string, ((data: number[])=> Promise<void>) | (()=> void)>
-  constructor(fktID: number, writeMessage: (message: FktIdPartMessage) => void, updateStatus: (result: Object) => void) {
+  actionOpType: Record<string, ((data: number[]) => Promise<void>) | (() => void)>
+  constructor(
+    fktID: number,
+    writeMessage: (message: FktIdPartMessage) => void,
+    updateStatus: (result: object) => void
+  ) {
     super()
     this.writeMessage = writeMessage
     this.fktID = fktID
@@ -22,65 +26,75 @@ export abstract class Fkt extends EventEmitter {
     this.multipartBuffer = Buffer.alloc(65536)
     this.updateStatus = updateStatus
     this.actionOpType = {
-      Set: this.set.bind(this),
-      Get: this.get.bind(this),
-      SetGet: this.setGet.bind(this),
-      Increment: this.increment.bind(this),
-      Decrement: this.decrement.bind(this),
-      GetInterface: this.getInterface.bind(this),
-      StartResultAck: this.startResultAck.bind(this),
-      Start: this.get.bind(this),
-      StartResult: this.startResult.bind(this),
+      Set: this.set,
+      Get: this.get,
+      SetGet: this.setGet,
+      Increment: this.increment,
+      Decrement: this.decrement,
+      GetInterface: this.getInterface,
+      StartResultAck: this.startResultAck,
+      Start: this.get,
+      StartResult: this.startResult
     }
   }
 
-  async get(data: number[] = []) {
+  get = async (data: number[] = []) => {
     this.responseReceived = false
     this.writeMessage({ fktID: this.fktID, opType: 0x01, data: data })
   }
 
-  async getInterface(data: number[] = []) {
+  getInterface = async (data: number[] = []) => {
     this.responseReceived = false
     this.writeMessage({ fktID: this.fktID, opType: 0x05, data: data })
   }
 
-  async set(data: number[]) {
+  set = async (data: number[]) => {
     this.responseReceived = false
     this.writeMessage({ fktID: this.fktID, opType: 0x00, data: data })
   }
 
-  async increment(data: number[]) {
+  increment = async (data: number[]) => {
     this.responseReceived = false
     this.writeMessage({ fktID: this.fktID, opType: 0x03, data: data })
   }
 
-  async decrement(data: number[]) {
+  decrement = async (data: number[]) => {
     this.responseReceived = false
     this.writeMessage({ fktID: this.fktID, opType: 0x04, data: data })
   }
 
-  async startResult(data: number[]) {
+  startResult = async (data: number[]) => {
     this.responseReceived = false
     this.writeMessage({ fktID: this.fktID, opType: 0x02, data: data })
   }
 
-  async startResultAck(data: number[]) {
+  startResultAck = async (data: number[]) => {
     this.responseReceived = false
     this.writeMessage({ fktID: this.fktID, opType: 0x06, data: data })
   }
 
-  async setGet(data: number[]) {
+  setGet = async (data: number[]) => {
     this.responseReceived = false
     this.writeMessage({ fktID: this.fktID, opType: 0x02, data: data })
   }
 
   abstract status(data: Buffer, telLen: number): void
 
-  async getReq(data: number[] = [], telLen: number, sourceAddrHigh, sourceAddrLow) {}
+  getReq = (data: number[] = []) => {
+    return
+  }
 
-  async parseStatus({fktID, opType, telID, telLen, data, instanceID}) {
+  parseStatus = async ({
+    telID,
+    telLen,
+    data
+  }: {
+    telID: number
+    telLen: number
+    data: Buffer
+  }) => {
     data = Buffer.from(data)
-    let seq = data.readUint8(0)
+    const seq = data.readUint8(0)
     switch (telID) {
       case 0:
         await this.status(data, telLen)
@@ -122,7 +136,7 @@ export abstract class Fkt extends EventEmitter {
             data.copy(this.multipartBuffer, this.multipartLength, 1, data.length)
             this.multipartLength += telLen - 1
           }
-          let finalMessage = this.multipartBuffer.slice(0, this.multipartLength)
+          const finalMessage = this.multipartBuffer.slice(0, this.multipartLength)
           await this.status(finalMessage, this.multipartLength)
           this.multipartLength = 0
           this.multipartBuffer = Buffer.alloc(65536)

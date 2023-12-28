@@ -1,13 +1,6 @@
-import { Stream } from 'socketmost/dist/modules/Messages'
+import { Stream } from 'socketmost/dist/src/modules/Messages'
 import { DongleConfig } from 'node-carplay/node'
-import { DeckStatus } from './PiMostFunctions/AudioDiskPlayer/DeckStatus'
-import { TimePosition } from './PiMostFunctions/AudioDiskPlayer/TimePosition'
-import { TrackPosition } from './PiMostFunctions/AudioDiskPlayer/TrackPosition'
-import { ActiveDisk } from './PiMostFunctions/AudioDiskPlayer/ActiveDisk'
-import { MediaInfo } from './PiMostFunctions/AudioDiskPlayer/MediaInfo'
-import { AudioDiskInfo } from './PiMostFunctions/AudioDiskPlayer/AudioDiskInfo'
-import { RandomCd } from './PiMostFunctions/AudioDiskPlayer/RandomCd'
-import { NextTrack } from './PiMostFunctions/AudioDiskPlayer/NextTrack'
+
 
 export type Most = {
   stream?: Stream
@@ -62,20 +55,21 @@ export interface FktIdPartMessage {
   data: number[]
 }
 
-// 0x200: new DeckStatus(0x200, this.sendMessage.bind(this), this.updateStatus.bind(this)),
-//   0x201: new TimePosition(0x0201, this.sendMessage.bind(this), this.updateStatus.bind(this)),
-//   0x202: new TrackPosition(0x202, this.sendMessage.bind(this), this.updateStatus.bind(this)),
-//   0x412: new ActiveDisk(0x412, this.sendMessage.bind(this), this.updateStatus.bind(this)),
-//   0x413: new MediaInfo(0x413, this.sendMessage.bind(this), this.updateStatus.bind(this)),
-//   0x420: new AudioDiskInfo(0x420, this.sendMessage.bind(this), this.updateStatus.bind(this)),
-//   0x450: new RandomCd(0x450, this.sendMessage.bind(this), this.updateStatus.bind(this)),
-//   0xc34: new NextTrack(0xc34, this.sendMessage.bind(this), this.updateStatus.bind(this)),
+// 0x200: new DeckStatus(0x200, this.sendMessage, this.updateStatus),
+//   0x201: new TimePosition(0x0201, this.sendMessage, this.updateStatus),
+//   0x202: new TrackPosition(0x202, this.sendMessage, this.updateStatus),
+//   0x412: new ActiveDisk(0x412, this.sendMessage, this.updateStatus),
+//   0x413: new MediaInfo(0x413, this.sendMessage, this.updateStatus),
+//   0x420: new AudioDiskInfo(0x420, this.sendMessage, this.updateStatus),
+//   0x450: new RandomCd(0x450, this.sendMessage, this.updateStatus),
+//   0xc34: new NextTrack(0xc34, this.sendMessage, this.updateStatus),
 
 export interface AudioDiskPlayerActions {
   fBlock: 'AudioDiskPlayer'
   action: ''
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface Subscriptions {}
 
 export type FrontSensorsType = {
@@ -93,5 +87,7 @@ export type RearSensorsType = {
 }
 
 export type ParkingSensors = FrontSensorsType & RearSensorsType
+
+
 
 export type AvailableSources = 'AudioDiskPlayer' | 'AmFmTuner'

@@ -2,22 +2,18 @@ import { Fkt } from './Function'
 import { FktIdPartMessage } from '../../Globals'
 
 export class AsyncControl extends Fkt {
-  writeMessage: (message: FktIdPartMessage) => void
-  fktID: number
-  updateStatus: (result: Object) => void
-
   constructor(
     fktID: number,
     writeMessage: (message: FktIdPartMessage) => void,
-    updateStatus: (result: Object) => void
+    updateStatus: (result: object) => void
   ) {
     super(fktID, writeMessage, updateStatus)
   }
 
-  async status(data, telLen) {
-    data = data.readUInt8(0)
-    let asyncControl = {
-      asyncControlType: data ? 'packet' : 'control'
+  async status(data: Buffer, telLen: number) {
+    const value = data.readUInt8(0)
+    const asyncControl = {
+      asyncControlType: value ? 'packet' : 'control'
     }
     this.updateStatus(asyncControl)
     this.responseReceived = true

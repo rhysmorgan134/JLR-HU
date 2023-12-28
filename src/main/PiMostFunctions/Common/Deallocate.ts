@@ -5,12 +5,12 @@ export class Deallocate extends Fkt {
   constructor(
     fktID: number,
     writeMessage: (message: FktIdPartMessage) => void,
-    updateStatus: (result: Object) => void
+    updateStatus: (result: object) => void
   ) {
     super(fktID, writeMessage, updateStatus)
   }
 
-  async status(data, telLen) {
+  async status(data: Buffer, _telLen: number) {
     // let functions = []
     // for(let i=0;i<data.length;i+=3) {
     //     functions.push((data.readUint16BE(i) >> 4))
@@ -19,7 +19,7 @@ export class Deallocate extends Fkt {
     //     }
     // }
     // this.updateStatus(functions)
-    console.log("deallocate status", data)
+    console.log('deallocate status', data)
     const source = data.readUInt8(0)
     this.emit('deallocResult', source)
     this.responseReceived = true

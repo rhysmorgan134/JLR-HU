@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import '../App.css'
-import {
-  AudioCommand,
-  AudioData,
-  WebMicrophone,
-  decodeTypeMap,
-} from 'node-carplay/web'
+import { AudioCommand, AudioData, WebMicrophone, decodeTypeMap } from 'node-carplay/web'
 import { PcmPlayer } from 'pcm-ringbuf-player'
 import { CarPlayWorker } from './worker/types'
 
@@ -30,7 +25,7 @@ const useCarplayAudio = (worker: CarPlayWorker, microphone: string | null = null
       player.start()
       return player
     },
-    [audioPlayers],
+    [audioPlayers]
   )
 
   const processAudio = useCallback(
@@ -38,50 +33,49 @@ const useCarplayAudio = (worker: CarPlayWorker, microphone: string | null = null
       if (audio.data) {
         const { data } = audio
         const player = getAudioPlayer(audio)
-        if(audio.volumeDuration) {
-          console.log("duration in different place", audio)
+        if (audio.volumeDuration) {
+          console.log('duration in different place', audio)
         }
         player.feed(data)
       } else if (audio.volumeDuration) {
         const { volume, volumeDuration } = audio
         const player = getAudioPlayer(audio)
-        console.log("changing audio volume", audio)
+        console.log('changing audio volume', audio)
         console.log(audio.volumeDuration)
         player.volume(volume, volumeDuration)
       } else if (audio.command) {
+        const player = getAudioPlayer(audio)
         switch (audio.command) {
           case AudioCommand.AudioNaviStart:
-            const navPlayer = getAudioPlayer(audio)
-            navPlayer.volume(defaultNavVolume)
+            player.volume(defaultNavVolume)
             break
           case AudioCommand.AudioMediaStart:
           case AudioCommand.AudioOutputStart:
-            const mediaPlayer = getAudioPlayer(audio)
-            mediaPlayer.volume(defaultAudioVolume)
+            player.volume(defaultAudioVolume)
             break
         }
       } else {
         console.log(audio)
       }
     },
-    [getAudioPlayer],
+    [getAudioPlayer]
   )
 
   // audio init
   useEffect(() => {
-    const initMic = async () => {
+    const initMic = async (): Promise<void> => {
       try {
         const mediaStream = await navigator.mediaDevices.getUserMedia({
-          audio: {deviceId: microphone!, noiseSuppression: true, echoCancellation: true},
+          audio: { deviceId: microphone!, noiseSuppression: true, echoCancellation: true }
         })
         const mic = new WebMicrophone(mediaStream)
-        mic.on('data', payload => {
+        mic.on('data', (payload) => {
           worker.postMessage(
             {
               type: 'microphoneInput',
-              payload,
+              payload
             },
-            [payload.buffer],
+            [payload.buffer]
           )
         })
 
@@ -94,7 +88,7 @@ const useCarplayAudio = (worker: CarPlayWorker, microphone: string | null = null
     if (microphone) initMic()
 
     return () => {
-      audioPlayers.forEach(p => p.stop())
+      audioPlayers.forEach((p) => p.stop())
     }
   }, [audioPlayers, worker])
 

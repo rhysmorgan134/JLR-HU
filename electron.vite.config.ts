@@ -39,9 +39,12 @@ export default defineConfig({
         babel: {
           plugins: ['@emotion/babel-plugin']
         }
+<<<<<<< HEAD
       }),
       svgr({
         include: '**/*.svg?react'
+=======
+>>>>>>> main
       })
     ]
   }

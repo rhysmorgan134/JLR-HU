@@ -1,6 +1,6 @@
 {
-  "name": "react-carplay",
-  "version": "4.0.1",
+  "name": "jlr-hu",
+  "version": "0.0.1",
   "description": "An Electron application with React and TypeScript",
   "main": "./out/main/index.js",
   "author": "Rhys Morgan",
@@ -35,15 +35,18 @@
     "immer": "^10.0.3",
     "jmuxer": "^2.0.5",
     "mui-image": "^1.0.7",
-    "node-carplay": "github:rhysmorgan134/node-CarPlay#fix-nav-audio",
-    "pcm-player": "^0.0.16",
-    "pcm-ringbuf-player": "github:rhysmorgan134/pcm-ringbuf-player",
+    "node-carplay": "github:rhysmorgan134/node-CarPlay",
+    "pcm-ringbuf-player": "^0.0.6",
     "react-loader-spinner": "^5.4.5",
     "react-router-dom": "^6.16.0",
     "react-webcam": "^7.2.0",
     "socket.io": "^4.7.2",
     "socket.io-client": "^4.7.2",
+<<<<<<< HEAD
     "socketmost": "^2.0.16",
+=======
+    "socketmost": "github:rhysmorgan134/socketmost",
+>>>>>>> main
     "stream-browserify": "^3.0.0",
     "usb": "^2.10.0",
     "vite-plugin-esmodule": "^1.5.0",
@@ -56,6 +59,7 @@
     "@electron-toolkit/tsconfig": "^1.0.1",
     "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
     "@types/events": "^3.0.1",
+    "@types/lodash": "^4.14.202",
     "@types/node": "^18.18.0",
     "@types/react": "^18.2.20",
     "@types/react-dom": "^18.2.7",

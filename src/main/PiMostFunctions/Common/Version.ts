@@ -2,23 +2,19 @@ import { Fkt } from './Function'
 import { FktIdPartMessage } from '../../Globals'
 
 export class Version extends Fkt {
-  writeMessage: (message: FktIdPartMessage) => void
-  fktID: number
-  updateStatus: (result: Object) => void
-
   constructor(
     fktID: number,
     writeMessage: (message: FktIdPartMessage) => void,
-    updateStatus: (result: Object) => void
+    updateStatus: (result: object) => void
   ) {
     super(fktID, writeMessage, updateStatus)
   }
 
-  async status(data, telLen) {
-    let majorVersion = data.readUInt8(0)
-    let minorVersion = data.readUInt8(1)
-    let build = data.readUInt8(2)
-    let version = {
+  async status(data: Buffer, _telLen: number) {
+    const majorVersion = data.readUInt8(0)
+    const minorVersion = data.readUInt8(1)
+    const build = data.readUInt8(2)
+    const version = {
       majorVersion,
       minorVersion,
       build

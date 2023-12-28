@@ -47,15 +47,12 @@ function AudioDiskplayer() {
   //     socket.emit("runFkt", {address: address, type: 'AudioDiskPlayer', instance: instID, functionName: functionName, data: data})
   // }
 
-  const preSendMessage = (functionName, data = []) => {
-    sendMessage(functionName, 'AudioDiskPlayer', data)
-  }
 
   const renderDeck = () => {
     if (width > 500) {
       return (
         <Grid xs={12} flexGrow={0} sx={{ height: 0.1 }}>
-          <Deck sendMessage={preSendMessage} />
+          <Deck />
         </Grid>
       )
     } else {
@@ -108,7 +105,7 @@ function AudioDiskplayer() {
       </Grid>
       {renderProgess()}
       <Grid xs={12} sx={{ height: 0.1 }}>
-        <AudioControls sendMessage={preSendMessage} />
+        <AudioControls />
       </Grid>
     </Grid>
   )

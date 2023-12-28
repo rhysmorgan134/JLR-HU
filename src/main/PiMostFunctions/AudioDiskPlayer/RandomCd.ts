@@ -5,13 +5,13 @@ export class RandomCd extends Fkt {
   constructor(
     fktID: number,
     writeMessage: (message: FktIdPartMessage) => void,
-    updateStatus: (result: Object) => void
+    updateStatus: (result: object) => void
   ) {
     super(fktID, writeMessage, updateStatus)
   }
-  async status(data, telLen) {
-    let x = data.readUInt8(0)
-    let status = { }
+  async status(data: Buffer, _telLen: number) {
+    const x = data.readUInt8(0)
+    const status: { shuffle?: string } = {}
     switch (x) {
       case 0x00:
         status.shuffle = 'off'
@@ -31,4 +31,3 @@ export class RandomCd extends Fkt {
     this.responseReceived = true
   }
 }
-

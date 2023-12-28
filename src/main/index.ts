@@ -1,12 +1,4 @@
-import {
-  app,
-  shell,
-  BrowserWindow,
-  session,
-  systemPreferences,
-  IpcMainEvent,
-  ipcMain
-} from 'electron'
+import { app, shell, BrowserWindow, session, systemPreferences, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { DEFAULT_CONFIG } from 'node-carplay/node'
@@ -21,7 +13,6 @@ let mainWindow: BrowserWindow
 const appPath: string = app.getPath('userData')
 const configPath: string = appPath + '/config.json'
 console.log(configPath)
-let config: null | ExtraConfig
 
 const DEFAULT_BINDINGS: KeyBindings = {
   left: 'ArrowLeft',
@@ -48,16 +39,26 @@ const EXTRA_CONFIG: ExtraConfig = {
   canConfig: {}
 }
 
+let config: ExtraConfig = EXTRA_CONFIG
 let piMost: null | PiMost
 let canbus: null | Canbus
 
 let socket: null | Socket
 
+<<<<<<< HEAD
 fs.exists(configPath, (exists) => {
   if (exists) {
     config = JSON.parse(fs.readFileSync(configPath).toString())
     let configKeys = JSON.stringify(Object.keys({ ...config }).sort())
     let defaultKeys = JSON.stringify(Object.keys({ ...EXTRA_CONFIG }).sort())
+=======
+fs.stat(configPath, (err) => {
+  const exists = !(err && err.code === 'ENOENT')
+  if (exists) {
+    config = JSON.parse(fs.readFileSync(configPath).toString())
+    const configKeys = JSON.stringify(Object.keys({ ...config }).sort())
+    const defaultKeys = JSON.stringify(Object.keys({ ...EXTRA_CONFIG }).sort())
+>>>>>>> main
     if (configKeys !== defaultKeys) {
       console.log('config updating')
       config = { ...EXTRA_CONFIG, ...config }
@@ -70,6 +71,7 @@ fs.exists(configPath, (exists) => {
     config = JSON.parse(fs.readFileSync(configPath).toString())
     console.log('config created and read')
   }
+<<<<<<< HEAD
   socket = new Socket(config!, saveSettings)
   if (config!.most) {
     console.log('creating pi most in main')
@@ -77,6 +79,15 @@ fs.exists(configPath, (exists) => {
   piMost = new PiMost(socket)
   if (config!.canbus) {
     canbus = new Canbus('can0', socket, config!.canConfig)
+=======
+  socket = new Socket(config, saveSettings)
+  if (config.most) {
+    console.log('creating pi most in main')
+  }
+  piMost = new PiMost(socket)
+  if (config.canbus) {
+    canbus = new Canbus('can0', socket, config.canConfig)
+>>>>>>> main
     canbus.on('lights', (data) => {
       console.log('lights', data)
     })
@@ -86,7 +97,11 @@ fs.exists(configPath, (exists) => {
   }
 })
 
+<<<<<<< HEAD
 const handleSettingsReq = (_: IpcMainEvent) => {
+=======
+const handleSettingsReq = (): void => {
+>>>>>>> main
   console.log('settings request')
   mainWindow?.webContents.send('settings', config)
 }
@@ -97,9 +112,15 @@ console.log(app.commandLine.hasSwitch('disable-webusb-security'))
 function createWindow(): void {
   // Create the browser window.
   mainWindow = new BrowserWindow({
+<<<<<<< HEAD
     width: 800, //config!.width,
     height: 480, //config!.height,
     kiosk: false, //config!.kiosk,
+=======
+    width: config.width,
+    height: config.height,
+    kiosk: config.kiosk,
+>>>>>>> main
     show: false,
     frame: false,
     autoHideMenuBar: true,
@@ -221,7 +242,11 @@ app.whenReady().then(() => {
   })
 })
 
+<<<<<<< HEAD
 const saveSettings = (settings: ExtraConfig) => {
+=======
+const saveSettings = (settings: ExtraConfig): void => {
+>>>>>>> main
   console.log('saving settings', settings)
   fs.writeFileSync(configPath, JSON.stringify(settings))
 }
@@ -233,7 +258,7 @@ const saveSettings = (settings: ExtraConfig) => {
 //   }
 // }
 
-const quit = (_: IpcMainEvent) => {
+const quit = (): void => {
   app.quit()
 }
 

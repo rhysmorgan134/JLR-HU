@@ -162,7 +162,7 @@ function App() {
   const onKeyDown = (event: KeyboardEvent) => {
     console.log(event.code)
     if (Object.values(settings!.bindings).includes(event.code)) {
-      let action = Object.keys(settings!.bindings).find(
+      const action = Object.keys(settings!.bindings).find(
         (key) => settings!.bindings[key] === event.code
       )
       if (action !== undefined) {

@@ -5,14 +5,14 @@ export class DeckStatus extends Fkt {
   constructor(
     fktID: number,
     writeMessage: (message: FktIdPartMessage) => void,
-    updateStatus: (result: Object) => void
+    updateStatus: (result: object) => void
   ) {
     super(fktID, writeMessage, updateStatus)
   }
 
-  async status(data, telLen) {
-    let x = data.readUInt8(0)
-    let status = { }
+  async status(data: Buffer, telLen: number) {
+    const x = data.readUInt8(0)
+    const status: { deckState?: string } = {}
     switch (x) {
       case 0x00:
         status.deckState = 'Play'
