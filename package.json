@@ -42,11 +42,7 @@
     "react-webcam": "^7.2.0",
     "socket.io": "^4.7.2",
     "socket.io-client": "^4.7.2",
-<<<<<<< HEAD
     "socketmost": "^2.0.16",
-=======
-    "socketmost": "github:rhysmorgan134/socketmost",
->>>>>>> main
     "stream-browserify": "^3.0.0",
     "usb": "^2.10.0",
     "vite-plugin-esmodule": "^1.5.0",
