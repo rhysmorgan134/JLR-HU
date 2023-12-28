@@ -97,18 +97,20 @@ export class PiMost {
         if (this.stabilityTimeout) clearTimeout(this.stabilityTimeout)
         this.stabilityTimeout = setTimeout(() => {
           console.log('locked, subscribing')
-          this.sourcesInterval = setInterval(() => {
-            // this.interfaces?.secAmplifier?.functions[0xE09].get([])
-          }, 100)
+          //this.sourcesInterval = setInterval(() => {
+          // this.interfaces?.secAmplifier?.functions[0xE09].get([])
+          //}, 100)
           this.subscribeToAll()
         }, 3000)
       })
 
       this.socketMostClient.on(Os8104Events.Unlocked, () => {
         console.log('UNLOCKED')
-        clearTimeout(this.stabilityTimeout!)
+        if (this.stabilityTimeout) {
+          clearTimeout(this.stabilityTimeout)
+        }
         if (this.sourcesInterval) {
-          clearInterval(this.sourcesInterval!)
+          clearInterval(this.sourcesInterval)
         }
       })
 
@@ -117,13 +119,14 @@ export class PiMost {
         if (message.opType === 15) {
           console.log('most error', message)
         }
-        if (type === this.timeoutType) {
-          this.subscriptionTimer!.refresh()
+        if (type === this.timeoutType && this.subscriptionTimer!) {
+          this.subscriptionTimer.refresh()
         }
-        this.interfaces?.[type]?.parseMessage(message)
+        this.interfaces[type]?.parseMessage(message)
       })
     })
   }
+
   stream(stream: Stream) {
     this.socketMostClient.stream(stream)
   }
@@ -193,7 +196,7 @@ export class PiMost {
     await this.interfaces[source].functions[0x101].startResult([0x01])
   }
 
-  waitForAlloc(source) {
+  waitForAlloc(source): Promise<{ srcDelay: number; channelList: number[] }> {
     return new Promise((resolve) => {
       this.interfaces[source].once('allocResult', (results) => {
         resolve(results)
