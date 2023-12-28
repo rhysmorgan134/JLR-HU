@@ -7,6 +7,8 @@ import { Action, AvailableSources } from './Globals'
 import { U240 } from './PiMostFunctions/JlrAudio/u240'
 import { Amplifier } from './PiMostFunctions/Amplifier/Amplifier'
 
+const { Os8104Events } = messages
+
 export class PiMost {
   socketMost: SocketMost
   socketMostClient: SocketMostClient
@@ -89,7 +91,7 @@ export class PiMost {
         this.changeSource(source)
       })
 
-      this.socketMostClient.on(messages.Os8104Events.Locked, () => {
+      this.socketMostClient.on(Os8104Events.Locked, () => {
         console.log('locked')
         if (this.stabilityTimeout) clearTimeout(this.stabilityTimeout)
         this.stabilityTimeout = setTimeout(() => {
@@ -101,7 +103,7 @@ export class PiMost {
         }, 3000)
       })
 
-      this.socketMostClient.on(messages.Os8104Events.Unlocked, () => {
+      this.socketMostClient.on(Os8104Events.Unlocked, () => {
         console.log('UNLOCKED')
         if (this.stabilityTimeout) {
           clearTimeout(this.stabilityTimeout)
@@ -112,7 +114,7 @@ export class PiMost {
       })
 
       this.socketMostClient.on(
-        messages.Os8104Events.SocketMostMessageRxEvent,
+        Os8104Events.SocketMostMessageRxEvent,
         (message: messages.MostRxMessage) => {
           const type = fBlocks[message.fBlockID as keyof typeof fBlocks]
           if (message.opType === 15) {
