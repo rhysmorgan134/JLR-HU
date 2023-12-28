@@ -7,13 +7,14 @@ carplay application.
 
 ## Features
 
- - Carplay fully configurable upto 60fps @ 1080p (hardware capability dependent)
- - Canbus integration to allow showing a camera when a canbus signal is received
- - PiMost integration to allow streaming Pi Audio over mostbus
- - Configurable key bindings
- - Ability to choose microphone device and camera device
+- Carplay fully configurable upto 60fps @ 1080p (hardware capability dependent)
+- Canbus integration to allow showing a camera when a canbus signal is received
+- PiMost integration to allow streaming Pi Audio over mostbus
+- Configurable key bindings
+- Ability to choose microphone device and camera device
 
 ## Installation
+
 The easiest method is to install via the setup-pi script, this handles usb permissions and also creates and autostart script
 to launch the app on start up.
 
@@ -69,15 +70,16 @@ If we write these out as binary representations they would look like the below
 binary - 00010011  01000000  00000000  00000000  11111111  00000000  00000000  11111111
 hex -      0x13      0x40      0x00      0x00      0xFF      0x00      0x00      0xFF
 ```
+
 When I toggle the parking sensors on and off, byte 1 switches between 0x40 and 0x00, this is because byte 1 bit 6 represents
 the sensors. This byte could be showing 0x41 in the on state, and 0x01 in the off state, but bit 6 is still the bit that toggles
 (bits start at 0)
 
 So now we know the three values needed to be entered into react-carplay
 
- - canID = 0x188 hex = 392 decimal
- - mask = 0x40 hex = 64 decimal
- - byte = 1
+- canID = 0x188 hex = 392 decimal
+- mask = 0x40 hex = 64 decimal
+- byte = 1
 
 In the settings page, click the canbus option, a pop up then appears and fill out the boxes with numbers found for your car
 (these will be different, unless you also have a freelander 2)
@@ -104,6 +106,7 @@ React-carplay uses node-carplay for interfacing to the dongle, recently there ha
 gozmanyoni coffee link if you wish to show appreciation - https://www.buymeacoffee.com/ygoz
 
 <!-- CONTACT -->
+
 ## Contact
 
 https://forums.moderndaymods.com/

@@ -2,17 +2,17 @@ import { Fkt } from './Function'
 import { FktIdPartMessage } from '../../Globals'
 
 export class FktIDs extends Fkt {
-  writeMessage: (message: FktIdPartMessage) => void
-  fktID: number
-  updateStatus: (result: Object) => void
-
-  constructor(fktID: number , writeMessage: (message: FktIdPartMessage) => void, updateStatus: (result: Object) => void) {
+  constructor(
+    fktID: number,
+    writeMessage: (message: FktIdPartMessage) => void,
+    updateStatus: (result: object) => void
+  ) {
     super(fktID, writeMessage, updateStatus)
   }
 
-  async status(data, telLen) {
+  async status(data: Buffer, telLen: number) {
     //console.log('functions', data, telLen)
-    let functions = []
+    const functions = []
     for (let i = 0; i < telLen - 1; i += 3) {
       functions.push((data.readUint16BE(i) >> 4).toString(16))
       if (i + 1 < data.length - 1) {
@@ -25,7 +25,7 @@ export class FktIDs extends Fkt {
       functions.pop()
     }
 
-    let activeData = []
+    const activeData = []
     let enabled = true
     for (let i = 0; i < 4096; i++) {
       if (functions.indexOf(i.toString(16)) > -1) {

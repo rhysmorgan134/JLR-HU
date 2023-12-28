@@ -1,11 +1,7 @@
-import Launcher from "./Launcher";
-
+import Launcher from './Launcher'
 
 function Home() {
-
-  return (
-    <Launcher />
-  )
+  return <Launcher />
 }
 
 export default Home

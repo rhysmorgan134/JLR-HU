@@ -5,13 +5,13 @@ export class Repeat extends Fkt {
   constructor(
     fktID: number,
     writeMessage: (message: FktIdPartMessage) => void,
-    updateStatus: (result: Object) => void
+    updateStatus: (result: object) => void
   ) {
     super(fktID, writeMessage, updateStatus)
   }
-  async status(data, telLen) {
-    let x = data.readUInt8(0)
-    let status: {repeat?: string} = { }
+  async status(data: Buffer, telLen: number) {
+    const x = data.readUInt8(0)
+    const status: { repeat?: string } = {}
     switch (x) {
       case 0x00:
         status.repeat = 'off'
@@ -31,4 +31,3 @@ export class Repeat extends Fkt {
     this.responseReceived = true
   }
 }
-

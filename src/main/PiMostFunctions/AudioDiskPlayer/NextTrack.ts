@@ -5,13 +5,12 @@ export class NextTrack extends Fkt {
   constructor(
     fktID: number,
     writeMessage: (message: FktIdPartMessage) => void,
-    updateStatus: (result: Object) => void
+    updateStatus: (result: object) => void
   ) {
     super(fktID, writeMessage, updateStatus)
   }
 
-  async status(data, telLen) {
+  async status(data: Buffer, _telLen: number) {
     console.log('next track data: ', data)
   }
 }
-

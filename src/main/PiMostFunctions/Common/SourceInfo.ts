@@ -1,15 +1,11 @@
 import { Fkt } from './Function'
-import { FktIdPartMessage } from "../../Globals";
+import { FktIdPartMessage } from '../../Globals'
 
 export class SourceInfo extends Fkt {
-  writeMessage: (message: FktIdPartMessage) => void
-  fktID: number
-  updateStatus: (result: Object) => void
-
   constructor(
     fktID: number,
     writeMessage: (message: FktIdPartMessage) => void,
-    updateStatus: (result: Object) => void
+    updateStatus: (result: object) => void
   ) {
     super(fktID, writeMessage, updateStatus)
   }
@@ -20,28 +16,31 @@ export class SourceInfo extends Fkt {
    * @param {number} telLen
    * @returns {Promise<void>}
    */
-  async status(data, telLen) {
+  async status(data: Buffer, telLen: number) {
     data = data.slice(0, telLen + 1)
     if (data.length % 3) {
       //console.log("source Info Invalid amount of params ", data.length, data)
       return
     }
-    let sourceNumber = data.readUInt8(0)
-    let sources = {}
-    sources[sourceNumber] = this.parseDataType(data)
-    sources[sourceNumber].sourceNumber = sourceNumber
+    const sourceNumber = data.readUInt8(0)
+    const sources = {
+      [sourceNumber]: {
+        ...this.parseDataType(data),
+        sourceNumber
+      }
+    }
 
     this.updateStatus(sources)
     this.responseReceived = true
   }
 
-  parseDataType(data) {
-    let dataType = data.readUInt8(1)
-    let parsed: {
-      resolution?: number,
-      audioChannels?: number,
-      srcDelay?: number,
-      channelList?: number[],
+  parseDataType(data: Buffer) {
+    const dataType = data.readUInt8(1)
+    const parsed: {
+      resolution?: number
+      audioChannels?: number
+      srcDelay?: number
+      channelList?: number[]
       blockWidth?: number
     } = {}
     switch (dataType) {

@@ -5,31 +5,35 @@ export class TimePosition extends Fkt {
   constructor(
     fktID: number,
     writeMessage: (message: FktIdPartMessage) => void,
-    updateStatus: (result: Object) => void
+    updateStatus: (result: object) => void
   ) {
     super(fktID, writeMessage, updateStatus)
   }
 
-  async status(data, telLen) {
-    let x = data.readUInt8(0)
-    let status = {  }
+  async status(data: Buffer, _telLen: number) {
+    const x = data.readUInt8(0)
+    let status
     switch (x) {
       case 0:
-        status.diskTime = data.readUInt32BE(2)
-        status.trackTime = data.readInt32BE(6)
-        status.titleTime = data.readUInt32BE(10)
+        status = {
+          diskTime: data.readUInt32BE(2),
+          trackTime: data.readInt32BE(6),
+          titleTime: data.readUInt32BE(10)
+        }
         break
       case 1:
-        status.diskTime = data.readInt32BE(2)
+        status = { diskTime: data.readInt32BE(2) }
         break
       case 2:
-        status.trackTime = data.readInt32BE(2)
+        status = { trackTime: data.readInt32BE(2) }
         break
       case 3:
-        status.titleTime = data.readInt32BE(2)
+        status = { titleTime: data.readInt32BE(2) }
         break
     }
-    this.updateStatus(status)
+    if (status) {
+      this.updateStatus(status)
+    }
     this.responseReceived = true
   }
 }

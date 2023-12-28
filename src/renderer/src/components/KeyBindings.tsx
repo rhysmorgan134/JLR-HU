@@ -1,11 +1,11 @@
-import { ExtraConfig } from "../../../main/Globals";
-import { Box, Button, Modal, Paper, styled, Typography } from "@mui/material";
+import { ExtraConfig } from '../../../main/Globals'
+import { Box, Button, Modal, Paper, styled, Typography } from '@mui/material'
 import Grid from '@mui/material/Unstable_Grid2'
-import { useEffect, useState } from "react";
-import { InfinitySpin } from "react-loader-spinner";
+import { useEffect, useState } from 'react'
+import { InfinitySpin } from 'react-loader-spinner'
 
 interface KeyBindingsProps {
-  settings: ExtraConfig,
+  settings: ExtraConfig
   updateKey: (key: any, value: any) => void
 }
 
@@ -14,11 +14,11 @@ const Item = styled(Paper)(({ theme }) => ({
   ...theme.typography.body2,
   padding: theme.spacing(1),
   textAlign: 'center',
-  color: theme.palette.text.secondary,
-}));
+  color: theme.palette.text.secondary
+}))
 
 const style = {
-  position: 'absolute' as 'absolute',
+  position: 'absolute' as const,
   top: '50%',
   left: '50%',
   transform: 'translate(-50%, -50%)',
@@ -27,20 +27,19 @@ const style = {
   boxShadow: 24,
   p: 4,
   justifyContent: 'center'
-};
+}
 
 export function KeyBindings({ settings, updateKey }: KeyBindingsProps) {
   const [keyToBind, setKeyToBind] = useState('')
   const [openWaiting, setOpenWaiting] = useState(false)
 
   useEffect(() => {
-    if(openWaiting) {
+    if (openWaiting) {
       document.addEventListener('keydown', setKey)
 
       return () => document.removeEventListener('keydown', setKey)
     }
-
-  }, [openWaiting, keyToBind]);
+  }, [openWaiting, keyToBind])
 
   const awaitKeyPress = (keyName) => {
     setKeyToBind(keyName)
@@ -48,7 +47,7 @@ export function KeyBindings({ settings, updateKey }: KeyBindingsProps) {
   }
 
   const setKey = (keyPressed: KeyboardEvent) => {
-    const oldSettings = {...settings.bindings}
+    const oldSettings = { ...settings.bindings }
     oldSettings[keyToBind] = keyPressed.code
     updateKey('bindings', oldSettings)
     setOpenWaiting(false)
@@ -56,18 +55,16 @@ export function KeyBindings({ settings, updateKey }: KeyBindingsProps) {
   }
 
   const renderBindings = () => {
-    return(
-      Object.keys(settings.bindings).map((shortcut) => {
-        return (
-          <Grid key={shortcut} xs={3}>
-            <Item>
-              <Typography>{shortcut}</Typography>
-              <Button onClick={() => awaitKeyPress(shortcut)}>{settings.bindings[shortcut]}</Button>
-            </Item>
-          </Grid>
-        )
-      })
-    )
+    return Object.keys(settings.bindings).map((shortcut) => {
+      return (
+        <Grid key={shortcut} xs={3}>
+          <Item>
+            <Typography>{shortcut}</Typography>
+            <Button onClick={() => awaitKeyPress(shortcut)}>{settings.bindings[shortcut]}</Button>
+          </Item>
+        </Grid>
+      )
+    })
   }
 
   return (
@@ -83,7 +80,7 @@ export function KeyBindings({ settings, updateKey }: KeyBindingsProps) {
           <Typography id="modal-modal-title" variant="h6" component="h2">
             Press Key For {keyToBind}
           </Typography>
-          <InfinitySpin color={'blue'}/>
+          <InfinitySpin color={'blue'} />
         </Box>
       </Modal>
     </Grid>
