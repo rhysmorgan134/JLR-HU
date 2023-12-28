@@ -29,7 +29,7 @@ onmessage = async (event: MessageEvent<Command>) => {
       config = event.data.payload
       const device = await findDevice()
       if (device) {
-        console.log("starting device")
+        console.log('starting device')
         carplayWeb = new CarplayWeb(config)
         carplayWeb.onmessage = handleMessage
         carplayWeb.start(device)
@@ -54,13 +54,13 @@ onmessage = async (event: MessageEvent<Command>) => {
       break
     case 'frame':
       if (carplayWeb) {
-        console.log("requesting frame")
+        console.log('requesting frame')
         const data = new SendCommand('frame')
         carplayWeb.dongleDriver.send(data)
       }
       break
     case 'keyCommand':
-      if(carplayWeb) {
+      if (carplayWeb) {
         const data = new SendCommand(event.data.command)
         carplayWeb.dongleDriver.send(data)
       }

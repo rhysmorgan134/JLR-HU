@@ -1,30 +1,32 @@
 import { Fkt } from '../Common/Function'
-import { FktIdPartMessage } from "../../Globals";
+import { FktIdPartMessage } from '../../Globals'
 
 export class MediaInfo extends Fkt {
   constructor(
     fktID: number,
     writeMessage: (message: FktIdPartMessage) => void,
-    updateStatus: (result: Object) => void
+    updateStatus: (result: object) => void
   ) {
     super(fktID, writeMessage, updateStatus)
   }
 
   async status(data: Buffer, _telLen: number) {
-    let x = data.readUInt8(0)
+    const x = data.readUInt8(0)
     let tempString = data.slice(2)
-    let stringEnd = tempString.indexOf(0x00)
+    const stringEnd = tempString.indexOf(0x00)
     tempString = tempString.slice(1, stringEnd)
-    let status = { disks: {}}
-    if (!status.disks[x]) {
-      status.disks[x] = {}
+    const status = {
+      disks: {
+        [x]: {
+          albumName: tempString.toString(),
+          type: data.readUInt8(stringEnd + 3),
+          fileSystem: data.readUInt8(stringEnd + 4),
+          firstTrack: data.readUint16BE(stringEnd + 5),
+          lastTrack: data.readUint16BE(stringEnd + 7),
+          totalPlayTime: data.readUint32BE(stringEnd + 9)
+        }
+      }
     }
-    status.disks[x].albumName = tempString.toString()
-    status.disks[x].type = data.readUInt8(stringEnd + 3)
-    status.disks[x].fileSystem = data.readUInt8(stringEnd + 4)
-    status.disks[x].firstTrack = data.readUint16BE(stringEnd + 5)
-    status.disks[x].lastTrack = data.readUint16BE(stringEnd + 7)
-    status.disks[x].totalPlayTime = data.readUint32BE(stringEnd + 9)
 
     // let status ={media: {}}
     // switch (x) {

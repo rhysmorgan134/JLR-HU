@@ -4,11 +4,10 @@ import { useAudioDiskPlayer } from '../../../store/store'
 import Typography from '@mui/material/Typography'
 
 export default function Deck() {
-  const [disks, deckState, setActiveDisk] =
-    useAudioDiskPlayer((state) => [
-      state.disks,
-      state.deckState
-    ])
+  const [disks, deckState, setActiveDisk] = useAudioDiskPlayer((state) => [
+    state.disks,
+    state.deckState
+  ])
 
   const renderDisks = Object.keys(disks).map((key) => (
     <AlbumIcon

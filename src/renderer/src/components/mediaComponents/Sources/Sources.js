@@ -1,11 +1,5 @@
-import Grid from "@mui/material/Unstable_Grid2";
-
+import Grid from '@mui/material/Unstable_Grid2'
 
 export default function Sources() {
-
-    return(
-        <Grid container>
-
-        </Grid>
-    )
+  return <Grid container></Grid>
 }

@@ -1,7 +1,7 @@
-import { Action, ExtraConfig } from "./Globals";
+import { Action, ExtraConfig } from './Globals'
 import { Server } from 'socket.io'
 import { EventEmitter } from 'events'
-import { Stream } from "socketmost/dist/modules/Messages";
+import { Stream } from 'socketmost/dist/src/modules/Messages'
 
 export enum MessageNames {
   Connection = 'connection',
@@ -27,8 +27,8 @@ export class Socket extends EventEmitter {
 
     this.io.on(MessageNames.Connection, (socket) => {
       this.sendSettings()
-      this.emit("newConnection")
-      console.log("new connection")
+      this.emit('newConnection')
+      console.log('new connection')
       socket.on(MessageNames.GetSettings, () => {
         this.sendSettings()
       })
@@ -69,7 +69,7 @@ export class Socket extends EventEmitter {
     this.io.emit('lights', lights)
   }
 
-  sendStatusUpdate(type: string, data: Object) {
+  sendStatusUpdate(type: string, data: object) {
     this.io.emit(type, data)
   }
 }

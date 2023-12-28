@@ -1,35 +1,35 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { RotatingLines } from 'react-loader-spinner'
 //import './App.css'
-import {
-  findDevice,
-  requestDevice,
-  CommandMapping,
-} from 'node-carplay/web'
+import { findDevice, requestDevice, CommandMapping } from 'node-carplay/web'
 import JMuxer from 'jmuxer'
 import { CarPlayWorker } from './worker/types'
 import useCarplayAudio from './useCarplayAudio'
 import { useCarplayTouch } from './useCarplayTouch'
-import { useLocation, useNavigate } from "react-router-dom";
-import { ExtraConfig} from "../../../main/Globals";
-import { useCarplayStore } from "../store/store";
+import { useLocation, useNavigate } from 'react-router-dom'
+import { ExtraConfig } from '../../../main/Globals'
+import { useCarplayStore } from '../store/store'
 
 const width = window.innerWidth
 const height = window.innerHeight
 
 const RETRY_DELAY_MS = 15000
 
-
-
 interface CarplayProps {
   receivingVideo: boolean
   setReceivingVideo: (receivingVideo: boolean) => void
-  settings: ExtraConfig,
-  command: string,
+  settings: ExtraConfig
+  command: string
   commandCounter: number
 }
 
-function Carplay({ receivingVideo, setReceivingVideo, settings, command, commandCounter }: CarplayProps) {
+function Carplay({
+  receivingVideo,
+  setReceivingVideo,
+  settings,
+  command,
+  commandCounter
+}: CarplayProps) {
   const [isPlugged, setPlugged] = useState(false)
   const [noDevice, setNoDevice] = useState(false)
   // const [receivingVideo, setReceivingVideo] = useState(false)
@@ -38,7 +38,7 @@ function Carplay({ receivingVideo, setReceivingVideo, settings, command, command
   const { pathname } = useLocation()
   const mainElem = useRef<HTMLDivElement>(null)
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const stream = useCarplayStore(state => state.stream)
+  const stream = useCarplayStore((state) => state.stream)
   const config = {
     fps: settings.fps,
     width: width,
@@ -56,7 +56,10 @@ function Carplay({ receivingVideo, setReceivingVideo, settings, command, command
     []
   )
 
-  const { processAudio, startRecording, stopRecording } = useCarplayAudio(carplayWorker, settings.microphone)
+  const { processAudio, startRecording, stopRecording } = useCarplayAudio(
+    carplayWorker,
+    settings.microphone
+  )
 
   const clearRetryTimeout = useCallback(() => {
     if (retryTimeoutRef.current) {
@@ -72,8 +75,8 @@ function Carplay({ receivingVideo, setReceivingVideo, settings, command, command
       switch (type) {
         case 'plugged':
           setPlugged(true)
-          if(settings.piMost && settings?.most?.stream) {
-            console.log("setting most stream")
+          if (settings.piMost && settings?.most?.stream) {
+            console.log('setting most stream')
             stream(settings.most.stream)
           }
           break
@@ -121,9 +124,7 @@ function Carplay({ receivingVideo, setReceivingVideo, settings, command, command
           break
         case 'failure':
           if (retryTimeoutRef.current == null) {
-            console.error(
-              `Carplay initialization failed -- Reloading page in ${RETRY_DELAY_MS}ms`,
-            )
+            console.error(`Carplay initialization failed -- Reloading page in ${RETRY_DELAY_MS}ms`)
             retryTimeoutRef.current = setTimeout(() => {
               window.location.reload()
             }, RETRY_DELAY_MS)
@@ -131,7 +132,15 @@ function Carplay({ receivingVideo, setReceivingVideo, settings, command, command
           break
       }
     }
-  }, [carplayWorker, jmuxer, processAudio, clearRetryTimeout, receivingVideo, startRecording, stopRecording])
+  }, [
+    carplayWorker,
+    jmuxer,
+    processAudio,
+    clearRetryTimeout,
+    receivingVideo,
+    startRecording,
+    stopRecording
+  ])
 
   // video init
   useEffect(() => {
@@ -150,20 +159,20 @@ function Carplay({ receivingVideo, setReceivingVideo, settings, command, command
 
   useEffect(() => {
     const element = mainElem?.current
-    if(!element) return;
+    if (!element) return
     const observer = new ResizeObserver(() => {
-      console.log("size change")
-      carplayWorker.postMessage({type: 'frame'})
+      console.log('size change')
+      carplayWorker.postMessage({ type: 'frame' })
     })
     observer.observe(element)
     return () => {
       observer.disconnect()
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    carplayWorker.postMessage({type: 'keyCommand', command: command})
-  }, [commandCounter]);
+    carplayWorker.postMessage({ type: 'keyCommand', command: command })
+  }, [commandCounter])
 
   const checkDevice = useCallback(
     async (request: boolean = false) => {
@@ -206,12 +215,12 @@ function Carplay({ receivingVideo, setReceivingVideo, settings, command, command
 
   return (
     <div
-      style={pathname === '/carplay' ?  { height: '100%', touchAction: 'none' } : { height: '1px' }}
+      style={pathname === '/carplay' ? { height: '100%', touchAction: 'none' } : { height: '1px' }}
       id={'main'}
       className="App"
       ref={mainElem}
     >
-      {((noDevice || isLoading) && pathname === '/carplay') && (
+      {(noDevice || isLoading) && pathname === '/carplay' && (
         <div
           style={{
             position: 'absolute',
@@ -222,11 +231,7 @@ function Carplay({ receivingVideo, setReceivingVideo, settings, command, command
             alignItems: 'center'
           }}
         >
-          {noDevice && (
-            <button rel="noopener noreferrer">
-              Plug-In Carplay Dongle and Press
-            </button>
-          )}
+          {noDevice && <button rel="noopener noreferrer">Plug-In Carplay Dongle and Press</button>}
           {isLoading && (
             <RotatingLines
               strokeColor="grey"
