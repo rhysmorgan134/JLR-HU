@@ -1,15 +1,8 @@
 import { Fkt } from '../Common/Function'
-import { FktIdPartMessage } from '../../Globals'
+
 import { PresetList } from './AmFmTunerTypes'
 
 export class RadioPresetList extends Fkt {
-  constructor(
-    fktID: number,
-    writeMessage: (message: FktIdPartMessage) => void,
-    updateStatus: (result: object) => void
-  ) {
-    super(fktID, writeMessage, updateStatus)
-  }
   async status(data: Buffer) {
     const newData = data.subarray(8)
     const stringEnd = newData.indexOf(0x00)

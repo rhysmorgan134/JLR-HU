@@ -1,15 +1,6 @@
-import { FktIdPartMessage } from '../../Globals'
 import { Fkt } from '../Common/Function'
 
 export class RadioText extends Fkt {
-  constructor(
-    fktID: number,
-    writeMessage: (message: FktIdPartMessage) => void,
-    updateStatus: (result: object) => void
-  ) {
-    super(fktID, writeMessage, updateStatus)
-  }
-
   async status(data: Buffer) {
     const tempString = data.slice(2)
     const stringEnd = tempString.indexOf(0x00)

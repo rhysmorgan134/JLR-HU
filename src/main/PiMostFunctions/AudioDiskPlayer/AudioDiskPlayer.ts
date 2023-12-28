@@ -8,7 +8,7 @@ import { ActiveDisk } from './ActiveDisk'
 import { MediaInfo } from './MediaInfo'
 import { RandomCd } from './RandomCd'
 import { Repeat } from './Repeat'
-import { SocketMostSendMessage } from 'socketmost/dist/src/modules/Messages'
+import { messages } from 'socketmost'
 
 // JLR CD Player - 0x000, 0x001, 0x002, 0x090, 0x091, 0x092, 0x101, 0x102, 0x200
 // 0x201, 0x202, 0x412, 0x413, 0x420, 0x420, 0x431, 0x451, 0x452, 0xc11, 0xc12
@@ -16,15 +16,9 @@ import { SocketMostSendMessage } from 'socketmost/dist/src/modules/Messages'
 // 430 431 451 452
 
 export class AudioDiskPlayer extends FBlock {
-  fBlockID: number
-  writeMessage: (message: SocketMostSendMessage) => void
-  instanceID: number
-  sourceAddrLow: number
-  sourceAddrHigh: number
-
   constructor(
     instanceID: number,
-    writeMessage: (message: SocketMostSendMessage) => void,
+    writeMessage: (message: messages.SocketMostSendMessage) => void,
     sourceAddrHigh: number,
     sourceAddrLow: number,
     addressHigh: number,
@@ -32,11 +26,6 @@ export class AudioDiskPlayer extends FBlock {
   ) {
     super(instanceID, writeMessage, sourceAddrHigh, sourceAddrLow, addressHigh, addressLow)
     this.fBlockID = 0x31
-    this.writeMessage = writeMessage
-    this.instanceID = instanceID
-    this.sourceAddrHigh = sourceAddrHigh
-    this.sourceAddrLow = sourceAddrLow
-    this.status = {}
     this.functions = {
       ...this.functions,
       ...{

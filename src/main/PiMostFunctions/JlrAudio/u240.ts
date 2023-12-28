@@ -1,16 +1,19 @@
 import { FBlock } from '../Common/FBlock'
 import { Volume } from './Volume'
 import { SetSource } from './SetSource'
+import { messages } from 'socketmost'
 
 export class U240 extends FBlock {
-  constructor(instanceID, writeMessage, sourceAddrHigh, sourceAddrLow, addressHigh, addressLow) {
+  constructor(
+    instanceID: number,
+    writeMessage: (message: messages.SocketMostSendMessage) => void,
+    sourceAddrHigh: number,
+    sourceAddrLow: number,
+    addressHigh: number,
+    addressLow: number
+  ) {
     super(instanceID, writeMessage, sourceAddrHigh, sourceAddrLow, addressHigh, addressLow)
     this.fBlockID = 0xf0
-    this.writeMessage = writeMessage
-    this.instanceID = instanceID
-    this.sourceAddrHigh = sourceAddrHigh
-    this.sourceAddrLow = sourceAddrLow
-    this.status = {}
     this.functions = {
       ...this.functions,
       ...{
@@ -20,7 +23,6 @@ export class U240 extends FBlock {
         0x407: new SetSource(0x407, this.sendMessage, this.updateStatus)
       }
     }
-    this.status = {}
     this.availableFunctions = {
       ...this.availableFunctions,
       ...{

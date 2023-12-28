@@ -1,15 +1,6 @@
 import { Fkt } from './Function'
-import { FktIdPartMessage } from '../../Globals'
 
 export class Allocate extends Fkt {
-  constructor(
-    fktID: number,
-    writeMessage: (message: FktIdPartMessage) => void,
-    updateStatus: (result: object) => void
-  ) {
-    super(fktID, writeMessage, updateStatus)
-  }
-
   async status(data: Buffer, telLen: number) {
     console.log('allocate status', data)
 

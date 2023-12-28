@@ -1,10 +1,4 @@
-import { SocketMost, SocketMostClient } from 'socketmost'
-import {
-  Os8104Events,
-  MostRxMessage,
-  SocketMostSendMessage,
-  Stream
-} from 'socketmost/dist/src/modules/Messages'
+import { SocketMost, SocketMostClient, messages } from 'socketmost'
 import { MessageNames, Socket } from './Socket'
 import { AudioDiskPlayer } from './PiMostFunctions/AudioDiskPlayer/AudioDiskPlayer'
 import { AmFmTuner } from './PiMostFunctions/AmFm/AmFmTuner'
@@ -55,7 +49,7 @@ export class PiMost {
     }
     this.stabilityTimeout = null
     this.sourcesInterval = null
-    this.currentSource = 'AmFmTuner'
+    this.currentSource = 'amFmTuner'
 
     this.socketMostClient.on('connected', () => {
       console.log('client connected')
@@ -83,8 +77,11 @@ export class PiMost {
       socket.on('action', (message: Action) => {
         console.log('action request', message)
         const { fktID, opType, type, data, method } = message
-        const opTypeString = opTypes[method][opType]
-        this.interfaces[type].functions[fktID].actionOpType[opTypeString](data)
+        const methodGroup = opTypes[method]
+        const opTypeString = methodGroup[opType as keyof typeof methodGroup]
+        this.interfaces[type as keyof typeof this.interfaces].functions[fktID].actionOpType[
+          opTypeString
+        ](data)
       })
 
       socket.on('allocate', (source) => {
@@ -92,7 +89,7 @@ export class PiMost {
         this.changeSource(source)
       })
 
-      this.socketMostClient.on(Os8104Events.Locked, () => {
+      this.socketMostClient.on(messages.Os8104Events.Locked, () => {
         console.log('locked')
         if (this.stabilityTimeout) clearTimeout(this.stabilityTimeout)
         this.stabilityTimeout = setTimeout(() => {
@@ -104,7 +101,7 @@ export class PiMost {
         }, 3000)
       })
 
-      this.socketMostClient.on(Os8104Events.Unlocked, () => {
+      this.socketMostClient.on(messages.Os8104Events.Unlocked, () => {
         console.log('UNLOCKED')
         if (this.stabilityTimeout) {
           clearTimeout(this.stabilityTimeout)
@@ -114,38 +111,41 @@ export class PiMost {
         }
       })
 
-      this.socketMostClient.on(Os8104Events.SocketMostMessageRxEvent, (message: MostRxMessage) => {
-        const type = fBlocks[message.fBlockID]
-        if (message.opType === 15) {
-          console.log('most error', message)
+      this.socketMostClient.on(
+        messages.Os8104Events.SocketMostMessageRxEvent,
+        (message: messages.MostRxMessage) => {
+          const type = fBlocks[message.fBlockID as keyof typeof fBlocks]
+          if (message.opType === 15) {
+            console.log('most error', message)
+          }
+          if (type === this.timeoutType && this.subscriptionTimer!) {
+            this.subscriptionTimer.refresh()
+          }
+          this.interfaces[type as keyof typeof this.interfaces].parseMessage(message)
         }
-        if (type === this.timeoutType && this.subscriptionTimer!) {
-          this.subscriptionTimer.refresh()
-        }
-        this.interfaces[type]?.parseMessage(message)
-      })
+      )
     })
   }
 
-  stream(stream: Stream) {
+  stream(stream: messages.Stream) {
     this.socketMostClient.stream(stream)
   }
 
-  sendMessage = (message: SocketMostSendMessage) => {
+  sendMessage = (message: messages.SocketMostSendMessage) => {
     console.log('send message request', message)
     this.socketMostClient.sendControlMessage(message)
   }
 
   async subscribeToAll() {
     for (const k of Object.keys(this.interfaces)) {
-      await this.subscribe(k)
+      await this.subscribe(k as keyof typeof this.interfaces)
     }
   }
 
-  subscribe(interfaceType: string) {
+  subscribe(interfaceType: keyof typeof this.interfaces) {
     // this.socketMostClient.sendControlMessage()
     console.log('subscribing to ', interfaceType)
-    this.interfaces[interfaceType]!.allNotifcations()
+    this.interfaces[interfaceType].allNotifcations()
     return new Promise((resolve) => {
       this.timeoutType = interfaceType
       this.subscriptionTimer = setTimeout(() => {
@@ -158,7 +158,7 @@ export class PiMost {
 
   async changeSource(newSource: AvailableSources) {
     console.log('new source', newSource)
-    await this.interfaces.secAmplifier!.functions[0x112].startResult([0x01])
+    await this.interfaces.secAmplifier.functions[0x112].startResult([0x01])
     console.log('deallocate requesting')
     await this.disconnectSource()
     console.log('waiting for result')
@@ -179,10 +179,10 @@ export class PiMost {
 
   async disconnectSource() {
     console.log('disconnecting')
-    await this.interfaces[this.currentSource]!.functions[0x102].startResult([0x01])
+    await this.interfaces[this.currentSource].functions[0x102].startResult([0x01])
   }
 
-  waitForDealloc(source) {
+  waitForDealloc(source: AvailableSources) {
     return new Promise((resolve) => {
       this.interfaces[source].once('deallocResult', (source) => {
         console.log(`resolving deallocResult - ${source}`)
@@ -191,12 +191,12 @@ export class PiMost {
     })
   }
 
-  async allocateSource(source) {
+  async allocateSource(source: AvailableSources) {
     console.log('running allocate')
     await this.interfaces[source].functions[0x101].startResult([0x01])
   }
 
-  waitForAlloc(source): Promise<{ srcDelay: number; channelList: number[] }> {
+  waitForAlloc(source: AvailableSources): Promise<{ srcDelay: number; channelList: number[] }> {
     return new Promise((resolve) => {
       this.interfaces[source].once('allocResult', (results) => {
         resolve(results)
