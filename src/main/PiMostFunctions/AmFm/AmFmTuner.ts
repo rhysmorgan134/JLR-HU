@@ -1,4 +1,4 @@
-import { SocketMostSendMessage } from 'socketmost/dist/src/modules/Messages'
+import { messages } from 'socketmost'
 
 import { RadioText } from './RadioText'
 import { FBlock } from '../Common/FBlock'
@@ -11,15 +11,9 @@ import { RadioAutoStore } from './RadioAutoStore'
 import { RadioSeek } from './RadioSeek'
 
 export class AmFmTuner extends FBlock {
-  fBlockID: number
-  writeMessage: (message: SocketMostSendMessage) => void
-  instanceID: number
-  sourceAddrLow: number
-  sourceAddrHigh: number
-
   constructor(
     instanceID: number,
-    writeMessage: (message: SocketMostSendMessage) => void,
+    writeMessage: (message: messages.SocketMostSendMessage) => void,
     sourceAddrHigh: number,
     sourceAddrLow: number,
     addressHigh: number,
@@ -27,11 +21,6 @@ export class AmFmTuner extends FBlock {
   ) {
     super(instanceID, writeMessage, sourceAddrHigh, sourceAddrLow, addressHigh, addressLow)
     this.fBlockID = 0x40
-    this.writeMessage = writeMessage
-    this.instanceID = instanceID
-    this.sourceAddrHigh = sourceAddrHigh
-    this.sourceAddrLow = sourceAddrLow
-    this.status = {}
     this.functions = {
       ...this.functions,
       ...{

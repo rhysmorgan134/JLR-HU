@@ -7,14 +7,14 @@ import { Version } from './Version'
 import { SourceInfo } from './SourceInfo'
 import { Allocate } from './Allocate'
 import { Deallocate } from './Deallocate'
-import { MostRxMessage, SocketMostSendMessage } from 'socketmost/dist/src/modules/Messages'
+import { messages } from 'socketmost'
 import { Fkt } from './Function'
 import { merge } from 'lodash'
 import { FktIdPartMessage } from '../../Globals'
 
-export class FBlock extends EventEmitter {
+export abstract class FBlock extends EventEmitter {
   fBlockID: number
-  writeMessage: (message: SocketMostSendMessage) => void
+  writeMessage: (message: messages.SocketMostSendMessage) => void
   sourceAddrHigh: number
   sourceAddrLow: number
   addressHigh: number
@@ -28,7 +28,7 @@ export class FBlock extends EventEmitter {
 
   constructor(
     instanceID: number,
-    writeMessage: (message: SocketMostSendMessage) => void,
+    writeMessage: (message: messages.SocketMostSendMessage) => void,
     sourceAddrHigh: number,
     sourceAddrLow: number,
     addressHigh: number,
@@ -143,7 +143,7 @@ export class FBlock extends EventEmitter {
     })
   }
 
-  parseMessage = (message: MostRxMessage) => {
-    this.functions?.[message.fktID]?.parseStatus(message)
+  parseMessage = (message: messages.MostRxMessage) => {
+    this.functions[message.fktID]?.parseStatus(message)
   }
 }

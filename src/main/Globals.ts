@@ -1,8 +1,8 @@
-import { Stream } from 'socketmost/dist/src/modules/Messages'
+import { messages } from 'socketmost'
 import { DongleConfig } from 'node-carplay/node'
 
 export type Most = {
-  stream?: Stream
+  stream?: messages.Stream
 }
 
 export type ExtraConfig = DongleConfig & {
@@ -71,4 +71,4 @@ export interface AudioDiskPlayerActions {
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface Subscriptions {}
 
-export type AvailableSources = 'AudioDiskPlayer' | 'AmFmTuner'
+export type AvailableSources = 'audioDiskPlayer' | 'amFmTuner'

@@ -1,15 +1,6 @@
 import { Fkt } from './Function'
-import { FktIdPartMessage } from '../../Globals'
 
 export class FktIDs extends Fkt {
-  constructor(
-    fktID: number,
-    writeMessage: (message: FktIdPartMessage) => void,
-    updateStatus: (result: object) => void
-  ) {
-    super(fktID, writeMessage, updateStatus)
-  }
-
   async status(data: Buffer, telLen: number) {
     //console.log('functions', data, telLen)
     const functions = []

@@ -12,19 +12,13 @@ import { CustSurround } from './CustSurround'
 import { FBlock } from '../Common/FBlock'
 import { Disconnect } from '../Common/Disconnect'
 import { Source } from './Source'
-import { SocketMostSendMessage } from 'socketmost/dist/src/modules/Messages'
+import { messages } from 'socketmost'
 import { Connect } from '../Common/Connect'
 
 export class Amplifier extends FBlock {
-  fBlockID: number
-  writeMessage: (message: SocketMostSendMessage) => void
-  instanceID: number
-  sourceAddrLow: number
-  sourceAddrHigh: number
-
   constructor(
     instanceID: number,
-    writeMessage: (message: SocketMostSendMessage) => void,
+    writeMessage: (message: messages.SocketMostSendMessage) => void,
     sourceAddrHigh: number,
     sourceAddrLow: number,
     addressHigh: number,
@@ -32,11 +26,6 @@ export class Amplifier extends FBlock {
   ) {
     super(instanceID, writeMessage, sourceAddrHigh, sourceAddrLow, addressHigh, addressLow)
     this.fBlockID = 0x22
-    this.writeMessage = writeMessage
-    this.instanceID = instanceID
-    this.sourceAddrHigh = sourceAddrHigh
-    this.sourceAddrLow = sourceAddrLow
-    this.status = {}
     this.functions = {
       ...this.functions,
       ...{

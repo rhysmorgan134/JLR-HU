@@ -1,15 +1,6 @@
 import { Fkt } from '../Common/Function'
-import { FktIdPartMessage } from '../../Globals'
 
 export class CustAudio extends Fkt {
-  constructor(
-    fktID: number,
-    writeMessage: (message: FktIdPartMessage) => void,
-    updateStatus: (result: object) => void
-  ) {
-    super(fktID, writeMessage, updateStatus)
-  }
-
   async status(data: Buffer) {
     const status = { mode: data.readUInt8(0), centre: data.readInt8(1) }
     const audioMode = data.readUInt8(0)

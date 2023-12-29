@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { ExtraConfig } from '../../../main/Globals'
 import { io } from 'socket.io-client'
-import { Stream } from 'socketmost/dist/src/modules/Messages'
+import { messages } from 'socketmost'
 import { produce } from 'immer'
 import _ from 'lodash'
 import {
@@ -39,7 +39,7 @@ interface CarplayStore {
   settings: null | ExtraConfig
   saveSettings: (settings: ExtraConfig) => void
   getSettings: () => void
-  stream: (stream: Stream) => void
+  stream: (stream: messages.Stream) => void
   showSettings: boolean
   setShowSettings: (show: boolean) => void
   reverse: boolean
@@ -72,7 +72,7 @@ interface AudioDiskPlayer {
   deckState: string
   shuffle: string
   repeat: string
-  disks: {}
+  disks: object
   nextTrack: () => void
   prevTrack: () => void
   play: () => void
@@ -202,7 +202,7 @@ export const useVolumeStore = create<Volume>()(() => ({
 export const socketActions = create(() => {
   return {
     actions: {
-      sendMessage(functionName, type, data = []) {
+      sendMessage(functionName: string, type: string, data = []) {
         console.log('sending', functionName, type, data)
         socket.emit('runFkt', { type: type, functionName: functionName, data: data })
       }
