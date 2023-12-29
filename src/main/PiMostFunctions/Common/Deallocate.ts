@@ -1,15 +1,6 @@
 import { Fkt } from './Function'
-import { FktIdPartMessage } from '../../Globals'
 
 export class Deallocate extends Fkt {
-  constructor(
-    fktID: number,
-    writeMessage: (message: FktIdPartMessage) => void,
-    updateStatus: (result: object) => void
-  ) {
-    super(fktID, writeMessage, updateStatus)
-  }
-
   async status(data: Buffer, _telLen: number) {
     // let functions = []
     // for(let i=0;i<data.length;i+=3) {

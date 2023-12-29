@@ -1,15 +1,15 @@
-import { Stream } from 'socketmost/dist/src/modules/Messages'
+import { messages } from 'socketmost'
 import Grid from '@mui/material/Unstable_Grid2'
 import React, { useState } from 'react'
 import { Button, TextField } from '@mui/material'
 
 interface SettingsProps {
-  setSettings: (key: any, value: any) => void
+  setSettings: (key: string, value: object | boolean) => void
   setOpenStream: React.Dispatch<React.SetStateAction<boolean>>
 }
 
 function MostStream({ setSettings, setOpenStream }: SettingsProps) {
-  const [stream, setStream] = useState<Stream>({
+  const [stream, setStream] = useState<messages.Stream>({
     fBlockID: -1,
     instanceID: -1,
     sinkNr: -1,
@@ -17,12 +17,12 @@ function MostStream({ setSettings, setOpenStream }: SettingsProps) {
     sourceAddrLow: -1
   })
 
-  const updateStream = (key, value) => {
+  const updateStream = (key: string, value: string) => {
     setStream((prevState) => ({ ...prevState, [key]: value }))
   }
 
   const handleSave = () => {
-    const parsedNumeric = {}
+    const parsedNumeric: Record<string, number> = {}
     for (const [k, v] of Object.entries(stream)) {
       parsedNumeric[k] = parseInt(v)
     }

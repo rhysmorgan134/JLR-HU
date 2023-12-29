@@ -1,9 +1,8 @@
-import { Stream } from 'socketmost/dist/src/modules/Messages'
+import { messages } from 'socketmost'
 import { DongleConfig } from 'node-carplay/node'
 
-
 export type Most = {
-  stream?: Stream
+  stream?: messages.Stream
 }
 
 export type ExtraConfig = DongleConfig & {
@@ -87,7 +86,5 @@ export type RearSensorsType = {
 }
 
 export type ParkingSensors = FrontSensorsType & RearSensorsType
-
-
 
 export type AvailableSources = 'AudioDiskPlayer' | 'AmFmTuner'

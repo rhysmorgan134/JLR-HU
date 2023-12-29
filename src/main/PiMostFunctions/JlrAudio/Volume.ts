@@ -1,16 +1,7 @@
-import { FktIdPartMessage } from '../../Globals'
 import { Fkt } from '../Common/Function'
 
 export class Volume extends Fkt {
-  constructor(
-    fktID: number,
-    writeMessage: (message: FktIdPartMessage) => void,
-    updateStatus: (result: object) => void
-  ) {
-    super(fktID, writeMessage, updateStatus)
-  }
-
-  status(data, telLen) {
+  status(data: Buffer, _telLen: number) {
     const status = {
       audioVolume: data.readUInt8(2),
       parkingVolume: data.readUInt8(10),

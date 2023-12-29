@@ -1,16 +1,7 @@
-import { FktIdPartMessage } from '../../Globals'
 import { Fkt } from '../Common/Function'
 import { AudioDiskInfoTypes } from './AudioDiskPlayerTypes'
 
 export class AudioDiskInfo extends Fkt {
-  constructor(
-    fktID: number,
-    writeMessage: (message: FktIdPartMessage) => void,
-    updateStatus: (result: object) => void
-  ) {
-    super(fktID, writeMessage, updateStatus)
-  }
-
   async status(data: Buffer) {
     const x = data.readUInt8(0)
     const y = data.readUint8()
