@@ -1,15 +1,7 @@
 import { Fkt } from '../Common/Function'
-import { FktIdPartMessage, RearSensorsType } from '../../Globals'
+import { RearSensorsType } from '../../Globals'
 
 export class RearSensors extends Fkt {
-  constructor(
-    fktID: number,
-    writeMessage: (message: FktIdPartMessage) => void,
-    updateStatus: (result: Object) => void
-  ) {
-    super(fktID, writeMessage, updateStatus)
-  }
-
   async status(data) {
     let status: { parkingSensors: RearSensorsType } = {
       parkingSensors: {

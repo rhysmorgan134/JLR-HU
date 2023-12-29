@@ -1,5 +1,5 @@
 import { FBlock } from '../Common/FBlock'
-import { SocketMostSendMessage } from 'socketmost/dist/modules/Messages'
+import { messages } from 'socketmost'
 import { Temps } from './Temps'
 import { FanSpeed } from './FanSpeed'
 import { ClimateStatus } from './ClimateStatus'
@@ -10,15 +10,9 @@ import { ClimateStatus } from './ClimateStatus'
 // 430 431 451 452
 
 export class Climate extends FBlock {
-  fBlockID: number
-  writeMessage: (message: SocketMostSendMessage) => void
-  instanceID: number
-  sourceAddrLow: number
-  sourceAddrHigh: number
-
   constructor(
     instanceID: number,
-    writeMessage: (message: SocketMostSendMessage) => void,
+    writeMessage: (message: messages.SocketMostSendMessage) => void,
     sourceAddrHigh: number,
     sourceAddrLow: number,
     addressHigh: number,
@@ -26,17 +20,13 @@ export class Climate extends FBlock {
   ) {
     super(instanceID, writeMessage, sourceAddrHigh, sourceAddrLow, addressHigh, addressLow)
     this.fBlockID = 0x71
-    this.writeMessage = writeMessage
-    this.instanceID = instanceID
-    this.sourceAddrHigh = sourceAddrHigh
-    this.sourceAddrLow = sourceAddrLow
     this.status = {}
     this.functions = {
       ...this.functions,
       ...{
-        0xc85: new FanSpeed(0xc85, this.sendMessage.bind(this), this.updateStatus.bind(this)),
-        0xc87: new Temps(0xc87, this.sendMessage.bind(this), this.updateStatus.bind(this)),
-        0xc88: new ClimateStatus(0xc88, this.sendMessage.bind(this), this.updateStatus.bind(this))
+        0xc85: new FanSpeed(0xc85, this.sendMessage, this.updateStatus),
+        0xc87: new Temps(0xc87, this.sendMessage, this.updateStatus),
+        0xc88: new ClimateStatus(0xc88, this.sendMessage, this.updateStatus)
       }
     }
   }

@@ -1,19 +1,10 @@
 import { Fkt } from '../Common/Function'
-import { FktIdPartMessage } from '../../Globals'
 
 export class Temps extends Fkt {
-  constructor(
-    fktID: number,
-    writeMessage: (message: FktIdPartMessage) => void,
-    updateStatus: (result: Object) => void
-  ) {
-    super(fktID, writeMessage, updateStatus)
-  }
-
   async status(data) {
     console.log('TEMPS', data)
     const side = data.readUInt8(0)
-    const status = {}
+    const status: { leftTemp?: number; rightTemp?: number } = {}
     if (side === 1) {
       status.leftTemp = data.readUInt16BE(2) / 10.0
     } else if (side === 2) {
