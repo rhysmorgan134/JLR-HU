@@ -21,6 +21,10 @@ type InterfaceKeys = keyof Interfaces
 const hasInterface = (obj: Interfaces, prop: string): prop is InterfaceKeys =>
   Object.prototype.hasOwnProperty.call(obj, prop)
 
+function lowerCaseFirstLetter(string: string) {
+  return string.charAt(0).toLowerCase() + string.slice(1)
+}
+
 export class PiMost {
   socketMost: SocketMost
   socketMostClient: SocketMostClient
@@ -122,7 +126,7 @@ export class PiMost {
       this.socketMostClient.on(
         Os8104Events.SocketMostMessageRxEvent,
         (message: messages.MostRxMessage) => {
-          const type = fBlocks[message.fBlockID as keyof typeof fBlocks]
+          const type = lowerCaseFirstLetter(fBlocks[message.fBlockID as keyof typeof fBlocks]) d
           if (message.opType === 15) {
             console.log('most error', message)
           }
