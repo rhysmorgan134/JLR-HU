@@ -9,19 +9,25 @@ import { Amplifier } from './PiMostFunctions/Amplifier/Amplifier'
 
 const { Os8104Events } = messages
 
+type Interfaces = {
+  audioDiskPlayer: AudioDiskPlayer
+  u240: U240
+  amFmTuner: AmFmTuner
+  amplifier: Amplifier
+  secAmplifier: Amplifier
+}
+type InterfaceKeys = keyof Interfaces
+
+const hasInterface = (obj: Interfaces, prop: string): prop is InterfaceKeys =>
+  Object.prototype.hasOwnProperty.call(obj, prop)
+
 export class PiMost {
   socketMost: SocketMost
   socketMostClient: SocketMostClient
   socket: Socket
   timeoutType: string
   subscriptionTimer: NodeJS.Timeout | null
-  interfaces: {
-    audioDiskPlayer: AudioDiskPlayer
-    u240: U240
-    amFmTuner: AmFmTuner
-    amplifier: Amplifier
-    secAmplifier: Amplifier
-  }
+  interfaces: Interfaces
   stabilityTimeout: null | NodeJS.Timeout
   sourcesInterval: null | NodeJS.Timeout
   currentSource: AvailableSources
@@ -81,9 +87,9 @@ export class PiMost {
         const { fktID, opType, type, data, method } = message
         const methodGroup = opTypes[method]
         const opTypeString = methodGroup[opType as keyof typeof methodGroup]
-        this.interfaces[type as keyof typeof this.interfaces].functions[fktID].actionOpType[
-          opTypeString
-        ](data)
+        if (hasInterface(this.interfaces, type)) {
+          this.interfaces[type].functions[fktID].actionOpType[opTypeString](data)
+        }
       })
 
       socket.on('allocate', (source) => {
@@ -120,10 +126,12 @@ export class PiMost {
           if (message.opType === 15) {
             console.log('most error', message)
           }
-          if (type === this.timeoutType && this.subscriptionTimer!) {
+          if (type === this.timeoutType && this.subscriptionTimer) {
             this.subscriptionTimer.refresh()
           }
-          this.interfaces[type as keyof typeof this.interfaces].parseMessage(message)
+          if (hasInterface(this.interfaces, type)) {
+            this.interfaces[type].parseMessage(message)
+          }
         }
       )
     })
