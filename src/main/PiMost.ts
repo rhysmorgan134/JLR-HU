@@ -10,21 +10,16 @@ import { Amplifier } from './PiMostFunctions/Amplifier/Amplifier'
 const { Os8104Events } = messages
 
 type Interfaces = {
-  audioDiskPlayer: AudioDiskPlayer
-  u240: U240
-  amFmTuner: AmFmTuner
-  amplifier: Amplifier
-  secAmplifier: Amplifier
+  AudioDiskPlayer: AudioDiskPlayer
+  U240: U240
+  AmFmTuner: AmFmTuner
+  Amplifier: Amplifier
+  SecAmplifier: Amplifier
 }
 type InterfaceKeys = keyof Interfaces
 
 const hasInterface = (obj: Interfaces, prop: string): prop is InterfaceKeys =>
   Object.prototype.hasOwnProperty.call(obj, prop)
-
-function lowerCaseFirstLetter(string: string) {
-  return string.charAt(0).toLowerCase() + string.slice(1)
-}
-
 export class PiMost {
   socketMost: SocketMost
   socketMostClient: SocketMostClient
@@ -53,37 +48,37 @@ export class PiMost {
     const secAmplifier = new Amplifier(0x05, this.sendMessage, 0x01, 0x86, 0x01, 0x10)
     // this.interfaces.secAmplifier = new Amplifier(0x20, this.sendMessage, 0x01, 0x86, 0x01, 0x10)
     this.interfaces = {
-      audioDiskPlayer,
-      u240,
-      amFmTuner,
-      amplifier,
-      secAmplifier
+      AudioDiskPlayer: audioDiskPlayer,
+      U240: u240,
+      AmFmTuner: amFmTuner,
+      Amplifier: amplifier,
+      SecAmplifier: secAmplifier
     }
     this.stabilityTimeout = null
     this.sourcesInterval = null
-    this.currentSource = 'amFmTuner'
+    this.currentSource = 'AmFmTuner'
 
     this.socketMostClient.on('connected', () => {
       console.log('client connected')
-      this.interfaces.audioDiskPlayer.on('statusUpdate', (data) => {
+      this.interfaces.AudioDiskPlayer.on('statusUpdate', (data) => {
         socket.sendStatusUpdate('audioDiskPlayerUpdate', data)
       })
-      this.interfaces.u240.on('statusUpdate', (data) => {
+      this.interfaces.U240.on('statusUpdate', (data) => {
         socket.sendStatusUpdate('volumeUpdate', data)
       })
-      this.interfaces.amFmTuner.on('statusUpdate', (data) => {
+      this.interfaces.AmFmTuner.on('statusUpdate', (data) => {
         socket.sendStatusUpdate('amFmTunerUpdate', data)
       })
-      this.interfaces.amplifier.on('statusUpdate', (data) => {
+      this.interfaces.Amplifier.on('statusUpdate', (data) => {
         socket.sendStatusUpdate('amplifierUpdate', data)
       })
 
       socket.on('newConnection', () => {
         console.log('SENDING FULL UPDATE')
-        socket.sendStatusUpdate('audioDiskPlayerFullUpdate', this.interfaces.audioDiskPlayer.state)
-        socket.sendStatusUpdate('volumeFullUpdate', this.interfaces.u240.state)
-        socket.sendStatusUpdate('amFmTunerFullUpdate', this.interfaces.amFmTuner.state)
-        socket.sendStatusUpdate('amplifierFullUpdate', this.interfaces.amplifier.state)
+        socket.sendStatusUpdate('audioDiskPlayerFullUpdate', this.interfaces.AudioDiskPlayer.state)
+        socket.sendStatusUpdate('volumeFullUpdate', this.interfaces.U240.state)
+        socket.sendStatusUpdate('amFmTunerFullUpdate', this.interfaces.AmFmTuner.state)
+        socket.sendStatusUpdate('amplifierFullUpdate', this.interfaces.Amplifier.state)
       })
 
       socket.on('action', (message: Action) => {
@@ -126,7 +121,7 @@ export class PiMost {
       this.socketMostClient.on(
         Os8104Events.SocketMostMessageRxEvent,
         (message: messages.MostRxMessage) => {
-          const type = lowerCaseFirstLetter(fBlocks[message.fBlockID as keyof typeof fBlocks]) d
+          const type = fBlocks[message.fBlockID as keyof typeof fBlocks]
           if (message.opType === 15) {
             console.log('most error', message)
           }
@@ -172,7 +167,7 @@ export class PiMost {
 
   async changeSource(newSource: AvailableSources) {
     console.log('new source', newSource)
-    await this.interfaces.secAmplifier.functions[0x112].startResult([0x01])
+    await this.interfaces.SecAmplifier.functions[0x112].startResult([0x01])
     console.log('deallocate requesting')
     await this.disconnectSource()
     console.log('waiting for result')
@@ -184,7 +179,7 @@ export class PiMost {
     const data = await this.waitForAlloc(newSource)
     console.log('allocated', data)
     console.log('connecting')
-    await this.interfaces.secAmplifier.functions[0x111].startResult([
+    await this.interfaces.SecAmplifier.functions[0x111].startResult([
       0x01,
       data.srcDelay,
       ...data.channelList
