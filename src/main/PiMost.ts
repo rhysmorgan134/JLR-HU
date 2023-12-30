@@ -11,21 +11,28 @@ import { Climate } from './PiMostFunctions/Climate/Climate'
 
 const { Os8104Events } = messages
 
+type Interfaces = {
+  AudioDiskPlayer: AudioDiskPlayer
+  U240: U240
+  AmFmTuner: AmFmTuner
+  Amplifier: Amplifier
+  SecAmplifier: Amplifier
+  CanGateway: CanGateway
+  Climate: Climate
+}
+
+type InterfaceKeys = keyof Interfaces
+
+const hasInterface = (obj: Interfaces, prop: string): prop is InterfaceKeys =>
+  Object.prototype.hasOwnProperty.call(obj, prop)
+
 export class PiMost {
   socketMost: SocketMost
   socketMostClient: SocketMostClient
   socket: Socket
   timeoutType: string
   subscriptionTimer: NodeJS.Timeout | null
-  interfaces: {
-    audioDiskPlayer: AudioDiskPlayer
-    u240: U240
-    amFmTuner: AmFmTuner
-    amplifier: Amplifier
-    secAmplifier: Amplifier
-    canGateway: CanGateway
-    climate: Climate
-  }
+  interfaces: Interfaces
   stabilityTimeout: null | NodeJS.Timeout
   sourcesInterval: null | NodeJS.Timeout
   currentSource: AvailableSources
@@ -49,47 +56,47 @@ export class PiMost {
     const climate = new Climate(0xa1, this.sendMessage, 0x01, 0x61, 0x01, 0x10)
     // this.interfaces.secAmplifier = new Amplifier(0x20, this.sendMessage, 0x01, 0x86, 0x01, 0x10)
     this.interfaces = {
-      audioDiskPlayer,
-      u240,
-      amFmTuner,
-      amplifier,
-      secAmplifier,
-      canGateway,
-      climate
+      AudioDiskPlayer: audioDiskPlayer,
+      U240: u240,
+      AmFmTuner: amFmTuner,
+      Amplifier: amplifier,
+      SecAmplifier: secAmplifier,
+      CanGateway: canGateway,
+      Climate: climate
     }
     this.stabilityTimeout = null
     this.sourcesInterval = null
-    this.currentSource = 'amFmTuner'
+    this.currentSource = 'AmFmTuner'
 
     this.socketMostClient.on('connected', () => {
       console.log('client connected')
-      this.interfaces.audioDiskPlayer.on('statusUpdate', (data) => {
+      this.interfaces.AudioDiskPlayer.on('statusUpdate', (data) => {
         socket.sendStatusUpdate('audioDiskPlayerUpdate', data)
       })
-      this.interfaces.u240.on('statusUpdate', (data) => {
+      this.interfaces.U240.on('statusUpdate', (data) => {
         socket.sendStatusUpdate('volumeUpdate', data)
       })
-      this.interfaces.amFmTuner.on('statusUpdate', (data) => {
+      this.interfaces.AmFmTuner.on('statusUpdate', (data) => {
         socket.sendStatusUpdate('amFmTunerUpdate', data)
       })
-      this.interfaces.amplifier.on('statusUpdate', (data) => {
+      this.interfaces.Amplifier.on('statusUpdate', (data) => {
         socket.sendStatusUpdate('amplifierUpdate', data)
       })
-      this.interfaces.canGateway.on('statusUpdate', (data) => {
+      this.interfaces.CanGateway.on('statusUpdate', (data) => {
         socket.sendStatusUpdate('canGatewayUpdate', data)
       })
-      this.interfaces.climate.on('statusUpdate', (data) => {
+      this.interfaces.Climate.on('statusUpdate', (data) => {
         socket.sendStatusUpdate('climateUpdate', data)
       })
 
       socket.on('newConnection', () => {
         console.log('SENDING FULL UPDATE')
-        socket.sendStatusUpdate('audioDiskPlayerFullUpdate', this.interfaces.audioDiskPlayer.state)
-        socket.sendStatusUpdate('volumeFullUpdate', this.interfaces.u240.state)
-        socket.sendStatusUpdate('amFmTunerFullUpdate', this.interfaces.amFmTuner.state)
-        socket.sendStatusUpdate('amplifierFullUpdate', this.interfaces.amplifier.state)
-        socket.sendStatusUpdate('canGatewayFullUpdate', this.interfaces.canGateway.state)
-        socket.sendStatusUpdate('climateFullUpdate', this.interfaces.climate.state)
+        socket.sendStatusUpdate('audioDiskPlayerFullUpdate', this.interfaces.AudioDiskPlayer.state)
+        socket.sendStatusUpdate('volumeFullUpdate', this.interfaces.U240.state)
+        socket.sendStatusUpdate('amFmTunerFullUpdate', this.interfaces.AmFmTuner.state)
+        socket.sendStatusUpdate('amplifierFullUpdate', this.interfaces.Amplifier.state)
+        socket.sendStatusUpdate('canGatewayFullUpdate', this.interfaces.CanGateway.state)
+        socket.sendStatusUpdate('climateFullUpdate', this.interfaces.Climate.state)
       })
 
       socket.on('action', (message: Action) => {
@@ -97,9 +104,9 @@ export class PiMost {
         const { fktID, opType, type, data, method } = message
         const methodGroup = opTypes[method]
         const opTypeString = methodGroup[opType as keyof typeof methodGroup]
-        this.interfaces[type as keyof typeof this.interfaces].functions[fktID].actionOpType[
-          opTypeString
-        ](data)
+        if (hasInterface(this.interfaces, type)) {
+          this.interfaces[type].functions[fktID].actionOpType[opTypeString](data)
+        }
       })
 
       socket.on('allocate', (source) => {
@@ -136,10 +143,12 @@ export class PiMost {
           if (message.opType === 15) {
             console.log('most error', message)
           }
-          if (type === this.timeoutType && this.subscriptionTimer!) {
+          if (type === this.timeoutType && this.subscriptionTimer) {
             this.subscriptionTimer.refresh()
           }
-          this.interfaces[type as keyof typeof this.interfaces].parseMessage(message)
+          if (hasInterface(this.interfaces, type)) {
+            this.interfaces[type].parseMessage(message)
+          }
         }
       )
     })
@@ -176,7 +185,7 @@ export class PiMost {
 
   async changeSource(newSource: AvailableSources) {
     console.log('new source', newSource)
-    await this.interfaces.secAmplifier.functions[0x112].startResult([0x01])
+    await this.interfaces.SecAmplifier.functions[0x112].startResult([0x01])
     console.log('deallocate requesting')
     await this.disconnectSource()
     console.log('waiting for result')
@@ -188,7 +197,7 @@ export class PiMost {
     const data = await this.waitForAlloc(newSource)
     console.log('allocated', data)
     console.log('connecting')
-    await this.interfaces.secAmplifier.functions[0x111].startResult([
+    await this.interfaces.SecAmplifier.functions[0x111].startResult([
       0x01,
       data.srcDelay,
       ...data.channelList
