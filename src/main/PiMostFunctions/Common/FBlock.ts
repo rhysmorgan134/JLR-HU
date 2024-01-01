@@ -21,12 +21,11 @@ export abstract class FBlock extends EventEmitter {
   addressLow: number
   instanceID: number
   status: object
-  functions: Record<number, Fkt>
+  functions: Record<number, Fkt> = {}
   state: object
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  availableFunctions: Record<string, (data: any) => Promise<void> | void>
 
   constructor(
+    fBlockID: number,
     instanceID: number,
     writeMessage: (message: messages.SocketMostSendMessage) => void,
     sourceAddrHigh: number,
@@ -35,7 +34,7 @@ export abstract class FBlock extends EventEmitter {
     addressLow: number
   ) {
     super()
-    this.fBlockID = 0x21
+    this.fBlockID = fBlockID
     this.writeMessage = writeMessage
     this.instanceID = instanceID
     this.sourceAddrHigh = sourceAddrHigh
@@ -43,16 +42,14 @@ export abstract class FBlock extends EventEmitter {
     this.addressHigh = addressHigh
     this.addressLow = addressLow
     this.status = {}
-    this.functions = {
-      0x000: new FktIDs(0x000, this.sendMessage, this.updateStatus),
-      0x001: new Notification(0x001, this.sendMessage, this.updateStatus),
-      0x002: new GetNotifications(0x002, this.sendMessage, this.updateStatus),
-      0x003: new AsyncControl(0x003, this.sendMessage, this.updateStatus),
-      0x010: new Version(0x010, this.sendMessage, this.updateStatus),
-      0x100: new SourceInfo(0x100, this.sendMessage, this.updateStatus),
-      0x101: new Allocate(0x101, this.sendMessage, this.updateStatus),
-      0x102: new Deallocate(0x102, this.sendMessage, this.updateStatus)
-    }
+    this.registerFunction(0x000, FktIDs)
+    this.registerFunction(0x001, Notification)
+    this.registerFunction(0x002, GetNotifications)
+    this.registerFunction(0x003, AsyncControl)
+    this.registerFunction(0x010, Version)
+    this.registerFunction(0x100, SourceInfo)
+    this.registerFunction(0x101, Allocate)
+    this.registerFunction(0x102, Deallocate)
     this.functions[0x102].on('deallocResult', (source) => {
       console.log('dealloc response received, emitting')
       this.emit('deallocResult', source)
@@ -61,16 +58,17 @@ export abstract class FBlock extends EventEmitter {
       this.emit('allocResult', source)
     })
     this.state = {}
-    this.availableFunctions = {
-      getFunctions: this.getFunctions,
-      allNotifications: this.allNotifcations,
-      getNotifications: this.getNotifcations,
-      setGetAsyncControl: this.setGetAsyncControl,
-      getVersion: this.getVersion,
-      sendMessage: this.sendMessage,
-      getSourceInfo: this.getSourceInfo,
-      checkNotifications: this.checkNotifcations
-    }
+  }
+
+  protected registerFunction = <TFunc extends Fkt>(
+    fktId: number,
+    type: new (
+      fktID: number,
+      writeMessage: (message: FktIdPartMessage) => void,
+      updateStatus: (result: object) => void
+    ) => TFunc
+  ) => {
+    this.functions[fktId] = new type(fktId, this.sendMessage, this.updateStatus)
   }
 
   getFunctions = async () => {
@@ -91,13 +89,13 @@ export abstract class FBlock extends EventEmitter {
     await this.functions[0x001].set([0x00, this.addressHigh, this.addressLow])
   }
 
-  getNotifcations = async (data: Buffer) => {
+  getNotifcations = async (_data: Buffer) => {
     const tempFktId = Buffer.alloc(2)
     tempFktId.writeUint16BE(0xe08 << 4)
     await this.functions[0x001].set([0x01, 0x01, 0x10, 0x10, 0x0c, 0x21])
   }
 
-  checkNotifcations = async (data: Buffer) => {
+  checkNotifcations = async (_data: Buffer) => {
     await this.functions[0x002].get([this.addressHigh, this.addressLow])
   }
 

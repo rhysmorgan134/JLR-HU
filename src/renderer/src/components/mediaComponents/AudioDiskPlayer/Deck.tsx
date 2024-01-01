@@ -6,14 +6,15 @@ import Typography from '@mui/material/Typography'
 export default function Deck() {
   const [disks, deckState, setActiveDisk] = useAudioDiskPlayer((state) => [
     state.disks,
-    state.deckState
+    state.deckState,
+    state.setActiveDisk
   ])
 
   const renderDisks = Object.keys(disks).map((key) => (
     <AlbumIcon
       fontSize={'large'}
       key={key}
-      color={disks[key].type > 0 ? '' : 'disabled'}
+      color={disks[key].type > 0 ? undefined : 'disabled'}
       onClick={() => setActiveDisk(parseInt(key))}
     />
   ))
