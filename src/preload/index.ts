@@ -2,7 +2,7 @@ import { IpcRendererEvent, contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import { ExtraConfig } from '../main/Globals'
 
-type ApiCallback = (event: IpcRendererEvent, ...args: any[]) => void
+type ApiCallback = (event: IpcRendererEvent, ...args: unknown[]) => void
 
 export interface Api {
   settings: (callback: ApiCallback) => void

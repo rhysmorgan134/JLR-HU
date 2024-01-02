@@ -11,9 +11,8 @@ import AlbumIcon from '@mui/icons-material/Album'
 import IconButton from '@mui/material/IconButton'
 import { useEffect, useState } from 'react'
 import { useAudioDiskPlayer } from '../../../store/store'
-import { Button } from '@mui/material'
 
-export default function AudioControls({ sendMessage }) {
+export default function AudioControls() {
   const [width, setWidth] = useState(100)
   const [height, setHeight] = useState(100)
   const [
@@ -51,7 +50,10 @@ export default function AudioControls({ sendMessage }) {
       setHeight(event[0].contentBoxSize[0].blockSize)
     })
 
-    resizeObserver.observe(document.getElementById('AudioControls'))
+    const element = document.getElementById('AudioControls')
+    if (element) {
+      resizeObserver.observe(element)
+    }
   })
 
   const buttonClick = (e) => {
@@ -96,6 +98,8 @@ export default function AudioControls({ sendMessage }) {
             <AlbumIcon />
           </IconButton>
         )
+      default:
+        return null
     }
   }
 
@@ -134,6 +138,8 @@ export default function AudioControls({ sendMessage }) {
             <AlbumIcon />
           </IconButton>
         )
+      default:
+        return null
     }
   }
 

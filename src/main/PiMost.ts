@@ -147,11 +147,11 @@ export class PiMost {
 
   async subscribeToAll() {
     for (const k of Object.keys(this.interfaces)) {
-      await this.subscribe(k as keyof typeof this.interfaces)
+      await this.subscribe(k as InterfaceKeys)
     }
   }
 
-  subscribe(interfaceType: keyof typeof this.interfaces) {
+  subscribe(interfaceType: InterfaceKeys) {
     // this.socketMostClient.sendControlMessage()
     console.log('subscribing to ', interfaceType)
     this.interfaces[interfaceType].allNotifcations()

@@ -3,7 +3,6 @@ import { HashRouter as Router, Route, Routes } from 'react-router-dom'
 import Settings from './components/Settings'
 import Info from './components/Info'
 import Home from './components/Home'
-import Nav from './components/Nav'
 import Carplay from './components/Carplay'
 import Camera from './components/Camera'
 import { Box, createTheme, CssBaseline, Modal, Slider, Stack, ThemeProvider } from '@mui/material'
@@ -12,7 +11,7 @@ import AudioDiskPlayerPage from './components/mediaComponents/AudioDiskPlayer/Au
 import { VolumeDown, VolumeUp } from '@mui/icons-material'
 import AmFmTuner from './components/mediaComponents/AmFm/AmFmTuner'
 import AudioSettings from './components/mediaComponents/Amplifier/AudioSettings'
-import { blue, cyan } from '@mui/material/colors'
+import { cyan } from '@mui/material/colors'
 
 const ColorModeContext = createContext({ toggleColorMode: () => {} })
 
