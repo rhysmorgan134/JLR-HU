@@ -45,20 +45,12 @@ let canbus: null | Canbus
 
 let socket: null | Socket
 
-<<<<<<< HEAD
-fs.exists(configPath, (exists) => {
-  if (exists) {
-    config = JSON.parse(fs.readFileSync(configPath).toString())
-    let configKeys = JSON.stringify(Object.keys({ ...config }).sort())
-    let defaultKeys = JSON.stringify(Object.keys({ ...EXTRA_CONFIG }).sort())
-=======
 fs.stat(configPath, (err) => {
   const exists = !(err && err.code === 'ENOENT')
   if (exists) {
     config = JSON.parse(fs.readFileSync(configPath).toString())
     const configKeys = JSON.stringify(Object.keys({ ...config }).sort())
     const defaultKeys = JSON.stringify(Object.keys({ ...EXTRA_CONFIG }).sort())
->>>>>>> main
     if (configKeys !== defaultKeys) {
       console.log('config updating')
       config = { ...EXTRA_CONFIG, ...config }
@@ -71,15 +63,7 @@ fs.stat(configPath, (err) => {
     config = JSON.parse(fs.readFileSync(configPath).toString())
     console.log('config created and read')
   }
-<<<<<<< HEAD
-  socket = new Socket(config!, saveSettings)
-  if (config!.most) {
-    console.log('creating pi most in main')
-  }
-  piMost = new PiMost(socket)
-  if (config!.canbus) {
-    canbus = new Canbus('can0', socket, config!.canConfig)
-=======
+
   socket = new Socket(config, saveSettings)
   if (config.most) {
     console.log('creating pi most in main')
@@ -87,7 +71,6 @@ fs.stat(configPath, (err) => {
   piMost = new PiMost(socket)
   if (config.canbus) {
     canbus = new Canbus('can0', socket, config.canConfig)
->>>>>>> main
     canbus.on('lights', (data) => {
       console.log('lights', data)
     })
@@ -97,11 +80,7 @@ fs.stat(configPath, (err) => {
   }
 })
 
-<<<<<<< HEAD
-const handleSettingsReq = (_: IpcMainEvent) => {
-=======
 const handleSettingsReq = (): void => {
->>>>>>> main
   console.log('settings request')
   mainWindow?.webContents.send('settings', config)
 }
@@ -112,15 +91,9 @@ console.log(app.commandLine.hasSwitch('disable-webusb-security'))
 function createWindow(): void {
   // Create the browser window.
   mainWindow = new BrowserWindow({
-<<<<<<< HEAD
     width: 800, //config!.width,
     height: 480, //config!.height,
     kiosk: false, //config!.kiosk,
-=======
-    width: config.width,
-    height: config.height,
-    kiosk: config.kiosk,
->>>>>>> main
     show: false,
     frame: false,
     autoHideMenuBar: true,
@@ -242,11 +215,7 @@ app.whenReady().then(() => {
   })
 })
 
-<<<<<<< HEAD
-const saveSettings = (settings: ExtraConfig) => {
-=======
 const saveSettings = (settings: ExtraConfig): void => {
->>>>>>> main
   console.log('saving settings', settings)
   fs.writeFileSync(configPath, JSON.stringify(settings))
 }
