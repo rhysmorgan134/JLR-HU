@@ -24,21 +24,15 @@ export class AudioDiskPlayer extends FBlock {
     addressHigh: number,
     addressLow: number
   ) {
-    super(instanceID, writeMessage, sourceAddrHigh, sourceAddrLow, addressHigh, addressLow)
-    this.fBlockID = 0x31
-    this.functions = {
-      ...this.functions,
-      ...{
-        0x200: new DeckStatus(0x200, this.sendMessage, this.updateStatus),
-        0x201: new TimePosition(0x0201, this.sendMessage, this.updateStatus),
-        0x202: new TrackPosition(0x202, this.sendMessage, this.updateStatus),
-        0x412: new ActiveDisk(0x412, this.sendMessage, this.updateStatus),
-        0x413: new MediaInfo(0x413, this.sendMessage, this.updateStatus),
-        0x420: new AudioDiskInfo(0x420, this.sendMessage, this.updateStatus),
-        0x450: new RandomCd(0x450, this.sendMessage, this.updateStatus),
-        0x452: new Repeat(0x452, this.sendMessage, this.updateStatus),
-        0xc34: new NextTrack(0xc34, this.sendMessage, this.updateStatus)
-      }
-    }
+    super(0x31, instanceID, writeMessage, sourceAddrHigh, sourceAddrLow, addressHigh, addressLow)
+    this.registerFunction(0x200, DeckStatus)
+    this.registerFunction(0x0201, TimePosition)
+    this.registerFunction(0x202, TrackPosition)
+    this.registerFunction(0x412, ActiveDisk)
+    this.registerFunction(0x413, MediaInfo)
+    this.registerFunction(0x420, AudioDiskInfo)
+    this.registerFunction(0x450, RandomCd)
+    this.registerFunction(0x452, Repeat)
+    this.registerFunction(0xc34, NextTrack)
   }
 }

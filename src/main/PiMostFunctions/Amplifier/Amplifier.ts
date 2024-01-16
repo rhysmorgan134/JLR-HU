@@ -24,27 +24,21 @@ export class Amplifier extends FBlock {
     addressHigh: number,
     addressLow: number
   ) {
-    super(instanceID, writeMessage, sourceAddrHigh, sourceAddrLow, addressHigh, addressLow)
-    this.fBlockID = 0x22
-    this.functions = {
-      ...this.functions,
-      ...{
-        0x467: new MixerLevel(0x467, this.sendMessage, this.updateStatus),
-        0x400: new Volume(0x400, this.sendMessage, this.updateStatus),
-        0x112: new Disconnect(0x112, this.sendMessage, this.updateStatus),
-        0x111: new Connect(0x111, this.sendMessage, this.updateStatus),
-        0x200: new Balance(0x200, this.sendMessage, this.updateStatus),
-        0x201: new Loudness(0x201, this.sendMessage, this.updateStatus),
-        0x202: new Bass(0x202, this.sendMessage, this.updateStatus),
-        0x203: new Treble(0x203, this.sendMessage, this.updateStatus),
-        0x204: new Fader(0x204, this.sendMessage, this.updateStatus),
-        0x402: new Subwoofer(0x402, this.sendMessage, this.updateStatus),
-        0xe22: new CustAudio(0xe22, this.sendMessage, this.updateStatus),
-        0xe21: new CustSurround(0xe21, this.sendMessage, this.updateStatus),
-        0xe20: new CustSpeakers(0xe20, this.sendMessage, this.updateStatus),
-        0xe09: new Source(0xe09, this.sendMessage, this.updateStatus)
-      }
-    }
+    super(0x22, instanceID, writeMessage, sourceAddrHigh, sourceAddrLow, addressHigh, addressLow)
+    this.registerFunction(0x467, MixerLevel)
+    this.registerFunction(0x400, Volume)
+    this.registerFunction(0x112, Disconnect)
+    this.registerFunction(0x111, Connect)
+    this.registerFunction(0x200, Balance)
+    this.registerFunction(0x201, Loudness)
+    this.registerFunction(0x202, Bass)
+    this.registerFunction(0x203, Treble)
+    this.registerFunction(0x204, Fader)
+    this.registerFunction(0x402, Subwoofer)
+    this.registerFunction(0xe22, CustAudio)
+    this.registerFunction(0xe21, CustSurround)
+    this.registerFunction(0xe20, CustSpeakers)
+    this.registerFunction(0xe09, Source)
   }
 
   // sendMessage({fktID, opType, data}) {

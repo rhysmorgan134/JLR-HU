@@ -12,26 +12,10 @@ export class U240 extends FBlock {
     addressHigh: number,
     addressLow: number
   ) {
-    super(instanceID, writeMessage, sourceAddrHigh, sourceAddrLow, addressHigh, addressLow)
-    this.fBlockID = 0xf0
-    this.functions = {
-      ...this.functions,
-      ...{
-        //0x407: new ExternalTemp(0x407, this.sendMessage, this.updateStatus),
-        0x409: new Volume(0x409, this.sendMessage, this.updateStatus),
-        0x405: new SetSource(0x405, this.sendMessage, this.updateStatus),
-        0x407: new SetSource(0x407, this.sendMessage, this.updateStatus)
-      }
-    }
-    this.availableFunctions = {
-      ...this.availableFunctions,
-      ...{
-        // setExternalTemp: this.setExternalTemp.bind(this),
-        // getExternalTemp: this.getExternalTemp.bind(this),
-        getVolumes: this.getVolumes,
-        setSource: this.setSource
-      }
-    }
+    super(0xf0, instanceID, writeMessage, sourceAddrHigh, sourceAddrLow, addressHigh, addressLow)
+    this.registerFunction(0x409, Volume)
+    this.registerFunction(0x405, SetSource)
+    this.registerFunction(0x407, SetSource)
   }
 
   // async getExternalTemp() {
