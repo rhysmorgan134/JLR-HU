@@ -18,16 +18,9 @@ export class Climate extends FBlock {
     addressHigh: number,
     addressLow: number
   ) {
-    super(instanceID, writeMessage, sourceAddrHigh, sourceAddrLow, addressHigh, addressLow)
-    this.fBlockID = 0x71
-    this.status = {}
-    this.functions = {
-      ...this.functions,
-      ...{
-        0xc85: new FanSpeed(0xc85, this.sendMessage, this.updateStatus),
-        0xc87: new Temps(0xc87, this.sendMessage, this.updateStatus),
-        0xc88: new ClimateStatus(0xc88, this.sendMessage, this.updateStatus)
-      }
-    }
+    super(0x71, instanceID, writeMessage, sourceAddrHigh, sourceAddrLow, addressHigh, addressLow)
+    this.registerFunction(0xc85, FanSpeed)
+    this.registerFunction(0xc87, Temps)
+    this.registerFunction(0xc88, ClimateStatus)
   }
 }

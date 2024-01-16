@@ -20,17 +20,11 @@ export class CanGateway extends FBlock {
     addressHigh: number,
     addressLow: number
   ) {
-    super(instanceID, writeMessage, sourceAddrHigh, sourceAddrLow, addressHigh, addressLow)
-    this.fBlockID = 0xf5
-    this.functions = {
-      ...this.functions,
-      ...{
-        0xe1a: new FrontSensors(0xe1a, this.sendMessage, this.updateStatus),
-        0xe1b: new RearSensors(0xe1b, this.sendMessage, this.updateStatus),
-        0xe05: new Lights(0xe05, this.sendMessage, this.updateStatus),
-        0xe0f: new ExternalTemp(0xe0f, this.sendMessage, this.updateStatus),
-        0xe15: new TripData(0xe15, this.sendMessage, this.updateStatus)
-      }
-    }
+    super(0xf5, instanceID, writeMessage, sourceAddrHigh, sourceAddrLow, addressHigh, addressLow)
+    this.registerFunction(0xe1a, FrontSensors)
+    this.registerFunction(0xe1b, RearSensors)
+    this.registerFunction(0xe05, Lights)
+    this.registerFunction(0xe0f, ExternalTemp)
+    this.registerFunction(0xe15, TripData)
   }
 }

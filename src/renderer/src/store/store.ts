@@ -168,7 +168,7 @@ export const useCarplayStore = create<CarplayStore>()((set) => ({
   }
 }))
 
-export const useAmplifierStore = create<Amplifier>()((set) => ({
+export const useAmplifierStore = create<Amplifier>()((_set) => ({
   bass: 0,
   setBass: (bass) => {
     socket.emit('action', SET_BASS(bass))
@@ -200,7 +200,7 @@ export const useAmplifierStore = create<Amplifier>()((set) => ({
   }
 }))
 
-export const useAmFmStore = create<AmFmTuner>()((set) => ({
+export const useAmFmStore = create<AmFmTuner>()((_set) => ({
   currentPreset: 0,
   frequency: 90000,
   currentStation: '',

@@ -1,5 +1,5 @@
 import AudioDiskplayer from './AudioDiskplayer'
-import { Fade, Zoom } from '@mui/material'
+import { Zoom } from '@mui/material'
 import Box from '@mui/material/Box'
 
 export default function AudioDiskPlayerPage() {

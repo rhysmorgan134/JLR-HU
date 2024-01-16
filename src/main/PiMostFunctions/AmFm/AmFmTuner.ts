@@ -19,20 +19,14 @@ export class AmFmTuner extends FBlock {
     addressHigh: number,
     addressLow: number
   ) {
-    super(instanceID, writeMessage, sourceAddrHigh, sourceAddrLow, addressHigh, addressLow)
-    this.fBlockID = 0x40
-    this.functions = {
-      ...this.functions,
-      ...{
-        0xd0c: new RadioText(0xd0c, this.sendMessage, this.updateStatus),
-        0xd11: new RadioPreset(0xd11, this.sendMessage, this.updateStatus),
-        0xd50: new RadioPresetList(0xd50, this.sendMessage, this.updateStatus),
-        0xd01: new RadioFreq(0xd01, this.sendMessage, this.updateStatus),
-        0xd10: new RadioSetPreset(0xd10, this.sendMessage, this.updateStatus),
-        0xd00: new RadioSetPreset2(0xd00, this.sendMessage, this.updateStatus),
-        0xd13: new RadioAutoStore(0xd13, this.sendMessage, this.updateStatus),
-        0xd03: new RadioSeek(0xd03, this.sendMessage, this.updateStatus)
-      }
-    }
+    super(0x40, instanceID, writeMessage, sourceAddrHigh, sourceAddrLow, addressHigh, addressLow)
+    this.registerFunction(0xd0c, RadioText)
+    this.registerFunction(0xd11, RadioPreset)
+    this.registerFunction(0xd50, RadioPresetList)
+    this.registerFunction(0xd01, RadioFreq)
+    this.registerFunction(0xd10, RadioSetPreset)
+    this.registerFunction(0xd00, RadioSetPreset2)
+    this.registerFunction(0xd13, RadioAutoStore)
+    this.registerFunction(0xd03, RadioSeek)
   }
 }

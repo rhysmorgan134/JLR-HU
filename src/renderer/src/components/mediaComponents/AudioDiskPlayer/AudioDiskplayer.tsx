@@ -1,10 +1,7 @@
 import Grid from '@mui/material/Unstable_Grid2'
-// import Deck from './Deck'
 import Title from '../Common/Title'
 import AudioControls from './AudioControls'
 import MediaProgress from '../Common/MediaProgress'
-import visualiser from '../visualiser.gif'
-import Image from 'mui-image'
 import { useEffect, useState } from 'react'
 import { useAudioDiskPlayer } from '../../../store/store'
 import Deck from './Deck'
@@ -25,7 +22,6 @@ function AudioDiskplayer() {
   const navigate = useNavigate()
   const [height, setHeight] = useState(100)
   const nextTrack = useAudioDiskPlayer((state) => state.nextTrack)
-  //socket.emit("runFkt", {address: selectedFunction, type: chosenType.split("_")[0], instance: chosenType.split("_")[1], functionName: alignment})
 
   useEffect(() => {
     const resizeObserver = new ResizeObserver((event) => {
@@ -33,20 +29,16 @@ function AudioDiskplayer() {
       setHeight(event[0].contentBoxSize[0].blockSize)
     })
 
-    resizeObserver.observe(document.getElementById('AudioDiskPlayer'))
+    const page = document.getElementById('AudioDiskPlayer')
+    if (page) {
+      resizeObserver.observe(page)
+    }
   })
 
   useEffect(() => {
     console.log('running allocation')
     // allocate()
   }, [])
-
-  // const sendMessage = (functionName, data=[]) => {
-  //     let address = Buffer.from([sourceAddrHigh, sourceAddrLow])
-  //     address = address.readUint16BE(0)
-  //     socket.emit("runFkt", {address: address, type: 'AudioDiskPlayer', instance: instID, functionName: functionName, data: data})
-  // }
-
 
   const renderDeck = () => {
     if (width > 500) {
