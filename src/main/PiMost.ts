@@ -8,6 +8,7 @@ import { U240 } from './PiMostFunctions/JlrAudio/u240'
 import { Amplifier } from './PiMostFunctions/Amplifier/Amplifier'
 import { CanGateway } from './PiMostFunctions/CanGateway/CanGateway'
 import { Climate } from './PiMostFunctions/Climate/Climate'
+import { Switching } from './PiMostFunctions/control/Switching'
 
 const { Os8104Events } = messages
 
@@ -36,11 +37,13 @@ export class PiMost {
   stabilityTimeout: null | NodeJS.Timeout
   sourcesInterval: null | NodeJS.Timeout
   currentSource: AvailableSources
+  switching: Switching
 
   constructor(socket: Socket) {
     console.log('creating client in PiMost')
     this.socketMost = new SocketMost()
     this.socketMostClient = new SocketMostClient()
+    this.switching = new Switching(this.socketMostClient)
     this.socket = socket
     this.subscriptionTimer = null
     this.timeoutType = ''
@@ -112,6 +115,11 @@ export class PiMost {
       socket.on('allocate', (source) => {
         console.log('received allocate')
         this.changeSource(source)
+      })
+
+      socket.on('newSwitch', () => {
+        console.log('new Source Switch')
+        this.newSwitchSource()
       })
 
       this.socketMostClient.on(Os8104Events.Locked, () => {
@@ -202,6 +210,10 @@ export class PiMost {
       data.srcDelay,
       ...data.channelList
     ])
+  }
+
+  newSwitchSource() {
+    this.switching.switchToCd()
   }
 
   async disconnectSource() {
