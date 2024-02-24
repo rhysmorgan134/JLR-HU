@@ -6,7 +6,7 @@ import { ExitToApp } from '@mui/icons-material'
 import React from 'react'
 import AudioSettings from './mediaComponents/Amplifier/AudioSettings'
 import { useNavigate } from 'react-router-dom'
-import { useCarplayStore } from '../store/store'
+import { useCanGatewayStore, useCarplayStore } from '../store/store'
 
 const style = {
   position: 'absolute',
@@ -25,6 +25,7 @@ const style = {
 export default function Launcher() {
   const [openSettings, setOpenSettings] = React.useState(false)
   const setShowSettings = useCarplayStore((state) => state.setShowSettings)
+  const [newSwitch] = useCanGatewayStore((state) => [state.newSwitch])
   const navigate = useNavigate()
 
   return (
@@ -92,6 +93,7 @@ export default function Launcher() {
           <Button
             sx={{ minHeight: '100%', maxHeight: '100%', width: '100%' }}
             variant={'contained'}
+            onClick={() => newSwitch()}
           >
             Car Setup
           </Button>

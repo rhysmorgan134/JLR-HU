@@ -42,6 +42,7 @@ const style = {
   left: '50%',
   transform: 'translate(-50%, -50%)',
   height: '95%',
+  minHeight: '95%',
   width: '95%',
   boxShadow: 24,
   display: 'flex'
@@ -84,10 +85,11 @@ function App() {
     state.showSettings,
     state.setShowSettings
   ])
-  const [externalTemp, parkingSensors, parkingActive] = useCanGatewayStore((state) => [
+  const [externalTemp, parkingSensors, parkingActive, newSwitch] = useCanGatewayStore((state) => [
     state.externalTemp,
     state.parkingSensors,
-    state.parkingActive
+    state.parkingActive,
+    state.newSwitch
   ])
   const volume = useVolumeStore((state) => state.audioVolume)
   const [mode, setMode] = useState('dark')
@@ -291,6 +293,7 @@ function App() {
                 icon={<AlbumIcon fontSize={'large'} />}
                 sx={{ padding: 'none !important' }}
                 component={RouterLink}
+                onClick={() => newSwitch('audioDiskPlayer')}
                 to={'/audioDiskPlayer'}
                 className={'bottom-button'}
               />
@@ -298,6 +301,7 @@ function App() {
                 icon={<RadioIcon fontSize={'large'} />}
                 sx={{ padding: 'none !important' }}
                 component={RouterLink}
+                onClick={() => newSwitch('amFmTuner')}
                 to={'/amFmTuner'}
                 className={'bottom-button'}
               />
@@ -379,7 +383,8 @@ function App() {
             </Stack>
           </Box>
         </Modal>
-        <Modal open={parkingActive && !manualClose} onClick={() => setManualClose(true)}>
+        {/*<Modal open={parkingActive && !manualClose} onClick={() => setManualClose(true)}>*/}
+        <Modal open={true} onClick={() => setManualClose(true)}>
           <Box sx={style}>
             <Camera />
             <Box
@@ -387,7 +392,8 @@ function App() {
                 display: 'flex',
                 alightItems: 'center',
                 justifyContent: 'center',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                minHeight: '100%'
               }}
             >
               <ParkingSensors

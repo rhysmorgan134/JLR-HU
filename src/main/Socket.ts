@@ -53,8 +53,8 @@ export class Socket extends EventEmitter {
         this.emit('testMessage')
       })
 
-      socket.on('newSwitch', () => {
-        this.emit('newSwitch')
+      socket.on('newSwitch', (source: number) => {
+        this.emit('newSwitch', source)
       })
     })
 

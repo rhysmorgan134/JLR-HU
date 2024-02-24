@@ -9,17 +9,20 @@ import { Amplifier } from './PiMostFunctions/Amplifier/Amplifier'
 import { CanGateway } from './PiMostFunctions/CanGateway/CanGateway'
 import { Climate } from './PiMostFunctions/Climate/Climate'
 import { Switching } from './PiMostFunctions/control/Switching'
+import { Source } from './PiMostFunctions/Sources/Source'
 
 const { Os8104Events } = messages
 
 type Interfaces = {
   AudioDiskPlayer: AudioDiskPlayer
-  U240: U240
+  u240: U240
   AmFmTuner: AmFmTuner
   Amplifier: Amplifier
   SecAmplifier: Amplifier
+  TertiaryAmplifier: Amplifier
   CanGateway: CanGateway
   Climate: Climate
+  Sources: Source
 }
 
 type InterfaceKeys = keyof Interfaces
@@ -55,17 +58,21 @@ export class PiMost {
     const amFmTuner = new AmFmTuner(0x01, this.sendMessage, 0x01, 0x80, 0x01, 0x10)
     const amplifier = new Amplifier(0xa1, this.sendMessage, 0x01, 0x61, 0x01, 0x10)
     const secAmplifier = new Amplifier(0x05, this.sendMessage, 0x01, 0x86, 0x01, 0x10)
+    const tertiaryAmplifier = new Amplifier(0xa1, this.sendMessage, 0x01, 0x61, 0x01, 0x10)
     const canGateway = new CanGateway(0x01, this.sendMessage, 0x01, 0x61, 0x01, 0x10)
     const climate = new Climate(0xa1, this.sendMessage, 0x01, 0x61, 0x01, 0x10)
+    const sources = new Source(0xa3, this.sendMessage, 0x01, 0x6e, 0x01, 0x10)
     // this.interfaces.secAmplifier = new Amplifier(0x20, this.sendMessage, 0x01, 0x86, 0x01, 0x10)
     this.interfaces = {
       AudioDiskPlayer: audioDiskPlayer,
-      U240: u240,
+      u240: u240,
       AmFmTuner: amFmTuner,
       Amplifier: amplifier,
       SecAmplifier: secAmplifier,
+      TertiaryAmplifier: tertiaryAmplifier,
       CanGateway: canGateway,
-      Climate: climate
+      Climate: climate,
+      Sources: sources
     }
     this.stabilityTimeout = null
     this.sourcesInterval = null
@@ -76,7 +83,7 @@ export class PiMost {
       this.interfaces.AudioDiskPlayer.on('statusUpdate', (data) => {
         socket.sendStatusUpdate('audioDiskPlayerUpdate', data)
       })
-      this.interfaces.U240.on('statusUpdate', (data) => {
+      this.interfaces.u240.on('statusUpdate', (data) => {
         socket.sendStatusUpdate('volumeUpdate', data)
       })
       this.interfaces.AmFmTuner.on('statusUpdate', (data) => {
@@ -91,15 +98,19 @@ export class PiMost {
       this.interfaces.Climate.on('statusUpdate', (data) => {
         socket.sendStatusUpdate('climateUpdate', data)
       })
+      this.interfaces.Sources.on('sourcesUpdate', (data) => {
+        socket.sendStatusUpdate('sourcesUpdate', data)
+      })
 
       socket.on('newConnection', () => {
         console.log('SENDING FULL UPDATE')
         socket.sendStatusUpdate('audioDiskPlayerFullUpdate', this.interfaces.AudioDiskPlayer.state)
-        socket.sendStatusUpdate('volumeFullUpdate', this.interfaces.U240.state)
+        socket.sendStatusUpdate('volumeFullUpdate', this.interfaces.u240.state)
         socket.sendStatusUpdate('amFmTunerFullUpdate', this.interfaces.AmFmTuner.state)
         socket.sendStatusUpdate('amplifierFullUpdate', this.interfaces.Amplifier.state)
         socket.sendStatusUpdate('canGatewayFullUpdate', this.interfaces.CanGateway.state)
         socket.sendStatusUpdate('climateFullUpdate', this.interfaces.Climate.state)
+        socket.sendStatusUpdate('sourcesFullUpdate', this.interfaces.Sources.state)
       })
 
       socket.on('action', (message: Action) => {
@@ -117,9 +128,9 @@ export class PiMost {
         this.changeSource(source)
       })
 
-      socket.on('newSwitch', () => {
+      socket.on('newSwitch', (source: number) => {
         console.log('new Source Switch')
-        this.newSwitchSource()
+        this.newSwitchSource(source)
       })
 
       this.socketMostClient.on(Os8104Events.Locked, () => {
@@ -147,6 +158,8 @@ export class PiMost {
       this.socketMostClient.on(
         Os8104Events.SocketMostMessageRxEvent,
         (message: messages.MostRxMessage) => {
+          if (message.fBlockID) {
+          }
           const type = fBlocks[message.fBlockID as keyof typeof fBlocks]
           if (message.opType === 15) {
             console.log('most error', message)
@@ -167,7 +180,6 @@ export class PiMost {
   }
 
   sendMessage = (message: messages.SocketMostSendMessage) => {
-    console.log('send message request', message)
     this.socketMostClient.sendControlMessage(message)
   }
 
@@ -212,8 +224,8 @@ export class PiMost {
     ])
   }
 
-  newSwitchSource() {
-    this.switching.switchToCd()
+  newSwitchSource(source: number) {
+    this.switching.switchSource(source)
   }
 
   async disconnectSource() {

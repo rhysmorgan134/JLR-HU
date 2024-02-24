@@ -18,7 +18,6 @@ import {
   AUTO_STORE,
   CHANGE_STATION,
   GET_PRESETS,
-  PresetGroupType,
   PresetList,
   SAVE_STATION,
   SEEK_BACK,
@@ -45,6 +44,7 @@ interface CanGatewayStore {
   ambientLight: number
   lights: boolean
   parkingActive: boolean
+  newSwitch: (source: string) => void
 }
 
 interface CarplayStore {
@@ -143,7 +143,10 @@ export const useCanGatewayStore = create<CanGatewayStore>()(() => ({
   externalTemp: 0,
   ambientLight: 0,
   lights: false,
-  parkingActive: false
+  parkingActive: false,
+  newSwitch: (source: string) => {
+    socket.emit('newSwitch', source)
+  }
 }))
 
 export const useCarplayStore = create<CarplayStore>()((set) => ({
