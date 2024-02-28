@@ -56,6 +56,10 @@ export class Socket extends EventEmitter {
       socket.on('newSwitch', (source: number) => {
         this.emit('newSwitch', source)
       })
+
+      socket.on('carplaySwitch', () => {
+        this.emit('carplaySwitch')
+      })
     })
 
     this.io.listen(4000)

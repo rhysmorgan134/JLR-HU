@@ -1,7 +1,8 @@
 import { messages, SocketMostClient } from 'socketmost'
-import { Os8104Events, SocketMostSendMessage } from 'socketmost/dist/modules/Messages'
+import { Os8104Events, SocketMostSendMessage, Stream } from 'socketmost/dist/modules/Messages'
 import { sourceMap, SourceRecord } from '../../Globals'
 import EventEmitter from 'events'
+import winston from 'winston'
 
 export class Switching extends EventEmitter {
   socketMostClient: SocketMostClient
@@ -14,12 +15,18 @@ export class Switching extends EventEmitter {
   nextSource?: SourceRecord
   waitingF5: boolean
   sourceMap: Record<number, SourceRecord>
+  sourceName: string
   waitF409: boolean
   sequence: number
+  activeChannel: number
+  currentChannel: number
+  carplayStreaming: boolean
+  logger: winston.Logger
 
   constructor(socketMostClient: SocketMostClient) {
     super()
     this.socketMostClient = socketMostClient
+    this.logger = winston.loggers.get('jlrHU')
     this.active = false
     this.x408Recv = false
     this.x406Recv = false
@@ -28,7 +35,11 @@ export class Switching extends EventEmitter {
     this.waitingF5 = false
     this.sequence = 0
     this.sourceMap = sourceMap
+    this.sourceName = ''
     this.currentsource = this.sourceMap['auxIn']
+    this.activeChannel = 0x00
+    this.currentChannel = 0x02
+    this.carplayStreaming = false
     this.socketMostClient.on(
       Os8104Events.SocketMostMessageRxEvent,
       (message: messages.MostRxMessage) => {
@@ -44,20 +55,25 @@ export class Switching extends EventEmitter {
       switch (seq) {
         case 1:
           // First Message
+          this.logger.info('sending 405')
           this.send405()
           break
         case 2:
+          this.logger.info('sending 408')
           this.send408()
           break
         case 3:
           break
         case 4:
+          this.logger.info('sending 406')
           this.send406()
           break
         case 5:
+          this.logger.info('sending 407')
           this.send407()
           break
         case 6:
+          this.logger.info('beginning audio')
           this.beginAudio()
           break
       }
@@ -66,32 +82,34 @@ export class Switching extends EventEmitter {
 
   parseMessage(data: messages.MostRxMessage): void {
     if (data.opType === 0x0a) {
-      console.log('processAck: ', data)
     } else if (data.opType === 0x0d) {
-      console.log('resultAck: ', data)
     }
-    //console.log(data)
+    if (data.fBlockID === 0x22 && data.fktID === 0xe22 && data.data[0] !== 0x00) {
+      this.currentChannel = data.data[0]
+    }
     switch (this.sequence) {
       case 1:
-        console.log('waiting 405 ack')
         if (data.fktID === 0x405 && data.opType === 0x0d) {
+          this.logger.info('405 ack')
           this.setSeq(2)
         }
         break
       case 2:
-        console.log('waiting 408 ack')
         if (data.fktID === 0x408 && data.opType === 0x0d) {
+          this.logger.info('408 ack')
           this.setSeq(4)
         }
         break
       case 3:
-        console.log('waiting 409 status')
         if (data.fktID === 0x409 && data.telID === 0x03) {
+          this.logger.info('409 finished')
           this.setSeq(4)
+        } else if (data.fktID === 409 && data.telID === 0x01) {
+          this.activeChannel = data.data[3] - 4
+          this.logger.info(`testing - ${this.activeChannel}`)
         }
         break
       case 4:
-        console.log('waiting Amp Status')
         setTimeout(() => {
           this.setSeq(5)
         }, 300)
@@ -101,25 +119,18 @@ export class Switching extends EventEmitter {
         break
       case 5:
         if (data.fktID === 0x407 && data.opType === 0x0d) {
+          this.logger.info('407 ack')
           this.setSeq(6)
         }
     }
   }
 
-  parseSource(data) {
-    //console.log(data)
-    if (data.data.data[0]) {
-      //this.currentsource = this.sourceMap[data.data.data[0]]
-      console.log('currentSource is: ', this.currentsource)
-    }
-  }
+  parseSource(data) {}
 
   async parseAux(data: messages.MostRxMessage): Promise<void> {
-    console.log('amp message', data)
     switch (data.fktID) {
       case 0xc80:
         if (data.opType === 0x06) {
-          console.log('request to start 0xc80')
           this.send0xc80Resp(
             0xa,
             [0x00, 0x01],
@@ -129,7 +140,6 @@ export class Switching extends EventEmitter {
             data.sourceAddrLow
           )
           setTimeout(async () => {
-            console.log('sending complete')
             await this.send0xc80Resp(
               0xd,
               [0x00, 0x01],
@@ -138,7 +148,6 @@ export class Switching extends EventEmitter {
               data.sourceAddrHigh,
               data.sourceAddrLow
             )
-            console.log('now sending 0x406')
             //this seems to be the proper connect, it triggers the alloc/dealloc
             // const message2: messages.SocketMostSendMessage = {
             //   data: [
@@ -175,7 +184,6 @@ export class Switching extends EventEmitter {
     targetAddressHigh: number,
     targetAddressLow: number
   ) {
-    console.log('sending processing Ack for 0xc80')
     let messageOut: messages.SocketMostSendMessage = {
       data: data,
       fBlockID: fBlockID,
@@ -190,7 +198,6 @@ export class Switching extends EventEmitter {
 
   async asyncSend(message: SocketMostSendMessage) {
     return new Promise((resolve) => {
-      //console.log('sending: ', message)
       this.socketMostClient.sendControlMessage(message)
       this.socketMostClient.once(Os8104Events.MessageSent, () => {
         resolve(true)
@@ -199,12 +206,37 @@ export class Switching extends EventEmitter {
   }
 
   async switchSource(source: number) {
-    this.stopAudio()
-    this.nextSource = this.sourceMap[source]
-    this.setSeq(1)
-    this.active = true
+    if (this.sourceMap[source].name !== this.sourceName) {
+      this.stopAudio()
+      this.nextSource = this.sourceMap[source]
+      this.logger.info(`switching to source: ${JSON.stringify(this.nextSource)}`)
+      this.setSeq(1)
+      this.active = true
+    }
+    this.logger.info('No switch needed already on correct source')
+  }
 
-    // this appears to be a disconnect message, happens straight after the above
+  async switchToCarplay() {
+    if (this.sourceName != 'carplay') {
+      this.logger.info('switching to carplay')
+      this.stopAudio()
+      this.nextSource = this.sourceMap['auxIn']
+      this.setSeq(1)
+      this.active = true
+      setTimeout(() => {
+        const data: Stream = {
+          fBlockID: 0x22,
+          instanceID: 0x05,
+          sinkNr: 0x01,
+          sourceAddrHigh: 0x01,
+          sourceAddrLow: 0x86
+        }
+        this.logger.info('streaming pimost')
+        this.socketMostClient.stream(data)
+        this.sourceName = 'carplay'
+        this.carplayStreaming = true
+      }, 300)
+    }
   }
 
   setSeq(seq: number) {
@@ -213,7 +245,6 @@ export class Switching extends EventEmitter {
   }
 
   async send405() {
-    console.log('sending 405')
     const message: messages.SocketMostSendMessage = {
       data: [
         0x00,
@@ -238,7 +269,6 @@ export class Switching extends EventEmitter {
   }
 
   async send408() {
-    console.log('sending 408')
     const message2: messages.SocketMostSendMessage = {
       data: [0x00, 0x02, this.currentsource.fBlockID, this.currentsource.shadow, 0x1, 0x11],
       fBlockID: 0xf0,
@@ -252,7 +282,6 @@ export class Switching extends EventEmitter {
   }
 
   async send406() {
-    console.log('SENDING 406')
     const message3: messages.SocketMostSendMessage = {
       data: [
         0x00,
@@ -290,7 +319,11 @@ export class Switching extends EventEmitter {
     await this.asyncSend(message)
   }
 
-  stopAudio() {
+  async stopAudio() {
+    if (this.carplayStreaming) {
+      this.logger.info('stopping carplay')
+      await this.stopCarplay()
+    }
     switch (this.currentsource.fBlockID) {
       case 0x31:
         this.stopCd()
@@ -301,8 +334,52 @@ export class Switching extends EventEmitter {
     }
   }
 
+  async stopCarplay() {
+    const disconnect: SocketMostSendMessage = {
+      data: [0x01],
+      fBlockID: 0x22,
+      fktID: 0x112,
+      instanceID: 0x05,
+      opType: 0x02,
+      targetAddressHigh: 0x01,
+      targetAddressLow: 0x86
+    }
+    await this.asyncSend(disconnect)
+    await this.deallocate()
+    return new Promise(async (resolve, reject) => {
+      setTimeout(async () => {
+        const connect: SocketMostSendMessage = {
+          data: [0x01, 0x03, 0x02, 0x03, 0x04, 0x05],
+          fBlockID: 0x22,
+          fktID: 0x112,
+          instanceID: 0x05,
+          opType: 0x02,
+          targetAddressHigh: 0x01,
+          targetAddressLow: 0x86
+        }
+        await this.asyncSend(connect)
+        resolve(1)
+      }, 50)
+    })
+  }
+
+  deallocate() {
+    return new Promise((resolve, reject) => {
+      this.logger.info('deallocating')
+      this.socketMostClient.deallocate()
+      const deallocateTimeout = setTimeout(() => {
+        reject()
+      }, 300)
+      this.socketMostClient.once(Os8104Events.DeallocResult, () => {
+        clearTimeout(deallocateTimeout)
+        resolve(1)
+      })
+    })
+  }
+
   async beginAudio() {
     this.currentsource = this.nextSource!
+    this.sourceName = this.nextSource.name
     switch (this.currentsource.fBlockID) {
       case 0x31:
         await this.startCd()

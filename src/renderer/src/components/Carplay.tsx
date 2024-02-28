@@ -8,7 +8,7 @@ import useCarplayAudio from './useCarplayAudio'
 import { useCarplayTouch } from './useCarplayTouch'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ExtraConfig } from '../../../main/Globals'
-import { useCarplayStore } from '../store/store'
+import { useCanGatewayStore, useCarplayStore } from '../store/store'
 
 const width = window.innerWidth
 const height = window.innerHeight
@@ -38,15 +38,19 @@ function Carplay({
   const { pathname } = useLocation()
   const mainElem = useRef<HTMLDivElement>(null)
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const stream = useCarplayStore((state) => state.stream)
+  const [stream, playing, setPlaying, setFocus] = useCarplayStore((state) => [
+    state.stream,
+    state.playing,
+    state.setPlaying,
+    state.setFocus
+  ])
+
   const config = {
     fps: settings.fps,
     width: width,
-    height: height,
+    height: height - 38,
     mediaDelay: settings.mediaDelay
   }
-  // const pathname = "/"
-  console.log(pathname)
 
   const carplayWorker = useMemo(
     () =>
@@ -85,6 +89,9 @@ function Carplay({
           break
         case 'video':
           // if document is hidden we dont need to feed frames
+          if (!playing) {
+            setPlaying(true)
+          }
           if (!jmuxer) return
           if (!receivingVideo) {
             setReceivingVideo(true)
@@ -188,6 +195,14 @@ function Carplay({
     [carplayWorker]
   )
 
+  useEffect(() => {
+    if (pathname === '/carplay' && playing) {
+      setFocus(true)
+    } else {
+      setFocus(false)
+    }
+  }, [pathname, playing])
+
   // usb connect/disconnect handling and device check
   useEffect(() => {
     navigator.usb.onconnect = async () => {
@@ -215,17 +230,13 @@ function Carplay({
 
   return (
     <div
-      style={
-        pathname === '/carplay' ? { height: '100%', touchAction: 'none' } : { display: 'none' }
-      }
-      id={'main'}
-      className="App"
+      style={pathname === '/carplay' ? { touchAction: 'none' } : { display: 'none' }}
+      className={pathname === '/carplay' ? (playing ? 'noNavView' : 'mainView') : ''}
       ref={mainElem}
     >
       {(noDevice || isLoading) && pathname === '/carplay' && (
         <div
           style={{
-            position: 'absolute',
             width: '100%',
             height: '100%',
             display: 'flex',
@@ -260,7 +271,12 @@ function Carplay({
           display: 'flex'
         }}
       >
-        <video id="video" style={isPlugged ? { height: '100%' } : undefined} autoPlay muted />
+        <video
+          id="video"
+          style={isPlugged ? { height: '100%', width: '100%', overflow: 'hidden' } : undefined}
+          autoPlay
+          muted
+        />
       </div>
     </div>
   )

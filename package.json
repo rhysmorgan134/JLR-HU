@@ -43,11 +43,12 @@
     "socket.io": "^4.7.2",
     "socket.io-client": "^4.7.2",
     "socketcan": "^4.0.4",
-    "socketmost": "^2.0.22",
+    "socketmost": "^2.0.30",
     "stream-browserify": "^3.0.0",
     "usb": "^2.10.0",
     "vite-plugin-esmodule": "^1.5.0",
     "vite-plugin-svgr": "^4.2.0",
+    "winston": "^3.11.0",
     "zustand": "^4.4.5"
   },
   "devDependencies": {

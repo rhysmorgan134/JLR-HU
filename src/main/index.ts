@@ -7,11 +7,13 @@ import * as fs from 'fs'
 import { PiMost } from './PiMost'
 import { Canbus } from './Canbus'
 import { ExtraConfig, KeyBindings } from './Globals'
+import './log'
 // import CarplayNode, {DEFAULT_CONFIG, CarplayMessage} from "node-carplay/node";
 
 let mainWindow: BrowserWindow
 const appPath: string = app.getPath('userData')
 const configPath: string = appPath + '/config.json'
+
 console.log(configPath)
 
 const DEFAULT_BINDINGS: KeyBindings = {

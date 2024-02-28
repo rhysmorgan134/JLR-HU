@@ -10,6 +10,7 @@ import { CanGateway } from './PiMostFunctions/CanGateway/CanGateway'
 import { Climate } from './PiMostFunctions/Climate/Climate'
 import { Switching } from './PiMostFunctions/control/Switching'
 import { Source } from './PiMostFunctions/Sources/Source'
+import winston from 'winston'
 
 const { Os8104Events } = messages
 
@@ -41,6 +42,7 @@ export class PiMost {
   sourcesInterval: null | NodeJS.Timeout
   currentSource: AvailableSources
   switching: Switching
+  logger: winston.Logger
 
   constructor(socket: Socket) {
     console.log('creating client in PiMost')
@@ -50,6 +52,7 @@ export class PiMost {
     this.socket = socket
     this.subscriptionTimer = null
     this.timeoutType = ''
+    this.logger = winston.loggers.get('jlrHU')
     this.socket.on(MessageNames.Stream, (stream) => {
       this.stream(stream)
     })
@@ -74,12 +77,13 @@ export class PiMost {
       Climate: climate,
       Sources: sources
     }
+    this.logger.debug(`Created interfaces ${JSON.stringify(this.interfaces)}`)
     this.stabilityTimeout = null
     this.sourcesInterval = null
     this.currentSource = 'AmFmTuner'
 
     this.socketMostClient.on('connected', () => {
-      console.log('client connected')
+      this.logger.info('SocketMost-client connected, settings up events')
       this.interfaces.AudioDiskPlayer.on('statusUpdate', (data) => {
         socket.sendStatusUpdate('audioDiskPlayerUpdate', data)
       })
@@ -103,7 +107,7 @@ export class PiMost {
       })
 
       socket.on('newConnection', () => {
-        console.log('SENDING FULL UPDATE')
+        this.logger.info('Socket.io client connected, sending full update')
         socket.sendStatusUpdate('audioDiskPlayerFullUpdate', this.interfaces.AudioDiskPlayer.state)
         socket.sendStatusUpdate('volumeFullUpdate', this.interfaces.u240.state)
         socket.sendStatusUpdate('amFmTunerFullUpdate', this.interfaces.AmFmTuner.state)
@@ -114,7 +118,7 @@ export class PiMost {
       })
 
       socket.on('action', (message: Action) => {
-        console.log('action request', message)
+        this.logger.debug(`action request: ${JSON.stringify(message)}`)
         const { fktID, opType, type, data, method } = message
         const methodGroup = opTypes[method]
         const opTypeString = methodGroup[opType as keyof typeof methodGroup]
@@ -124,20 +128,22 @@ export class PiMost {
       })
 
       socket.on('allocate', (source) => {
-        console.log('received allocate')
         this.changeSource(source)
       })
 
       socket.on('newSwitch', (source: number) => {
-        console.log('new Source Switch')
         this.newSwitchSource(source)
       })
 
+      socket.on('carplaySwitch', () => {
+        this.switching.switchToCarplay()
+      })
+
       this.socketMostClient.on(Os8104Events.Locked, () => {
-        console.log('locked')
+        this.logger.debug('network locked waiting stability')
         if (this.stabilityTimeout) clearTimeout(this.stabilityTimeout)
         this.stabilityTimeout = setTimeout(() => {
-          console.log('locked, subscribing')
+          this.logger.info('locked and stable, subscribing')
           //this.sourcesInterval = setInterval(() => {
           // this.interfaces?.secAmplifier?.functions[0xE09].get([])
           //}, 100)
@@ -146,7 +152,7 @@ export class PiMost {
       })
 
       this.socketMostClient.on(Os8104Events.Unlocked, () => {
-        console.log('UNLOCKED')
+        this.logger.warn('unlocked')
         if (this.stabilityTimeout) {
           clearTimeout(this.stabilityTimeout)
         }
@@ -158,11 +164,12 @@ export class PiMost {
       this.socketMostClient.on(
         Os8104Events.SocketMostMessageRxEvent,
         (message: messages.MostRxMessage) => {
+          this.logger.silly(`message received ${JSON.stringify(message)}`)
           if (message.fBlockID) {
           }
           const type = fBlocks[message.fBlockID as keyof typeof fBlocks]
           if (message.opType === 15) {
-            console.log('most error', message)
+            this.logger.warn(`most error: ${JSON.stringify(message)}`)
           }
           if (type === this.timeoutType && this.subscriptionTimer) {
             this.subscriptionTimer.refresh()
@@ -176,14 +183,17 @@ export class PiMost {
   }
 
   stream(stream: messages.Stream) {
+    this.logger.info(`stream request ${JSON.stringify(stream)}`)
     this.socketMostClient.stream(stream)
   }
 
   sendMessage = (message: messages.SocketMostSendMessage) => {
+    this.logger.silly(`send message request ${JSON.stringify(message)}`)
     this.socketMostClient.sendControlMessage(message)
   }
 
   async subscribeToAll() {
+    this.logger.info('subsribing to all')
     for (const k of Object.keys(this.interfaces)) {
       await this.subscribe(k as InterfaceKeys)
     }
@@ -191,12 +201,11 @@ export class PiMost {
 
   subscribe(interfaceType: InterfaceKeys) {
     // this.socketMostClient.sendControlMessage()
-    console.log('subscribing to ', interfaceType)
+    this.logger.info(`Subscribing to ${JSON.stringify(interfaceType)}`)
     this.interfaces[interfaceType].allNotifcations()
     return new Promise((resolve) => {
       this.timeoutType = interfaceType
       this.subscriptionTimer = setTimeout(() => {
-        console.log('subscription finished')
         this.timeoutType = ''
         resolve(true)
       }, 200)
@@ -204,19 +213,12 @@ export class PiMost {
   }
 
   async changeSource(newSource: AvailableSources) {
-    console.log('new source', newSource)
+    this.logger.warn(`new source deprecated`)
     await this.interfaces.SecAmplifier.functions[0x112].startResult([0x01])
-    console.log('deallocate requesting')
     await this.disconnectSource()
-    console.log('waiting for result')
     await this.waitForDealloc(this.currentSource)
-    console.log('deallocated')
-    console.log('allocating new')
     await this.allocateSource(newSource)
-    console.log('allocated new')
     const data = await this.waitForAlloc(newSource)
-    console.log('allocated', data)
-    console.log('connecting')
     await this.interfaces.SecAmplifier.functions[0x111].startResult([
       0x01,
       data.srcDelay,
@@ -225,29 +227,32 @@ export class PiMost {
   }
 
   newSwitchSource(source: number) {
+    this.logger.info(`Switching source ${source}`)
     this.switching.switchSource(source)
   }
 
   async disconnectSource() {
-    console.log('disconnecting')
+    this.logger.info(`disconnecting source`)
     await this.interfaces[this.currentSource].functions[0x102].startResult([0x01])
   }
 
   waitForDealloc(source: AvailableSources) {
+    this.logger.warn('deprecated - waiting for source input to deallocate')
     return new Promise((resolve) => {
       this.interfaces[source].once('deallocResult', (source) => {
-        console.log(`resolving deallocResult - ${source}`)
+        this.logger.warn(`deprecated resolving deallocResult - ${JSON.stringify(source)}`)
         resolve(true)
       })
     })
   }
 
   async allocateSource(source: AvailableSources) {
-    console.log('running allocate')
+    this.logger.warn(`deprecated - allocating source`)
     await this.interfaces[source].functions[0x101].startResult([0x01])
   }
 
   waitForAlloc(source: AvailableSources): Promise<{ srcDelay: number; channelList: number[] }> {
+    this.logger.info(`deprecated - waiting for alloc`)
     return new Promise((resolve) => {
       this.interfaces[source].once('allocResult', (results) => {
         resolve(results)
