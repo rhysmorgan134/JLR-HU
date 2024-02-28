@@ -8,7 +8,6 @@ export class Volume extends Fkt {
       navigationVolume: data.readUInt8(8),
       phoneVolume: data.readUInt8(8)
     }
-    console.log('volumes', status)
     this.updateStatus(status)
   }
 }

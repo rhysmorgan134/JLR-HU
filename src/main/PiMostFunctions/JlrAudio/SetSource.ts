@@ -7,7 +7,5 @@ export class SetSource extends Fkt {
   //  * @param {number} telLen
   //  * @returns {Promise<void>}
   //  */
-  async status(data: Buffer, _telLen: number) {
-    console.log('set source unknown', data)
-  }
+  async status(data: Buffer, _telLen: number) {}
 }

@@ -88,3 +88,71 @@ export type RearSensorsType = {
 export type ParkingSensors = FrontSensorsType & RearSensorsType
 
 export type AvailableSources = 'AudioDiskPlayer' | 'AmFmTuner'
+
+export type SourceRecord = {
+  fBlockID: number
+  instanceID: number
+  shadow: number
+  addressHigh: number
+  addressLow: number
+  name: string
+}
+
+export const sourceMap: Record<string, SourceRecord> = {
+  amFmTuner: {
+    fBlockID: 0x40,
+    instanceID: 0x01,
+    shadow: 0xa1,
+    addressHigh: 0x01,
+    addressLow: 0x80,
+    name: 'amFmTuner'
+  },
+  dabTuner: {
+    fBlockID: 0x43,
+    instanceID: 0x01,
+    shadow: 0xa1,
+    addressHigh: 0x01,
+    addressLow: 0x80,
+    name: 'dabTuner'
+  },
+  audioDiskPlayer: {
+    fBlockID: 0x31,
+    instanceID: 0x02,
+    shadow: 0xa1,
+    addressHigh: 0x01,
+    addressLow: 0x80,
+    name: 'audioDiskPlayer'
+  },
+  usbAudio: {
+    fBlockID: 0x31,
+    instanceID: 0x05,
+    shadow: 0xa2,
+    addressHigh: 0x01,
+    addressLow: 0x89,
+    name: 'usbAudio'
+  },
+  unknown: {
+    fBlockID: 0x23,
+    instanceID: 0x05,
+    shadow: 0xa1,
+    addressHigh: 0x01,
+    addressLow: 0x86,
+    name: 'unknown'
+  },
+  auxIn: {
+    fBlockID: 0x24,
+    instanceID: 0x01,
+    shadow: 0xa1,
+    addressHigh: 0x01,
+    addressLow: 0x80,
+    name: 'auxIn'
+  },
+  carplay: {
+    fBlockID: 0x24,
+    instanceID: 0x01,
+    shadow: 0xa1,
+    addressHigh: 0x01,
+    addressLow: 0x80,
+    name: 'carplay'
+  }
+}

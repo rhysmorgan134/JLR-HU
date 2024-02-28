@@ -12,11 +12,14 @@ body {
   margin: 0px;
   padding: 0px;
     background-image: linear-gradient(to top, #09101c, #0b1321, #0d1626, #0e192b, #0f1b30);
+  overflow: hidden;
+
 }
 #root {
   display: flex;
   flex: 1;
   width: 100%;
+
 }
 .App-logo {
   height: 40vmin;
@@ -32,6 +35,11 @@ body {
 .mainView {
     height: calc(100% - (38px + 56px));
     margin-top: 0;
+}
+
+.noNavView {
+  height: calc(100% - (38px));
+  margin-top: 0;
 }
 
 hr.style-two {
