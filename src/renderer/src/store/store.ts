@@ -1,7 +1,8 @@
 import { create } from 'zustand'
-import { ExtraConfig } from '../../../main/Globals'
+import { ExtraConfig, ParkingSensors } from '../../../main/Globals'
 import { io } from 'socket.io-client'
 import { messages } from 'socketmost'
+
 import { produce } from 'immer'
 import _ from 'lodash'
 import {
@@ -34,16 +35,59 @@ import {
   SET_TREBLE,
   SurroundEntry
 } from '../../../main/PiMostFunctions/Amplifier/AmplifierTypes'
+import {
+  AC,
+  AUTO,
+  FACE,
+  FEET,
+  SYNC,
+  WINDSCREEN
+} from '../../../main/PiMostFunctions/Climate/ClimateTypes'
+
+interface CanGatewayStore {
+  hours: number
+  minutes: number
+  parkingSensors: ParkingSensors
+  externalTemp: number
+  ambientLight: number
+  lights: boolean
+  parkingActive: boolean
+  newSwitch: (source: string) => void
+  carplaySwitch: () => void
+}
 
 interface CarplayStore {
   settings: null | ExtraConfig
   saveSettings: (settings: ExtraConfig) => void
+  playing: boolean
   getSettings: () => void
   stream: (stream: messages.Stream) => void
   showSettings: boolean
   setShowSettings: (show: boolean) => void
   reverse: boolean
   setReverse: (reverse: boolean) => void
+  setPlaying: (playing: boolean) => void
+  focus: boolean
+  setFocus: (focus: boolean) => void
+}
+
+interface ClimateStore {
+  leftTemp: number
+  rightTemp: number
+  recirc: boolean
+  auto: boolean
+  ac: boolean
+  maxDefrost: boolean
+  fanSpeed: number
+  face: boolean
+  feet: boolean
+  windscreen: boolean
+  setWindscreen: (active: boolean) => void
+  setFace: (active: boolean) => void
+  setFeet: (active: boolean) => void
+  setSync: () => void
+  setAuto: () => void
+  setAC: (active: boolean) => void
 }
 
 interface Amplifier {
@@ -106,6 +150,31 @@ interface Volume {
   phoneVolume: number
 }
 
+export const useCanGatewayStore = create<CanGatewayStore>()(() => ({
+  hours: 0,
+  minutes: 0,
+  parkingSensors: {
+    frontLeft: 0,
+    frontCentreLeft: 0,
+    frontCentreRight: 0,
+    frontRight: 0,
+    rearLeft: 0,
+    rearCentreLeft: 0,
+    rearCentreRight: 0,
+    rearRight: 0
+  },
+  externalTemp: 0,
+  ambientLight: 0,
+  lights: false,
+  parkingActive: false,
+  newSwitch: (source: string) => {
+    socket.emit('newSwitch', source)
+  },
+  carplaySwitch: () => {
+    socket.emit('carplaySwitch')
+  }
+}))
+
 export const useCarplayStore = create<CarplayStore>()((set) => ({
   settings: null,
   saveSettings: (settings) => {
@@ -118,6 +187,10 @@ export const useCarplayStore = create<CarplayStore>()((set) => ({
   stream: (stream) => {
     socket.emit('stream', stream)
   },
+  playing: false,
+  setPlaying: (playing) => {
+    set(() => ({ playing }))
+  },
   showSettings: false,
   setShowSettings: (show) => {
     set(() => ({ showSettings: show }))
@@ -125,6 +198,10 @@ export const useCarplayStore = create<CarplayStore>()((set) => ({
   reverse: false,
   setReverse: (reverse) => {
     set(() => ({ reverse: reverse }))
+  },
+  focus: false,
+  setFocus: (focus) => {
+    set(() => ({ focus: focus }))
   }
 }))
 
@@ -197,6 +274,37 @@ export const useVolumeStore = create<Volume>()(() => ({
   parkingVolume: 0,
   navigationVolume: 0,
   phoneVolume: 0
+}))
+
+export const useClimateStore = create<ClimateStore>()(() => ({
+  leftTemp: 0,
+  rightTemp: 0,
+  recirc: false,
+  auto: false,
+  maxDefrost: false,
+  fanSpeed: 0,
+  face: false,
+  feet: false,
+  ac: true,
+  windscreen: false,
+  setWindscreen: (active) => {
+    socket.emit('action', WINDSCREEN(active))
+  },
+  setFace: (active) => {
+    socket.emit('action', FACE(active))
+  },
+  setFeet: (active) => {
+    socket.emit('action', FEET(active))
+  },
+  setSync: () => {
+    socket.emit('action', SYNC)
+  },
+  setAuto: () => {
+    socket.emit('action', AUTO)
+  },
+  setAC: (active) => {
+    socket.emit('action', AC(active))
+  }
 }))
 
 export const socketActions = create(() => {
@@ -297,11 +405,39 @@ socket.on('amplifierUpdate', (data) => {
   })
   //console.log(useAmFmStore.getState())
 })
+let parkingTimeout
+socket.on('canGatewayUpdate', (data) => {
+  useCanGatewayStore.setState((state) => {
+    return produce(state, (draft) => {
+      _.merge(draft, data)
+    })
+  })
+  if ('parkingSensors' in data) {
+    console.log('parking message', useCanGatewayStore.getState().parkingActive)
+    if (!useCanGatewayStore.getState().parkingActive) {
+      useCanGatewayStore.setState((state) => ({ ...state, parkingActive: true }))
+    }
+    if (parkingTimeout) {
+      clearTimeout(parkingTimeout)
+    }
+    parkingTimeout = setTimeout(() => {
+      useCanGatewayStore.setState((state) => ({ ...state, parkingActive: false }))
+    }, 1000)
+  }
+})
 
 socket.on('volumeUpdate', (data) => {
   for (const [k, v] of Object.entries(data)) {
     useVolumeStore.setState(() => ({ [k]: v }))
   }
+})
+
+socket.on('climateUpdate', (data) => {
+  console.log('received climate', data)
+  for (const [k, v] of Object.entries(data)) {
+    useClimateStore.setState(() => ({ [k]: v }))
+  }
+  console.log(useClimateStore.getState())
 })
 
 socket.on('volumeFullUpdate', (data) => {
@@ -318,6 +454,10 @@ socket.on('amplifierFullUpdate', (data) => {
 
 socket.on('amFmTunerFullUpdate', (data) => {
   useAmFmStore.setState(() => data)
+})
+
+socket.on('climateFullUpdate', (data) => {
+  useClimateStore.setState(() => data)
 })
 
 socket.on('reverse', (data) => {

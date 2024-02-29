@@ -2,6 +2,7 @@ import { resolve } from 'path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 import { NodeGlobalsPolyfillPlugin } from '@esbuild-plugins/node-globals-polyfill'
+import svgr from 'vite-plugin-svgr'
 
 export default defineConfig({
   main: {
@@ -38,6 +39,9 @@ export default defineConfig({
         babel: {
           plugins: ['@emotion/babel-plugin']
         }
+      }),
+      svgr({
+        include: '**/*.svg?react'
       })
     ]
   }

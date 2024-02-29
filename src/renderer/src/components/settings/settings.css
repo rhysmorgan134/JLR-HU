@@ -1,0 +1,12 @@
+.dataInput {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-content: space-between;
+    align-items: center;
+    border-bottom: solid;
+    border-width: 1px;
+    text-align: start;
+    padding-left: 5px;
+    padding-right: 5px;
+}

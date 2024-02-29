@@ -7,11 +7,13 @@ import * as fs from 'fs'
 import { PiMost } from './PiMost'
 import { Canbus } from './Canbus'
 import { ExtraConfig, KeyBindings } from './Globals'
+import './log'
 // import CarplayNode, {DEFAULT_CONFIG, CarplayMessage} from "node-carplay/node";
 
 let mainWindow: BrowserWindow
 const appPath: string = app.getPath('userData')
 const configPath: string = appPath + '/config.json'
+
 console.log(configPath)
 
 const DEFAULT_BINDINGS: KeyBindings = {
@@ -63,6 +65,7 @@ fs.stat(configPath, (err) => {
     config = JSON.parse(fs.readFileSync(configPath).toString())
     console.log('config created and read')
   }
+
   socket = new Socket(config, saveSettings)
   if (config.most) {
     console.log('creating pi most in main')
@@ -90,9 +93,9 @@ console.log(app.commandLine.hasSwitch('disable-webusb-security'))
 function createWindow(): void {
   // Create the browser window.
   mainWindow = new BrowserWindow({
-    width: config.width,
-    height: config.height,
-    kiosk: config.kiosk,
+    width: 800, //config!.width,
+    height: 480, //config!.height,
+    kiosk: false, //config!.kiosk,
     show: false,
     frame: false,
     autoHideMenuBar: true,

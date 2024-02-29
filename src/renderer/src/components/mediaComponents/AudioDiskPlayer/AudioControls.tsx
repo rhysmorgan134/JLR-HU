@@ -152,8 +152,8 @@ export default function AudioControls() {
         <FastRewindIcon fontSize={'large'} />
       </IconButton>
       <IconButton>
-        {deckState !== 'Play' ? (
-          <PauseIcon fontSize={'large'} onClick={(e) => play()} />
+        {deckState === 'Play' ? (
+          <PauseIcon fontSize={'large'} onClick={(e) => pause()} />
         ) : (
           <PlayArrowIcon fontSize={'large'} onClick={(e) => play()} />
         )}

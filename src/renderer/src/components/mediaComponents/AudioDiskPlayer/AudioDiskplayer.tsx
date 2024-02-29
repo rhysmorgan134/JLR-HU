@@ -80,11 +80,6 @@ function AudioDiskplayer() {
       id={'AudioDiskPlayer'}
       sx={{ height: '100%' }}
     >
-      <Grid xs={12} sx={{ justifyContent: 'right', display: 'flex', height: 0.1 }}>
-        <IconButton onClick={() => navigate('/')}>
-          <ReplyIcon />
-        </IconButton>
-      </Grid>
       {renderDeck()}
       <Grid container xs={12} sx={{ flexGrow: 1, height: 0.6 }}>
         <Grid container xs={width > 500 ? 6 : 12}>

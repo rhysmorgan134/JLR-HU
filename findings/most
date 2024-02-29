@@ -12,5 +12,31 @@ ambientLight = FBlockID: f5
                SourceAddress: 0161
                Data: 000100ff0000000000000000 -> lowest screen brightness -> byte 1 on/off signal lights
 
+reverse = FBlockID: f5
+          InstanceID: 01
+          FktID: 0e14
+          OpType: 0c
+          SourceAddress: 0161
+          Data: 010000000000000000000000 -> byte 0 camera = 1
+
+
+0x161 - gw
+0x180 - auu
+0x186 - amplifier
+0x16e - touchscreen
+0x168 - satnav
+0x190 - bluetooth
+0x189 - ipod
+
+startUpSeq
+
+From Master - netBlock - get Fblocks
+resp -
+
+From Master - newBlock - set 0x401??? - 0x01 0x01 0x61 0xc 0x01
+resp -
+
+
+
 
 

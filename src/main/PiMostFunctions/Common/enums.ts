@@ -24,7 +24,7 @@ export const fBlocks = {
   0x50: 'Telephone',
   0x51: 'GeneralPhoneBook',
   0x60: 'GraphicDisplay',
-  0xf5: '245',
+  0xf5: 'CanGateway',
   0xf0: 'u240',
   0x71: 'Climate'
 }

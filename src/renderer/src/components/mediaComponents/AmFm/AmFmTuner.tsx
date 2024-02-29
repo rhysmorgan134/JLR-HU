@@ -121,13 +121,8 @@ function AmFmTuner() {
       justifyContent="center"
       direction={'column'}
       id={'AudioDiskPlayer'}
-      sx={{ height: '100%', display: 'flex', flexGrow: 1 }}
+      sx={{ height: 0.7, display: 'flex', flexGrow: 1 }}
     >
-      <Grid xs={12} sx={{ justifyContent: 'right', display: 'flex', height: 0.1 }}>
-        <IconButton onClick={() => navigate('/')}>
-          <ReplyIcon />
-        </IconButton>
-      </Grid>
       <Button
         variant={'contained'}
         onClick={startAutoStore}
