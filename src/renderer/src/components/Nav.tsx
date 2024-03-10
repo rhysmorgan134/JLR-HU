@@ -27,7 +27,7 @@ export default function Nav({ receivingVideo, settings }) {
       centered
       sx={receivingVideo === true && pathname === '/' ? { minHeight: '0px', height: '0px' } : {}}
     >
-      <Tab icon={<PhoneIcon />} to={'/'} component={Link} />
+      <Tab icon={<PhoneIcon color={'secondary'} />} to={'/'} component={Link} />
       <Tab icon={<SettingsIcon />} to={'/settings'} component={Link} />
       <Tab icon={<InfoIcon />} to={'/info'} component={Link} />
       {settings?.camera !== '' ? (

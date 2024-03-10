@@ -3,10 +3,13 @@ import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
 import Box from '@mui/material/Box'
 
-export default function SettingsTabs() {
-  const [value, setValue] = React.useState(0)
+export default function SettingsTabs({ switchPage }) {
+  const [value, setValue] = React.useState(1)
+  const pages = ['vehicleSettings', 'climate', 'audioLevels', 'audioSettings', 'vehicleAppSettings']
 
   const handleChange = (event: React.SyntheticEvent, newValue: number) => {
+    console.log(newValue)
+    switchPage(pages[newValue])
     setValue(newValue)
   }
 
@@ -18,10 +21,13 @@ export default function SettingsTabs() {
         variant="scrollable"
         scrollButtons={false}
         aria-label="scrollable prevent tabs example"
+        indicatorColor={'secondary'}
+        textColor="secondary"
       >
         <Tab label="Vehicle" />
-        <Tab label="App" />
-        <Tab label="Most" />
+        <Tab label="Climate" />
+        <Tab label="Audio Levels" />
+        <Tab label="Audio Settings" />
         <Tab label="Canbus" />
         <Tab label="Carplay" />
       </Tabs>

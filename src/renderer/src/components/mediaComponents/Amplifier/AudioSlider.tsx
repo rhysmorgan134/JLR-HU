@@ -79,6 +79,7 @@ export default function AudioSlider({ min, max, name, setValue, value, disabled 
           marks={getMax()}
           disabled={disabled}
           sx={{ marginLeft: '1rem', marginRight: '1rem' }}
+          color="secondary"
         />
         <AddCircle
           fontSize={'large'}

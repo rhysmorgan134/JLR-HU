@@ -73,31 +73,43 @@ export const SYNC: Action = {
 //   method: 'properties'
 // }
 
-export type seatTemp = -3 | -2 | -1 | 0 | 1 | 2 | 3
+export type SeatTemp = -3 | -2 | -1 | 0 | 1 | 2 | 3
 
-export const DRIVERS_SEAT_TEMP = (temperature: seatTemp): Action => {
-  let parsedTemperature: seatTemp | number = temperature
+export const RIGHT_SEAT_TEMP = (temperature: SeatTemp): Action => {
+  let parsedTemperature: SeatTemp | number = temperature
   if (temperature < 0) {
     parsedTemperature = temperature * 1 + 16
   }
   return {
-    fktID: 0x452,
+    fktID: 0xe00,
     opType: 0x00,
-    data: [0x16, 0x02, 0x00, parsedTemperature],
+    data: [0x16, 0x02, parsedTemperature, 0x01],
     type: 'Climate',
     method: 'properties'
   }
 }
 
-export const PASS_SEAT_TEMP = (temperature: seatTemp): Action => {
-  let parsedTemperature: seatTemp | number = temperature
+export const LEFT_SEAT_TEMP = (temperature: SeatTemp): Action => {
+  let parsedTemperature: SeatTemp | number = temperature
+  console.log('seat temp: ', parsedTemperature)
   if (temperature < 0) {
-    parsedTemperature = temperature * 1 + 16
+    switch (temperature) {
+      case -1:
+        parsedTemperature = 0x11
+        break
+      case -2:
+        parsedTemperature = 0x12
+        break
+      case -3:
+        parsedTemperature = 0x13
+        break
+    }
   }
+  console.log('seat temp: ', parsedTemperature.toString(16))
   return {
-    fktID: 0x452,
+    fktID: 0xe00,
     opType: 0x00,
-    data: [0x16, 0x01, 0x00, parsedTemperature],
+    data: [0x16, 0x01, parsedTemperature, 0x01],
     type: 'Climate',
     method: 'properties'
   }

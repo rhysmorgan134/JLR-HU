@@ -101,6 +101,24 @@ export function VehicleSettings() {
     state.setMirrorDip
   ])
 
+  const workMode = [
+    <ToggleButton value={false} key={'carplay'}>
+      CARPLAY
+    </ToggleButton>,
+    <ToggleButton value={true} key={'carplay'}>
+      ANDROID
+    </ToggleButton>
+  ]
+
+  const theme = [
+    <ToggleButton value={false} key={'day'}>
+      DAY
+    </ToggleButton>,
+    <ToggleButton value={true} key={'night'}>
+      NIGHT
+    </ToggleButton>
+  ]
+
   const driveAway = [
     <ToggleButton value={0} key={'0'}>
       OFF

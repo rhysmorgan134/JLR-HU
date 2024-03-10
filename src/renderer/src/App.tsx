@@ -28,9 +28,9 @@ import { VolumeDown, VolumeUp } from '@mui/icons-material'
 import AmFmTuner from './components/mediaComponents/AmFm/AmFmTuner'
 import AudioSettings from './components/mediaComponents/Amplifier/AudioSettings'
 import { cyan } from '@mui/material/colors'
-import { TopData } from './components/dataDisplays/TopData'
 import Climate from './components/mediaComponents/Climate/Climate'
 import ParkingSensors from './components/mediaComponents/Parking/ParkingSensors'
+import Header from './components/dataDisplays/Header'
 
 const ColorModeContext = createContext({ toggleColorMode: () => {} })
 
@@ -80,6 +80,7 @@ function App() {
   const [keyCommand, setKeyCommand] = useState('')
   const [reverse, setReverse] = useCarplayStore((state) => [state.reverse, state.setReverse])
   const [prevVolume, setPrevVolume] = useState(0)
+  const [loc, setLoc] = useState('audio')
   const [settings, showSettings, setShowSettings, focus] = useCarplayStore((state) => [
     state.settings,
     state.showSettings,
@@ -195,42 +196,7 @@ function App() {
             className="App"
           >
             {/*<Nav receivingVideo={receivingVideo} settings={settings}/>*/}
-            <Box
-              sx={{
-                height: '28px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}
-            >
-              <Box sx={{ width: 0.3, flexGrow: 1 }}>
-                <TopData label={'COOLANT'} units={'°C'} value={null} />
-              </Box>
-              <Box sx={{ flexGrow: 1, width: 0.3 }}>
-                <Image
-                  src={'/jaguar.svg'}
-                  fit={'contain'}
-                  sx={{ maxHeight: '15px', width: 1, marginTop: '5px' }}
-                />
-              </Box>
-
-              {/*<TopData label={'TRIP'} units={'mi'} value={null} />*/}
-              {/*<TopData label={'EXT'} units={'°C'} value={null} />*/}
-
-              <Box
-                sx={{
-                  width: 0.3,
-                  display: 'flex',
-                  flexDirection: 'row',
-                  flexGrow: 1,
-                  justifyContent: 'flex-end'
-                }}
-              >
-                <TopData label={'EXT'} value={externalTemp} units={'°C'} />
-                <TopData label={'INT'} value={16} units={'°C'} />
-                <TopData label={''} value={'18:00'} units={''} />
-              </Box>
-            </Box>
+            <Header />
             <hr className={'style-two'} />
             {settings ? (
               <Carplay
@@ -242,7 +208,7 @@ function App() {
               />
             ) : null}
             <Routes>
-              <Route path={'/'} element={<Home />} />
+              <Route path={'/'} element={<Climate />} />
               <Route path={'/carplay'} element={<Home />} />
               <Route path={'/settings'} element={<Settings settings={settings!} />} />
               <Route path={'/info'} element={<Info />} />
@@ -293,17 +259,28 @@ function App() {
                   className={'bottom-button'}
                 />
                 <BottomNavigationAction
-                  icon={<RestoreIcon fontSize={'large'} />}
+                  icon={
+                    <RestoreIcon color={loc === 'home' ? 'secondary' : ''} fontSize={'large'} />
+                  }
                   sx={{ padding: 'none !important' }}
                   component={RouterLink}
                   to={'/climate'}
+                  onClick={() => setLoc('home')}
                   className={'bottom-button'}
                 />
                 <BottomNavigationAction
-                  icon={<AlbumIcon fontSize={'large'} />}
+                  icon={
+                    <AlbumIcon
+                      color={loc === 'audioDiskPlayer' ? 'secondary' : ''}
+                      fontSize={'large'}
+                    />
+                  }
                   sx={{ padding: 'none !important' }}
                   component={RouterLink}
-                  onClick={() => newSwitch('audioDiskPlayer')}
+                  onClick={() => {
+                    newSwitch('audioDiskPlayer')
+                    setLoc('audioDiskPlayer')
+                  }}
                   to={'/audioDiskPlayer'}
                   className={'bottom-button'}
                 />
