@@ -1,11 +1,11 @@
-import { messages, SocketMostClient } from 'socketmost'
+import { messages, SocketMostClient, SocketMostUsb } from 'socketmost'
 import { Os8104Events, SocketMostSendMessage, Stream } from 'socketmost/dist/modules/Messages'
 import { sourceMap, SourceRecord } from '../../Globals'
 import EventEmitter from 'events'
 import winston from 'winston'
 
 export class Switching extends EventEmitter {
-  socketMostClient: SocketMostClient
+  socketMostClient: SocketMostUsb
   active: boolean
   currentsource: SourceRecord
   x407Recv: boolean
@@ -23,7 +23,7 @@ export class Switching extends EventEmitter {
   carplayStreaming: boolean
   logger: winston.Logger
 
-  constructor(socketMostClient: SocketMostClient) {
+  constructor(socketMostClient: SocketMostUsb) {
     super()
     this.socketMostClient = socketMostClient
     this.logger = winston.loggers.get('jlrHU')
@@ -127,6 +127,10 @@ export class Switching extends EventEmitter {
 
   parseSource(data) {}
 
+  wait(time) {
+    return new Promise((resolve) => setTimeout(resolve, time))
+  }
+
   async parseAux(data: messages.MostRxMessage): Promise<void> {
     switch (data.fktID) {
       case 0xc80:
@@ -212,8 +216,9 @@ export class Switching extends EventEmitter {
       this.logger.info(`switching to source: ${JSON.stringify(this.nextSource)}`)
       this.setSeq(1)
       this.active = true
+    } else {
+      this.logger.info('No switch needed already on correct source')
     }
-    this.logger.info('No switch needed already on correct source')
   }
 
   async switchToCarplay() {
@@ -239,8 +244,9 @@ export class Switching extends EventEmitter {
     }
   }
 
-  setSeq(seq: number) {
+  async setSeq(seq: number) {
     this.sequence = seq
+    await this.wait(100)
     this.emit('seqStep', this.sequence)
   }
 
@@ -290,7 +296,6 @@ export class Switching extends EventEmitter {
         this.currentsource.shadow,
         0x1,
         0x1,
-        0x01,
         this.currentsource.fBlockID,
         this.currentsource.instanceID,
         0x01,

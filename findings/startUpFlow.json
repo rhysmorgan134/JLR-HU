@@ -1,0 +1,254 @@
+[
+  // GET fblocks request
+  [
+    {
+      "eventType": "0xnewMessage",
+      "type": "0x1",
+      "sourceAddrHigh": "0x1",
+      "sourceAddrLow": "0x61",
+      "fBlockID": "0x1",
+      "instanceID": "0x4",
+      "fktID": "0x0",
+      "opType": "0x1",
+      "telID": "0x0",
+      "telLen": "0x0",
+      "data": [
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0"
+      ]
+    },
+    //fblock response - fBlockID 0x06 instance 0x6e
+    {
+      "eventType": "0xnewMessage",
+      "type": "0x0",
+      "sourceAddrHigh": "0x1",
+      "sourceAddrLow": "0x6e",
+      "fBlockID": "0x1",
+      "instanceID": "0x6",
+      "fktID": "0x0",
+      "opType": "0xc",
+      "telID": "0x0",
+      "telLen": "0x2",
+      "data": [
+        "0x6",
+        "0x6e",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0"
+      ]
+    }
+  ],
+  //network ok
+  [
+    {
+      "eventType": "0xnewMessage",
+      "type": "0x2",
+      "sourceAddrHigh": "0x1",
+      "sourceAddrLow": "0x61",
+      "fBlockID": "0x2",
+      "instanceID": "0x1",
+      "fktID": "0xa00",
+      "opType": "0xc",
+      "telID": "0x0",
+      "telLen": "0x1",
+      "data": [
+        "0x1",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0"
+      ]
+    }
+  ],
+  //Delta Fblocks -- ONLY ONE MESSAGE NO SEGMENTATION
+  [{
+    "eventType": "0xnewMessage",
+    "type": "0x2",
+    "sourceAddrHigh": "0x1",
+    "sourceAddrLow": "0x61",
+    "fBlockID": "0x2",
+    "instanceID": "0x1",
+    "fktID": "0xa00",
+    "opType": "0xc",
+    "telID": "0x0",
+    "telLen": "0x9",
+    "data": [
+      "0x3",
+      "0x21",
+      "0x1",
+      "0x24",
+      "0x1",
+      "0x24",
+      "0x3",
+      "0x26",
+      "0x1",
+      "0x0",
+      "0x0"
+    ]
+  }],
+  // GET fblocks request
+  [
+    {
+      "eventType": "0xnewMessage",
+      "type": "0x1",
+      "sourceAddrHigh": "0x1",
+      "sourceAddrLow": "0x61",
+      "fBlockID": "0x1",
+      "instanceID": "0x4",
+      "fktID": "0x0",
+      "opType": "0x1",
+      "telID": "0x0",
+      "telLen": "0x0",
+      "data": [
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0"
+      ]
+    },
+    // get fblock response
+    {
+      "eventType": "0xnewMessage",
+      "type": "0x0",
+      "sourceAddrHigh": "0x1",
+      "sourceAddrLow": "0x6e",
+      "fBlockID": "0x1",
+      "instanceID": "0x6",
+      "fktID": "0x0",
+      "opType": "0xc",
+      "telID": "0x0",
+      "telLen": "0x2",
+      "data": [
+        "0x6",
+        "0x6e",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0"
+      ]
+    }
+  ],
+  // SET notification Netblock for 0xc01
+  [
+    {
+      "eventType": "0xnewMessage",
+      "type": "0x1",
+      "sourceAddrHigh": "0x1",
+      "sourceAddrLow": "0x61",
+      "fBlockID": "0x1",
+      "instanceID": "0x4",
+      "fktID": "0x401",
+      "opType": "0x0",
+      "telID": "0x0",
+      "telLen": "0x5",
+      "data": [
+        "0x1",
+        "0x1",
+        "0x61",
+        "0xc",
+        "0x1",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0"
+      ]
+    },
+    // 0xc01 status response
+    {
+      "eventType": "0xnewMessage",
+      "type": "0x0",
+      "sourceAddrHigh": "0x1",
+      "sourceAddrLow": "0x6e",
+      "fBlockID": "0x1",
+      "instanceID": "0x6",
+      "fktID": "0xc01",
+      "opType": "0xc",
+      "telID": "0x0",
+      "telLen": "0x2",
+      "data": [
+        "0x0",
+        "0x44",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0"
+      ]
+    }
+  ]
+  // SET notification diag for 0xe10
+  [
+    {
+      "eventType": "0xnewMessage",
+      "type": "0x0",
+      "sourceAddrHigh": "0x1",
+      "sourceAddrLow": "0x61",
+      "fBlockID": "0x6",
+      "instanceID": "0x6e",
+      "fktID": "0x1",
+      "opType": "0x0",
+      "telID": "0x0",
+      "telLen": "0x5",
+      "data": [
+        "0x1",
+        "0x1",
+        "0x61",
+        "0xe",
+        "0x10",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0",
+        "0x0"
+      ]
+    },
+
+  ]
+]

@@ -1,9 +1,9 @@
-import { SocketMost, SocketMostClient, messages } from 'socketmost'
+import { SocketMostUsb, messages, JlrAudioControl } from 'socketmost'
 import { MessageNames, Socket } from './Socket'
 import { AudioDiskPlayer } from './PiMostFunctions/AudioDiskPlayer/AudioDiskPlayer'
 import { AmFmTuner } from './PiMostFunctions/AmFm/AmFmTuner'
 import { fBlocks, opTypes } from './PiMostFunctions/Common/enums'
-import { Action, AvailableSources } from './Globals'
+import { Action, AvailableSources, SourceRecord } from './Globals'
 import { U240 } from './PiMostFunctions/JlrAudio/u240'
 import { Amplifier } from './PiMostFunctions/Amplifier/Amplifier'
 import { CanGateway } from './PiMostFunctions/CanGateway/CanGateway'
@@ -23,7 +23,66 @@ type Interfaces = {
   TertiaryAmplifier: Amplifier
   CanGateway: CanGateway
   Climate: Climate
-  Sources: Source
+  // Sources: Source
+}
+
+const sourceMap: Record<string, SourceRecord> = {
+  amFmTuner: {
+    fBlockID: 0x40,
+    instanceID: 0x01,
+    shadow: 0xa1,
+    addressHigh: 0x01,
+    addressLow: 0x80,
+    name: 'amFmTuner'
+  },
+  dabTuner: {
+    fBlockID: 0x43,
+    instanceID: 0x01,
+    shadow: 0xa1,
+    addressHigh: 0x01,
+    addressLow: 0x80,
+    name: 'dabTuner'
+  },
+  audioDiskPlayer: {
+    fBlockID: 0x31,
+    instanceID: 0x02,
+    shadow: 0xa1,
+    addressHigh: 0x01,
+    addressLow: 0x80,
+    name: 'audioDiskPlayer'
+  },
+  usbAudio: {
+    fBlockID: 0x31,
+    instanceID: 0x05,
+    shadow: 0xa2,
+    addressHigh: 0x01,
+    addressLow: 0x6e,
+    name: 'usbAudio'
+  },
+  unknown: {
+    fBlockID: 0x23,
+    instanceID: 0x05,
+    shadow: 0xa1,
+    addressHigh: 0x01,
+    addressLow: 0x86,
+    name: 'unknown'
+  },
+  auxIn: {
+    fBlockID: 0x24,
+    instanceID: 0x01,
+    shadow: 0xa1,
+    addressHigh: 0x01,
+    addressLow: 0x80,
+    name: 'auxIn'
+  },
+  carplay: {
+    fBlockID: 0x31,
+    instanceID: 0x03,
+    shadow: 0xa4,
+    addressHigh: 0x01,
+    addressLow: 0x6e,
+    name: 'carplay'
+  }
 }
 
 type InterfaceKeys = keyof Interfaces
@@ -32,8 +91,7 @@ const hasInterface = (obj: Interfaces, prop: string): prop is InterfaceKeys =>
   Object.prototype.hasOwnProperty.call(obj, prop)
 
 export class PiMost {
-  socketMost: SocketMost
-  socketMostClient: SocketMostClient
+  socketMostClient: SocketMostUsb
   socket: Socket
   timeoutType: string
   subscriptionTimer: NodeJS.Timeout | null
@@ -41,14 +99,13 @@ export class PiMost {
   stabilityTimeout: null | NodeJS.Timeout
   sourcesInterval: null | NodeJS.Timeout
   currentSource: AvailableSources
-  switching: Switching
+  jlrAudioControl: JlrAudioControl
   logger: winston.Logger
 
   constructor(socket: Socket) {
     console.log('creating client in PiMost')
-    this.socketMost = new SocketMost()
-    this.socketMostClient = new SocketMostClient()
-    this.switching = new Switching(this.socketMostClient)
+    this.socketMostClient = new SocketMostUsb()
+    this.jlrAudioControl = new JlrAudioControl(this.socketMostClient)
     this.socket = socket
     this.subscriptionTimer = null
     this.timeoutType = ''
@@ -56,15 +113,15 @@ export class PiMost {
     this.socket.on(MessageNames.Stream, (stream) => {
       this.stream(stream)
     })
-    const audioDiskPlayer = new AudioDiskPlayer(0x02, this.sendMessage, 0x01, 0x80, 0x01, 0x10)
-    const u240 = new U240(0x01, this.sendMessage, 0x01, 0x61, 0x01, 0x10)
-    const amFmTuner = new AmFmTuner(0x01, this.sendMessage, 0x01, 0x80, 0x01, 0x10)
-    const amplifier = new Amplifier(0xa1, this.sendMessage, 0x01, 0x61, 0x01, 0x10)
-    const secAmplifier = new Amplifier(0x05, this.sendMessage, 0x01, 0x86, 0x01, 0x10)
-    const tertiaryAmplifier = new Amplifier(0xa1, this.sendMessage, 0x01, 0x61, 0x01, 0x10)
-    const canGateway = new CanGateway(0x01, this.sendMessage, 0x01, 0x61, 0x01, 0x10)
-    const climate = new Climate(0xa1, this.sendMessage, 0x01, 0x61, 0x01, 0x10)
-    const sources = new Source(0xa3, this.sendMessage, 0x01, 0x6e, 0x01, 0x10)
+    const audioDiskPlayer = new AudioDiskPlayer(0x02, this.sendMessage, 0x01, 0x80, 0x01, 0x6e)
+    const u240 = new U240(0x01, this.sendMessage, 0x01, 0x61, 0x01, 0x6e)
+    const amFmTuner = new AmFmTuner(0x01, this.sendMessage, 0x01, 0x80, 0x01, 0x6e)
+    const amplifier = new Amplifier(0xa1, this.sendMessage, 0x01, 0x61, 0x01, 0x6e)
+    const secAmplifier = new Amplifier(0x05, this.sendMessage, 0x01, 0x86, 0x01, 0x6e)
+    const tertiaryAmplifier = new Amplifier(0xa1, this.sendMessage, 0x01, 0x61, 0x01, 0x6e)
+    const canGateway = new CanGateway(0x01, this.sendMessage, 0x01, 0x61, 0x01, 0x6e)
+    const climate = new Climate(0xa1, this.sendMessage, 0x01, 0x61, 0x01, 0x6e)
+    // const sources = new Source(0xa3, this.sendMessage, 0x01, 0x6e, 0x01, 0x10)
     // this.interfaces.secAmplifier = new Amplifier(0x20, this.sendMessage, 0x01, 0x86, 0x01, 0x10)
     this.interfaces = {
       AudioDiskPlayer: audioDiskPlayer,
@@ -74,15 +131,15 @@ export class PiMost {
       SecAmplifier: secAmplifier,
       TertiaryAmplifier: tertiaryAmplifier,
       CanGateway: canGateway,
-      Climate: climate,
-      Sources: sources
+      Climate: climate
+      // Sources: sources
     }
     this.logger.debug(`Created interfaces ${JSON.stringify(this.interfaces)}`)
     this.stabilityTimeout = null
     this.sourcesInterval = null
     this.currentSource = 'AmFmTuner'
 
-    this.socketMostClient.on('connected', () => {
+    this.socketMostClient.on('opened', () => {
       this.logger.info('SocketMost-client connected, settings up events')
       this.interfaces.AudioDiskPlayer.on('statusUpdate', (data) => {
         socket.sendStatusUpdate('audioDiskPlayerUpdate', data)
@@ -102,9 +159,10 @@ export class PiMost {
       this.interfaces.Climate.on('statusUpdate', (data) => {
         socket.sendStatusUpdate('climateUpdate', data)
       })
-      this.interfaces.Sources.on('sourcesUpdate', (data) => {
-        socket.sendStatusUpdate('sourcesUpdate', data)
-      })
+      this.socketMostClient.sendCheckForLock()
+      // this.interfaces.Sources.on('sourcesUpdate', (data) => {
+      //   socket.sendStatusUpdate('sourcesUpdate', data)
+      // })
 
       socket.on('newConnection', () => {
         this.logger.info('Socket.io client connected, sending full update')
@@ -114,7 +172,7 @@ export class PiMost {
         socket.sendStatusUpdate('amplifierFullUpdate', this.interfaces.Amplifier.state)
         socket.sendStatusUpdate('canGatewayFullUpdate', this.interfaces.CanGateway.state)
         socket.sendStatusUpdate('climateFullUpdate', this.interfaces.Climate.state)
-        socket.sendStatusUpdate('sourcesFullUpdate', this.interfaces.Sources.state)
+        // socket.sendStatusUpdate('sourcesFullUpdate', this.interfaces.Sources.state)
       })
 
       socket.on('action', (message: Action) => {
@@ -127,16 +185,13 @@ export class PiMost {
         }
       })
 
-      socket.on('allocate', (source) => {
-        this.changeSource(source)
-      })
+      // socket.on('allocate', (source) => {
+      //   this.changeSource(source)
+      // })
 
-      socket.on('newSwitch', (source: number) => {
-        this.newSwitchSource(source)
-      })
-
-      socket.on('carplaySwitch', () => {
-        this.switching.switchToCarplay()
+      socket.on('newSwitch', (source: string) => {
+        console.log('switching to: ', source)
+        this.jlrAudioControl.switchSource(sourceMap[source])
       })
 
       this.socketMostClient.on(Os8104Events.Locked, () => {
@@ -177,6 +232,8 @@ export class PiMost {
           if (hasInterface(this.interfaces, type)) {
             this.interfaces[type].parseMessage(message)
           }
+          console.log('message', message)
+          this.jlrAudioControl.parseMessage(message)
         }
       )
     })
@@ -184,11 +241,12 @@ export class PiMost {
 
   stream(stream: messages.Stream) {
     this.logger.info(`stream request ${JSON.stringify(stream)}`)
-    this.socketMostClient.stream(stream)
+    // this.socketMostClient.stream(stream)
   }
 
   sendMessage = (message: messages.SocketMostSendMessage) => {
     this.logger.silly(`send message request ${JSON.stringify(message)}`)
+    console.log(`send message request ${JSON.stringify(message)}`)
     this.socketMostClient.sendControlMessage(message)
   }
 
@@ -212,51 +270,51 @@ export class PiMost {
     })
   }
 
-  async changeSource(newSource: AvailableSources) {
-    this.logger.warn(`new source deprecated`)
-    await this.interfaces.SecAmplifier.functions[0x112].startResult([0x01])
-    await this.disconnectSource()
-    await this.waitForDealloc(this.currentSource)
-    await this.allocateSource(newSource)
-    const data = await this.waitForAlloc(newSource)
-    await this.interfaces.SecAmplifier.functions[0x111].startResult([
-      0x01,
-      data.srcDelay,
-      ...data.channelList
-    ])
-  }
+  // async changeSource(newSource: AvailableSources) {
+  //   this.logger.warn(`new source deprecated`)
+  //   await this.interfaces.SecAmplifier.functions[0x112].startResult([0x01])
+  //   await this.disconnectSource()
+  //   await this.waitForDealloc(this.currentSource)
+  //   await this.allocateSource(newSource)
+  //   const data = await this.waitForAlloc(newSource)
+  //   await this.interfaces.SecAmplifier.functions[0x111].startResult([
+  //     0x01,
+  //     data.srcDelay,
+  //     ...data.channelList
+  //   ])
+  // }
 
-  newSwitchSource(source: number) {
-    this.logger.info(`Switching source ${source}`)
-    this.switching.switchSource(source)
-  }
+  // newSwitchSource(source: string) {
+  //   this.logger.info(`Switching source ${source}`)
+  //   this.switching.switchSource(source)
+  // }
 
-  async disconnectSource() {
-    this.logger.info(`disconnecting source`)
-    await this.interfaces[this.currentSource].functions[0x102].startResult([0x01])
-  }
-
-  waitForDealloc(source: AvailableSources) {
-    this.logger.warn('deprecated - waiting for source input to deallocate')
-    return new Promise((resolve) => {
-      this.interfaces[source].once('deallocResult', (source) => {
-        this.logger.warn(`deprecated resolving deallocResult - ${JSON.stringify(source)}`)
-        resolve(true)
-      })
-    })
-  }
-
-  async allocateSource(source: AvailableSources) {
-    this.logger.warn(`deprecated - allocating source`)
-    await this.interfaces[source].functions[0x101].startResult([0x01])
-  }
-
-  waitForAlloc(source: AvailableSources): Promise<{ srcDelay: number; channelList: number[] }> {
-    this.logger.info(`deprecated - waiting for alloc`)
-    return new Promise((resolve) => {
-      this.interfaces[source].once('allocResult', (results) => {
-        resolve(results)
-      })
-    })
-  }
+  // async disconnectSource() {
+  //   this.logger.info(`disconnecting source`)
+  //   await this.interfaces[this.currentSource].functions[0x102].startResult([0x01])
+  // }
+  //
+  // waitForDealloc(source: AvailableSources) {
+  //   this.logger.warn('deprecated - waiting for source input to deallocate')
+  //   return new Promise((resolve) => {
+  //     this.interfaces[source].once('deallocResult', (source) => {
+  //       this.logger.warn(`deprecated resolving deallocResult - ${JSON.stringify(source)}`)
+  //       resolve(true)
+  //     })
+  //   })
+  // }
+  //
+  // async allocateSource(source: AvailableSources) {
+  //   this.logger.warn(`deprecated - allocating source`)
+  //   await this.interfaces[source].functions[0x101].startResult([0x01])
+  // }
+  //
+  // waitForAlloc(source: AvailableSources): Promise<{ srcDelay: number; channelList: number[] }> {
+  //   this.logger.info(`deprecated - waiting for alloc`)
+  //   return new Promise((resolve) => {
+  //     this.interfaces[source].once('allocResult', (results) => {
+  //       resolve(results)
+  //     })
+  //   })
+  // }
 }

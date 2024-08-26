@@ -4,6 +4,7 @@ import { Temps } from './Temps'
 import { FanSpeed } from './FanSpeed'
 import { ClimateStatus } from './ClimateStatus'
 import { ClimateAction } from './ClimateAction'
+import { Seats } from './Seats'
 
 // JLR CD Player - 0x000, 0x001, 0x002, 0x090, 0x091, 0x092, 0x101, 0x102, 0x200
 // 0x201, 0x202, 0x412, 0x413, 0x420, 0x420, 0x431, 0x451, 0x452, 0xc11, 0xc12
@@ -24,5 +25,6 @@ export class Climate extends FBlock {
     this.registerFunction(0xc87, Temps)
     this.registerFunction(0xc88, ClimateStatus)
     this.registerFunction(0xe00, ClimateAction)
+    this.registerFunction(0xc86, Seats)
   }
 }

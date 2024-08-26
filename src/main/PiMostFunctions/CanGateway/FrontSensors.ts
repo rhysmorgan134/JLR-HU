@@ -1,9 +1,9 @@
 import { Fkt } from '../Common/Function'
-import { FrontSensorsType } from '../../Globals'
+import { CanGatewayStatus } from './CanGatewayTypes'
 
 export class FrontSensors extends Fkt {
   async status(data) {
-    let status: { parkingSensors: FrontSensorsType } = {
+    let status: Partial<CanGatewayStatus> = {
       parkingSensors: {
         frontLeft: 31 - (data.readUInt8(0) & 31),
         frontCentreLeft: 31 - (data.readUInt8(1) & 31),

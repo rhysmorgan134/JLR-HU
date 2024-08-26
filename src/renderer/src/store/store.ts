@@ -40,20 +40,38 @@ import {
   AUTO,
   FACE,
   FEET,
+  LEFT_SEAT_TEMP,
+  RIGHT_SEAT_TEMP,
+  SeatTemp,
   SYNC,
   WINDSCREEN
 } from '../../../main/PiMostFunctions/Climate/ClimateTypes'
+import {
+  ALARM_SENSORS,
+  AUTO_RELOCK,
+  CanGatewayStatus,
+  DRIVE_AWAY_LOCKING,
+  DriveAwayLocking,
+  GLOBAL_WINDOWS_CLOSE,
+  GLOBAL_WINDOWS_OPEN,
+  MIRROR_DIP,
+  MIRROR_FOLDBACK,
+  PASSIVE_ARMING,
+  TWO_STAGE_UNLOCKING
+} from '../../../main/PiMostFunctions/CanGateway/CanGatewayTypes'
 
 interface CanGatewayStore {
-  hours: number
-  minutes: number
-  parkingSensors: ParkingSensors
-  externalTemp: number
-  ambientLight: number
-  lights: boolean
-  parkingActive: boolean
   newSwitch: (source: string) => void
   carplaySwitch: () => void
+  setDriveAway: (speed: DriveAwayLocking) => void
+  setTwoStageUnlocking: (enabled: boolean) => void
+  setPassiveArming: (enabled: boolean) => void
+  setAutoLock: (enabled: boolean) => void
+  setAlarmSensors: (enabled: boolean) => void
+  setGlobalWindowsOpen: (enabled: boolean) => void
+  setGlobalWindowsClose: (enabled: boolean) => void
+  setMirrorFoldBack: (enabled: boolean) => void
+  setMirrorDip: (enabled: boolean) => void
 }
 
 interface CarplayStore {
@@ -88,6 +106,10 @@ interface ClimateStore {
   setSync: () => void
   setAuto: () => void
   setAC: (active: boolean) => void
+  setRightSeat: (temperature: SeatTemp) => void
+  setLeftSeat: (temperature: SeatTemp) => void
+  leftSeat: number
+  rightSeat: number
 }
 
 interface Amplifier {
@@ -150,9 +172,22 @@ interface Volume {
   phoneVolume: number
 }
 
-export const useCanGatewayStore = create<CanGatewayStore>()(() => ({
+export const useCanGatewayStore = create<CanGatewayStore & CanGatewayStatus>()(() => ({
   hours: 0,
   minutes: 0,
+  autoLock: false,
+  driveAwayLocking: 0,
+  globalWindowClose: false,
+  globalWindowOpen: false,
+  mirrorFoldBack: false,
+  passiveArming: false,
+  twoStageLocking: false,
+  alarmSensors: false,
+  mirrorDip: false,
+  avgMpg: 0,
+  range: 0,
+  distance: 0,
+  avgSpeed: 0,
   parkingSensors: {
     frontLeft: 0,
     frontCentreLeft: 0,
@@ -172,6 +207,33 @@ export const useCanGatewayStore = create<CanGatewayStore>()(() => ({
   },
   carplaySwitch: () => {
     socket.emit('carplaySwitch')
+  },
+  setDriveAway: (speed) => {
+    socket.emit('action', DRIVE_AWAY_LOCKING(speed))
+  },
+  setAlarmSensors: (enabled) => {
+    socket.emit('action', ALARM_SENSORS(enabled))
+  },
+  setTwoStageUnlocking: (enabled) => {
+    socket.emit('action', TWO_STAGE_UNLOCKING(enabled))
+  },
+  setPassiveArming: (enabled) => {
+    socket.emit('action', PASSIVE_ARMING(enabled))
+  },
+  setAutoLock: (enabled) => {
+    socket.emit('action', AUTO_RELOCK(enabled))
+  },
+  setGlobalWindowsOpen: (enabled) => {
+    socket.emit('action', GLOBAL_WINDOWS_OPEN(enabled))
+  },
+  setGlobalWindowsClose: (enabled) => {
+    socket.emit('action', GLOBAL_WINDOWS_CLOSE(enabled))
+  },
+  setMirrorFoldBack: (enabled) => {
+    socket.emit('action', MIRROR_FOLDBACK(enabled))
+  },
+  setMirrorDip: (enabled) => {
+    socket.emit('action', MIRROR_DIP(enabled))
   }
 }))
 
@@ -287,6 +349,8 @@ export const useClimateStore = create<ClimateStore>()(() => ({
   feet: false,
   ac: true,
   windscreen: false,
+  leftSeat: 0,
+  rightSeat: 0,
   setWindscreen: (active) => {
     socket.emit('action', WINDSCREEN(active))
   },
@@ -304,6 +368,12 @@ export const useClimateStore = create<ClimateStore>()(() => ({
   },
   setAC: (active) => {
     socket.emit('action', AC(active))
+  },
+  setLeftSeat: (temperature: SeatTemp) => {
+    socket.emit('action', LEFT_SEAT_TEMP(temperature))
+  },
+  setRightSeat: (temperature: SeatTemp) => {
+    socket.emit('action', RIGHT_SEAT_TEMP(temperature))
   }
 }))
 
@@ -407,6 +477,7 @@ socket.on('amplifierUpdate', (data) => {
 })
 let parkingTimeout
 socket.on('canGatewayUpdate', (data) => {
+  console.log('can gateway: ', data)
   useCanGatewayStore.setState((state) => {
     return produce(state, (draft) => {
       _.merge(draft, data)
