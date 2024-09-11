@@ -1,4 +1,4 @@
-import { SocketMostUsb, messages, JlrAudioControl } from 'socketmost'
+import { SocketMostUsb, messages, JlrAudioControl, UsbServer } from 'socketmost'
 import { MessageNames, Socket } from './Socket'
 import { AudioDiskPlayer } from './PiMostFunctions/AudioDiskPlayer/AudioDiskPlayer'
 import { AmFmTuner } from './PiMostFunctions/AmFm/AmFmTuner'
@@ -101,10 +101,12 @@ export class PiMost {
   currentSource: AvailableSources
   jlrAudioControl: JlrAudioControl
   logger: winston.Logger
+  usbServer: UsbServer
 
   constructor(socket: Socket) {
     console.log('creating client in PiMost')
     this.socketMostClient = new SocketMostUsb()
+    this.usbServer = new UsbServer(this.socketMostClient)
     this.jlrAudioControl = new JlrAudioControl(this.socketMostClient)
     this.socket = socket
     this.subscriptionTimer = null
@@ -232,7 +234,6 @@ export class PiMost {
           if (hasInterface(this.interfaces, type)) {
             this.interfaces[type].parseMessage(message)
           }
-          console.log('message', message)
           this.jlrAudioControl.parseMessage(message)
         }
       )
