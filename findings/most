@@ -36,6 +36,12 @@ resp -
 From Master - newBlock - set 0x401??? - 0x01 0x01 0x61 0xc 0x01
 resp -
 
+fblock -> 0x06
+fkt - > 0xd22
+optype -> setget
+data -> 0x1f8c
+
+response serial number
 
 
 

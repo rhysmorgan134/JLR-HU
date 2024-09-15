@@ -230,10 +230,10 @@ export const useCanGatewayStore = create<CanGatewayStore & CanGatewayStatus>()((
     socket.emit('action', GLOBAL_WINDOWS_CLOSE(enabled))
   },
   setMirrorFoldBack: (enabled) => {
-    socket.emit('action', MIRROR_FOLDBACK(enabled))
+    socket.emit('action', MIRROR_FOLDBACK(enabled, useCanGatewayStore.getState().mirrorDip))
   },
   setMirrorDip: (enabled) => {
-    socket.emit('action', MIRROR_DIP(enabled))
+    socket.emit('action', MIRROR_DIP(enabled, useCanGatewayStore.getState().mirrorFoldBack))
   }
 }))
 

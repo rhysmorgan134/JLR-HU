@@ -31,6 +31,7 @@ import { cyan } from '@mui/material/colors'
 import Climate from './components/mediaComponents/Climate/Climate'
 import ParkingSensors from './components/mediaComponents/Parking/ParkingSensors'
 import Header from './components/dataDisplays/Header'
+import './App.css'
 
 const ColorModeContext = createContext({ toggleColorMode: () => {} })
 

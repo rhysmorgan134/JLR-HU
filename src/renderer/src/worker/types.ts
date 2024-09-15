@@ -21,17 +21,18 @@ export type StartPayload = {
   config: Partial<DongleConfig>
 }
 
-export type KeyCommand = 'left' |
-  'right' |
-  'selectDown' |
-  'selectUp' |
-  'back' |
-  'down' |
-  'home' |
-  'play' |
-  'pause' |
-  'next' |
-  'prev'
+export type KeyCommand =
+  | 'left'
+  | 'right'
+  | 'selectDown'
+  | 'selectUp'
+  | 'back'
+  | 'down'
+  | 'home'
+  | 'play'
+  | 'pause'
+  | 'next'
+  | 'prev'
 
 export type Command =
   | { type: 'stop' }
@@ -40,11 +41,10 @@ export type Command =
   | { type: 'initialise'; payload: InitialisePayload }
   | { type: 'audioBuffer'; payload: AudioPlayerPayload }
   | { type: 'microphoneInput'; payload: Int16Array }
-  | { type: 'frame'}
-  | { type: 'keyCommand', command: KeyCommand}
+  | { type: 'frame' }
+  | { type: 'keyCommand'; command: KeyCommand }
 
-export interface CarPlayWorker
-  extends Omit<Worker, 'postMessage' | 'onmessage'> {
+export interface CarPlayWorker extends Omit<Worker, 'postMessage' | 'onmessage'> {
   postMessage(message: Command, transfer?: Transferable[]): void
   onmessage: ((this: Worker, ev: CarplayWorkerMessage) => any) | null
 }

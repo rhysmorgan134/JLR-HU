@@ -48,7 +48,7 @@ export const DRIVE_AWAY_LOCKING = (speed: DriveAwayLocking): Action => {
 
 export const TWO_STAGE_UNLOCKING = (enabled: boolean): Action => {
   return {
-    fktID: 0xea0,
+    fktID: 0xe0a,
     opType: 0x00,
     data: [enabled],
     type: 'CanGateway',
@@ -108,21 +108,21 @@ export const GLOBAL_WINDOWS_CLOSE = (enabled: boolean): Action => {
   }
 }
 
-export const MIRROR_FOLDBACK = (enabled: boolean): Action => {
+export const MIRROR_FOLDBACK = (enabled: boolean, dip: boolean): Action => {
   return {
     fktID: 0xe17,
     opType: 0x00,
-    data: [enabled],
+    data: [enabled, dip, 0x00],
     type: 'CanGateway',
     method: 'properties'
   }
 }
 
-export const MIRROR_DIP = (enabled: boolean): Action => {
+export const MIRROR_DIP = (enabled: boolean, foldback: boolean): Action => {
   return {
     fktID: 0xe17,
     opType: 0x00,
-    data: [0x00, enabled],
+    data: [foldback, enabled, 0x00],
     type: 'CanGateway',
     method: 'properties'
   }

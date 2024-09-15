@@ -4,8 +4,8 @@ import { CanGatewayStatus } from './CanGatewayTypes'
 export class MirrorFoldBack extends Fkt {
   async status(data) {
     let status: Partial<CanGatewayStatus> = {
-      mirrorFoldBack: !!data.readUInt8(0),
-      mirrorDip: !!data.readUInt8(1)
+      mirrorFoldBack: !!(data.readUInt8(0) && 0x01),
+      mirrorDip: !!(data.readUInt8(1) && 0x01)
     }
     this.updateStatus(status)
     this.responseReceived = true

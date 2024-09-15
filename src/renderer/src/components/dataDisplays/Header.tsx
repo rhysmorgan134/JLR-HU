@@ -74,7 +74,7 @@ export default function Header() {
       </Box>
 
       <Box sx={{ flexGrow: 1, width: 0.3 }}>
-        <Typography>18:00 - ext 18°C</Typography>
+        <Typography>18:00 - ext {externalTemp}°C</Typography>
       </Box>
 
       <Box sx={{ display: 'flex', width: 0.3, flexGrow: 1, justifyContent: 'flex-end' }}>
