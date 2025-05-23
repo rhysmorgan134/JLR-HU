@@ -21,6 +21,7 @@ export type CanGatewayStatus = {
   hours: number
   minutes: number
   mirrorDip: boolean
+  lowBattery: boolean
 }
 
 type ParkingSensors = {

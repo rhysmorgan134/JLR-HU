@@ -1,23 +1,51 @@
 import { Box, SvgIcon, Typography } from '@mui/material'
 import { TopData } from './TopData'
 import { useCanGatewayStore, useClimateStore } from '../../store/store'
+import { useEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 export default function Header() {
-  const [externalTemp] = useCanGatewayStore((state) => [state.externalTemp])
+  const [externalTemp, hours, minutes] = useCanGatewayStore((state) => [
+    state.externalTemp,
+    state.hours,
+    state.minutes
+  ])
   const [leftTemp, rightTemp, leftSeat, rightSeat] = useClimateStore((state) => [
     state.leftTemp,
     state.rightTemp,
     state.leftSeat,
     state.rightSeat
   ])
+  const screensaver = useCanGatewayStore((state) => state.screensaver)
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    console.log('screensaver memo')
+    if (screensaver) {
+      navigate('/screensaver')
+    } else {
+      navigate('/')
+    }
+  }, [screensaver])
+
   return (
     <Box
-      sx={{
-        height: '28px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}
+      sx={
+        pathname !== 'screensaver'
+          ? {
+              height: '28px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }
+          : {
+              height: '0px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }
+      }
     >
       <Box sx={{ display: 'flex', width: 0.3, flexGrow: 1 }}>
         <Box sx={{ display: 'flex', width: 0.4, justifyContent: 'space-around' }}>
@@ -74,7 +102,9 @@ export default function Header() {
       </Box>
 
       <Box sx={{ flexGrow: 1, width: 0.3 }}>
-        <Typography>18:00 - ext {externalTemp}°C</Typography>
+        <Typography>
+          {hours}:{minutes} - ext {externalTemp}°C
+        </Typography>
       </Box>
 
       <Box sx={{ display: 'flex', width: 0.3, flexGrow: 1, justifyContent: 'flex-end' }}>

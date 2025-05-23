@@ -5,7 +5,15 @@ import Box from '@mui/material/Box'
 
 export default function SettingsTabs({ switchPage }) {
   const [value, setValue] = React.useState(1)
-  const pages = ['vehicleSettings', 'climate', 'audioLevels', 'audioSettings', 'vehicleAppSettings']
+  const pages = [
+    'vehicleSettings',
+    'climate',
+    'audioLevels',
+    'audioSettings',
+    'vehicleAppSettings',
+    'carplay',
+    'mostSettings'
+  ]
 
   const handleChange = (event: React.SyntheticEvent, newValue: number) => {
     console.log(newValue)
@@ -30,6 +38,7 @@ export default function SettingsTabs({ switchPage }) {
         <Tab label="Audio Settings" />
         <Tab label="Canbus" />
         <Tab label="Carplay" />
+        <Tab label="Most Bus" />
       </Tabs>
     </Box>
   )

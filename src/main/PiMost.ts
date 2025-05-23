@@ -8,9 +8,8 @@ import { U240 } from './PiMostFunctions/JlrAudio/u240'
 import { Amplifier } from './PiMostFunctions/Amplifier/Amplifier'
 import { CanGateway } from './PiMostFunctions/CanGateway/CanGateway'
 import { Climate } from './PiMostFunctions/Climate/Climate'
-import { Switching } from './PiMostFunctions/control/Switching'
-import { Source } from './PiMostFunctions/Sources/Source'
 import winston from 'winston'
+import { ModuleSingle, UsbSettings } from 'socketmost/dist/modules/Messages'
 
 const { Os8104Events } = messages
 
@@ -93,6 +92,7 @@ const hasInterface = (obj: Interfaces, prop: string): prop is InterfaceKeys =>
 export class PiMost {
   socketMostClient: SocketMostUsb
   socket: Socket
+  connected: boolean
   timeoutType: string
   subscriptionTimer: NodeJS.Timeout | null
   interfaces: Interfaces
@@ -102,12 +102,14 @@ export class PiMost {
   jlrAudioControl: JlrAudioControl
   logger: winston.Logger
   usbServer: UsbServer
-
+  subscriptions: ModuleSingle[]
+  mostSettings: UsbSettings
   constructor(socket: Socket) {
     console.log('creating client in PiMost')
     this.socketMostClient = new SocketMostUsb()
     this.usbServer = new UsbServer(this.socketMostClient)
     this.jlrAudioControl = new JlrAudioControl(this.socketMostClient)
+    this.connected = false
     this.socket = socket
     this.subscriptionTimer = null
     this.timeoutType = ''
@@ -115,6 +117,16 @@ export class PiMost {
     this.socket.on(MessageNames.Stream, (stream) => {
       this.stream(stream)
     })
+    this.jlrAudioControl.on('softStart', () => {
+      console.log('softStart')
+      socket.sendScreensaver(false)
+    })
+
+    this.jlrAudioControl.on('softShutdown', () => {
+      console.log('softShutdown')
+      socket.sendScreensaver(true)
+    })
+    this.subscriptions = []
     const audioDiskPlayer = new AudioDiskPlayer(0x02, this.sendMessage, 0x01, 0x80, 0x01, 0x6e)
     const u240 = new U240(0x01, this.sendMessage, 0x01, 0x61, 0x01, 0x6e)
     const amFmTuner = new AmFmTuner(0x01, this.sendMessage, 0x01, 0x80, 0x01, 0x6e)
@@ -142,101 +154,130 @@ export class PiMost {
     this.currentSource = 'AmFmTuner'
 
     this.socketMostClient.on('opened', () => {
-      this.logger.info('SocketMost-client connected, settings up events')
-      this.interfaces.AudioDiskPlayer.on('statusUpdate', (data) => {
-        socket.sendStatusUpdate('audioDiskPlayerUpdate', data)
-      })
-      this.interfaces.u240.on('statusUpdate', (data) => {
-        socket.sendStatusUpdate('volumeUpdate', data)
-      })
-      this.interfaces.AmFmTuner.on('statusUpdate', (data) => {
-        socket.sendStatusUpdate('amFmTunerUpdate', data)
-      })
-      this.interfaces.Amplifier.on('statusUpdate', (data) => {
-        socket.sendStatusUpdate('amplifierUpdate', data)
-      })
-      this.interfaces.CanGateway.on('statusUpdate', (data) => {
-        socket.sendStatusUpdate('canGatewayUpdate', data)
-      })
-      this.interfaces.Climate.on('statusUpdate', (data) => {
-        socket.sendStatusUpdate('climateUpdate', data)
-      })
-      this.socketMostClient.sendCheckForLock()
-      // this.interfaces.Sources.on('sourcesUpdate', (data) => {
-      //   socket.sendStatusUpdate('sourcesUpdate', data)
-      // })
+      if (!this.connected) {
+        this.connected = true
+        this.logger.info('SocketMost-client connected, settings up events')
+        this.interfaces.AudioDiskPlayer.on('statusUpdate', (data) => {
+          socket.sendStatusUpdate('audioDiskPlayerUpdate', data)
+        })
+        this.interfaces.u240.on('statusUpdate', (data) => {
+          socket.sendStatusUpdate('volumeUpdate', data)
+        })
+        this.interfaces.AmFmTuner.on('statusUpdate', (data) => {
+          socket.sendStatusUpdate('amFmTunerUpdate', data)
+        })
+        this.interfaces.Amplifier.on('statusUpdate', (data) => {
+          socket.sendStatusUpdate('amplifierUpdate', data)
+        })
+        this.interfaces.CanGateway.on('statusUpdate', (data) => {
+          socket.sendStatusUpdate('canGatewayUpdate', data)
+        })
+        this.interfaces.Climate.on('statusUpdate', (data) => {
+          socket.sendStatusUpdate('climateUpdate', data)
+        })
+        this.socketMostClient.sendCheckForLock()
+        // this.interfaces.Sources.on('sourcesUpdate', (data) => {
+        //   socket.sendStatusUpdate('sourcesUpdate', data)
+        // })
 
-      socket.on('newConnection', () => {
-        this.logger.info('Socket.io client connected, sending full update')
-        socket.sendStatusUpdate('audioDiskPlayerFullUpdate', this.interfaces.AudioDiskPlayer.state)
-        socket.sendStatusUpdate('volumeFullUpdate', this.interfaces.u240.state)
-        socket.sendStatusUpdate('amFmTunerFullUpdate', this.interfaces.AmFmTuner.state)
-        socket.sendStatusUpdate('amplifierFullUpdate', this.interfaces.Amplifier.state)
-        socket.sendStatusUpdate('canGatewayFullUpdate', this.interfaces.CanGateway.state)
-        socket.sendStatusUpdate('climateFullUpdate', this.interfaces.Climate.state)
-        // socket.sendStatusUpdate('sourcesFullUpdate', this.interfaces.Sources.state)
-      })
+        socket.on('newConnection', () => {
+          this.logger.info('Socket.io client connected, sending full update')
+          socket.sendStatusUpdate(
+            'audioDiskPlayerFullUpdate',
+            this.interfaces.AudioDiskPlayer.state
+          )
+          socket.sendStatusUpdate('volumeFullUpdate', this.interfaces.u240.state)
+          socket.sendStatusUpdate('amFmTunerFullUpdate', this.interfaces.AmFmTuner.state)
+          socket.sendStatusUpdate('amplifierFullUpdate', this.interfaces.Amplifier.state)
+          socket.sendStatusUpdate('canGatewayFullUpdate', this.interfaces.CanGateway.state)
+          socket.sendStatusUpdate('climateFullUpdate', this.interfaces.Climate.state)
+          socket.sendMostSettings(this.mostSettings)
+          // socket.sendStatusUpdate('sourcesFullUpdate', this.interfaces.Sources.state)
+        })
 
-      socket.on('action', (message: Action) => {
-        this.logger.debug(`action request: ${JSON.stringify(message)}`)
-        const { fktID, opType, type, data, method } = message
-        const methodGroup = opTypes[method]
-        const opTypeString = methodGroup[opType as keyof typeof methodGroup]
-        if (hasInterface(this.interfaces, type)) {
-          this.interfaces[type].functions[fktID].actionOpType[opTypeString](data)
-        }
-      })
-
-      // socket.on('allocate', (source) => {
-      //   this.changeSource(source)
-      // })
-
-      socket.on('newSwitch', (source: string) => {
-        console.log('switching to: ', source)
-        this.jlrAudioControl.switchSource(sourceMap[source])
-      })
-
-      this.socketMostClient.on(Os8104Events.Locked, () => {
-        this.logger.debug('network locked waiting stability')
-        if (this.stabilityTimeout) clearTimeout(this.stabilityTimeout)
-        this.stabilityTimeout = setTimeout(() => {
-          this.logger.info('locked and stable, subscribing')
-          //this.sourcesInterval = setInterval(() => {
-          // this.interfaces?.secAmplifier?.functions[0xE09].get([])
-          //}, 100)
-          this.subscribeToAll()
-        }, 3000)
-      })
-
-      this.socketMostClient.on(Os8104Events.Unlocked, () => {
-        this.logger.warn('unlocked')
-        if (this.stabilityTimeout) {
-          clearTimeout(this.stabilityTimeout)
-        }
-        if (this.sourcesInterval) {
-          clearInterval(this.sourcesInterval)
-        }
-      })
-
-      this.socketMostClient.on(
-        Os8104Events.SocketMostMessageRxEvent,
-        (message: messages.MostRxMessage) => {
-          this.logger.silly(`message received ${JSON.stringify(message)}`)
-          if (message.fBlockID) {
-          }
-          const type = fBlocks[message.fBlockID as keyof typeof fBlocks]
-          if (message.opType === 15) {
-            this.logger.warn(`most error: ${JSON.stringify(message)}`)
-          }
-          if (type === this.timeoutType && this.subscriptionTimer) {
-            this.subscriptionTimer.refresh()
-          }
+        socket.on('action', (message: Action) => {
+          this.logger.debug(`action request: ${JSON.stringify(message)}`)
+          const { fktID, opType, type, data, method } = message
+          const methodGroup = opTypes[method]
+          const opTypeString = methodGroup[opType as keyof typeof methodGroup]
           if (hasInterface(this.interfaces, type)) {
-            this.interfaces[type].parseMessage(message)
+            this.interfaces[type].functions[fktID].actionOpType[opTypeString](data)
           }
-          this.jlrAudioControl.parseMessage(message)
-        }
-      )
+        })
+
+        socket.on('saveSettings', (settings: UsbSettings) => {
+          console.log('saving settings in pimost', settings)
+          this.socketMostClient.saveSettings(settings)
+        })
+
+        this.socketMostClient.on(Os8104Events.Settings, (data) => {
+          console.log('settings')
+          this.mostSettings = data
+          this.socket.sendMostSettings(data)
+        })
+
+        this.socketMostClient.on('opened', () => {
+          this.logger.info('usb connection opened')
+        })
+        //
+        // this.jlrAudioControl.on('softStart', () => {
+        //   console.log('softStart')
+        //   socket.sendScreensaver(false)
+        // })
+        //
+        // this.jlrAudioControl.on('softShutdown', () => {
+        //   console.log('softShutdown')
+        //   socket.sendScreensaver(true)
+        // })
+
+        // socket.on('allocate', (source) => {
+        //   this.changeSource(source)
+        // })
+
+        socket.on('newSwitch', (source: string) => {
+          console.log('switching to: ', source)
+          this.jlrAudioControl.switchSource(sourceMap[source])
+        })
+
+        this.socketMostClient.on(Os8104Events.Locked, () => {
+          this.logger.debug('network locked waiting stability')
+          this.socketMostClient.getSettings()
+          if (this.stabilityTimeout) clearTimeout(this.stabilityTimeout)
+          this.stabilityTimeout = setTimeout(() => {
+            this.logger.info('locked and stable, subscribing')
+          }, 3000)
+        })
+
+        this.socketMostClient.on(Os8104Events.Unlocked, () => {
+          this.logger.warn('unlocked')
+          if (this.stabilityTimeout) {
+            clearTimeout(this.stabilityTimeout)
+          }
+          if (this.sourcesInterval) {
+            clearInterval(this.sourcesInterval)
+          }
+        })
+
+        this.socketMostClient.on(
+          Os8104Events.SocketMostMessageRxEvent,
+          (message: messages.MostRxMessage) => {
+            this.logger.silly(`message received ${JSON.stringify(message)}`)
+            if (message.fBlockID) {
+            }
+            const type = fBlocks[message.fBlockID as keyof typeof fBlocks]
+            if (message.opType === 15) {
+              this.logger.warn(`most error: ${JSON.stringify(message)}`)
+            }
+            if (type === this.timeoutType && this.subscriptionTimer) {
+              this.subscriptionTimer.refresh()
+            }
+            if (hasInterface(this.interfaces, type)) {
+              this.interfaces[type].parseMessage(message)
+            }
+            this.jlrAudioControl.parseMessage(message)
+          }
+        )
+      }
     })
   }
 

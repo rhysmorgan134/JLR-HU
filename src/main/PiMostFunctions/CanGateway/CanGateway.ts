@@ -13,6 +13,7 @@ import { MirrorFoldBack } from './MirrorFoldBack'
 import { GlobalWindows } from './GlobalWindows'
 import { CanGatewayStatus } from './CanGatewayTypes'
 import { AlarmSensors } from './AlarmSensors'
+import { Time } from './Time'
 
 // JLR CD Player - 0x000, 0x001, 0x002, 0x090, 0x091, 0x092, 0x101, 0x102, 0x200
 // 0x201, 0x202, 0x412, 0x413, 0x420, 0x420, 0x431, 0x451, 0x452, 0xc11, 0xc12
@@ -43,5 +44,6 @@ export class CanGateway extends FBlock {
     this.registerFunction(0xe27, DriveAwayLocking)
     this.registerFunction(0xe29, PassiveArming)
     this.registerFunction(0xe2a, AutoLock)
+    this.registerFunction(0xa04, Time)
   }
 }

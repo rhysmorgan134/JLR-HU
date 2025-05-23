@@ -118,18 +118,24 @@ function AmFmTuner() {
   return (
     <Grid
       container
-      justifyContent="center"
       direction={'column'}
       id={'AudioDiskPlayer'}
-      sx={{ height: 0.7, display: 'flex', flexGrow: 1 }}
+      sx={{ height: '100%', flexGrow: 0 }}
     >
-      <Button
-        variant={'contained'}
-        onClick={startAutoStore}
-        sx={{ maxWidth: '150px', marginLeft: 'auto', marginRight: 'auto', marginBottom: '1rem' }}
-      >
-        Auto Store
-      </Button>
+      {/*<Grid xs={12} sx={{ height: 0.1 }}>*/}
+      {/*  <Button*/}
+      {/*    variant={'contained'}*/}
+      {/*    onClick={startAutoStore}*/}
+      {/*    sx={{*/}
+      {/*      maxWidth: '150px',*/}
+      {/*      marginLeft: 'auto',*/}
+      {/*      marginRight: 'auto',*/}
+      {/*      marginBottom: '1rem'*/}
+      {/*    }}*/}
+      {/*  >*/}
+      {/*    Auto Store*/}
+      {/*  </Button>*/}
+      {/*</Grid>*/}
       {/*{renderDeck()}*/}
       <Grid xs={12} sx={{ height: 0.1 }}>
         <ToggleButtonGroup
@@ -165,89 +171,84 @@ function AmFmTuner() {
         </ToggleButtonGroup>
       </Grid>
       <Grid
+        container
         xs={12}
         sx={{
-          alignItems: 'space-around',
           display: 'flex',
-          flexDirection: 'column',
-          flexGrow: 1,
-          height: 0.5
+          flexGrow: 0,
+          marginRight: '1rem',
+          justifyContent: 'space-around',
+          height: 0.2
         }}
       >
-        <Grid
-          container
-          xs={12}
-          sx={{ display: 'flex', flexGrow: 0, marginRight: '1rem', justifyContent: 'space-around' }}
+        <Grid xs={4}>
+          <Title type={'radio'} title={'No Text'} />
+        </Grid>
+        <Grid xs={4}>
+          <Title type={'song'} title={currentStation ? currentStation : 'No Text'} />
+        </Grid>
+        <Grid xs={4}>
+          <Title type={'frequency'} title={`Frequency ${(frequency / 1000).toFixed(1)}`} />
+        </Grid>
+      </Grid>
+      <Grid container xs={12} sx={{ display: 'flex', height: 0.6 }}>
+        <ToggleButtonGroup
+          // value={alignment}
+          exclusive
+          onChange={chooseStation}
+          aria-label="text alignment"
+          sx={{ flexWrap: 'wrap', height: '100%' }}
+          size={'large'}
+          fullWidth={true}
+          value={1}
         >
-          <Grid xs={4}>
-            <Title type={'radio'} title={'No Text'} />
-          </Grid>
-          <Grid xs={4}>
-            <Title type={'song'} title={currentStation ? currentStation : 'No Text'} />
-          </Grid>
-          <Grid xs={4}>
-            <Title type={'frequency'} title={`Frequency ${(frequency / 1000).toFixed(1)}`} />
-          </Grid>
-        </Grid>
-        <Grid container xs={12} sx={{ flexGrow: 5, display: 'flex', height: 0.5 }}>
-          <ToggleButtonGroup
-            // value={alignment}
-            exclusive
-            onChange={chooseStation}
-            aria-label="text alignment"
-            sx={{ flexWrap: 'wrap' }}
-            size={'large'}
-            fullWidth={true}
-            value={1}
-          >
-            {presetList?.[chosenPreset]?.[chosenStation] ? (
-              Object.keys(presetList[chosenPreset]).map((item) => {
-                return (
-                  <ToggleButton
-                    value={item}
-                    {...longPressEvent}
-                    aria-label="left aligned"
-                    sx={{ width: '33.3333%', minWidth: '33.3333%' }}
-                  >
-                    {presetList[chosenPreset][item].name !== ''
-                      ? presetList[chosenPreset][item].name
-                      : (presetList[chosenPreset][item].frequency / 1000).toFixed(1)}
-                  </ToggleButton>
-                )
-              })
-            ) : (
-              <Typography>
-                Loading Stations: {JSON.stringify(presetList![chosenPreset])} station:
-                {chosenStation}
-              </Typography>
-            )}
-          </ToggleButtonGroup>
-        </Grid>
+          {presetList?.[chosenPreset]?.[chosenStation] ? (
+            Object.keys(presetList[chosenPreset]).map((item) => {
+              return (
+                <ToggleButton
+                  value={item}
+                  {...longPressEvent}
+                  aria-label="left aligned"
+                  sx={{ width: '33.3333%', minWidth: '33.3333%' }}
+                >
+                  {presetList[chosenPreset][item].name !== ''
+                    ? presetList[chosenPreset][item].name
+                    : (presetList[chosenPreset][item].frequency / 1000).toFixed(1)}
+                </ToggleButton>
+              )
+            })
+          ) : (
+            <Typography>
+              Loading Stations: {JSON.stringify(presetList![chosenPreset])} station:
+              {chosenStation}
+            </Typography>
+          )}
+        </ToggleButtonGroup>
       </Grid>
       <Grid xs={12} sx={{ flexGrow: 0, height: 0.1 }}>
         <AmFmAudioControls sendMessage={() => console.log('send message')} />
       </Grid>
-      <Modal
-        aria-labelledby="transition-modal-title"
-        aria-describedby="transition-modal-description"
-        open={autoStore}
-        // closeAfterTransition
-        // slots={{ backdrop: Backdrop }}
-        // slotProps={{
-        //     backdrop: {
-        //         timeout: 500,
-        //     },
-        // }}
-      >
-        {/*<Slide direction={"up"} in={volume !== prevVolume}>*/}
-        <Box sx={style}>
-          <Typography>Auto Store In Progress</Typography>
-          <CircularProgress />
-          <Typography>{frequency}</Typography>
-        </Box>
-        {/*</Slide>*/}
-      </Modal>
     </Grid>
+    // <Modal
+    //   aria-labelledby="transition-modal-title"
+    //   aria-describedby="transition-modal-description"
+    //   open={autoStore}
+    //   // closeAfterTransition
+    //   // slots={{ backdrop: Backdrop }}
+    //   // slotProps={{
+    //   //     backdrop: {
+    //   //         timeout: 500,
+    //   //     },
+    //   // }}
+    // >
+    //   {/*<Slide direction={"up"} in={volume !== prevVolume}>*/}
+    //   <Box sx={style}>
+    //     <Typography>Auto Store In Progress</Typography>
+    //     <CircularProgress />
+    //     <Typography>{frequency}</Typography>
+    //   </Box>
+    //   {/*</Slide>*/}
+    // </Modal>
   )
 }
 

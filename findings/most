@@ -45,4 +45,76 @@ response serial number
 
 
 
+e19 subscription
+FktID: 0e19
+OpType: 0c
+SourceAddress: 0161
+Data: 00c80fa
+
+
+
+
+
+ParkingFail?
+FBlockID: 05
+InstanceID: d1
+FktID: 0da0 or 0da1
+OpType: 02
+SourceAddress: 0161
+Data: 41000
+
+c81 -> data 0x00 audio on for current thing
+c81 -> data 0x02 audio off for current thing
+
+Parking sensor display
+{
+   var _loc1_ = newVal;
+   var _loc2_ = _global;
+   var _loc3_ = varName;
+   if(_loc1_ == 30)
+   {
+      _loc2_[_loc3_] = 1;
+   }
+   else if(_loc1_ == 34 || _loc1_ == 38)
+   {
+      _loc2_[_loc3_] = 2;
+   }
+   else if(_loc1_ == 42 || _loc1_ == 46)
+   {
+      _loc2_[_loc3_] = 3;
+   }
+   else if(_loc1_ == 50 || _loc1_ == 54 || _loc1_ == 58 || _loc1_ == 62)
+   {
+      _loc2_[_loc3_] = 4;
+   }
+   else if(_loc1_ == 66 || _loc1_ == 70 || _loc1_ == 74 || _loc1_ == 78)
+   {
+      _loc2_[_loc3_] = 5;
+   }
+   else if(_loc1_ == 82 || _loc1_ == 86 || _loc1_ == 90 || _loc1_ == 94 || _loc1_ == 98)
+   {
+      _loc2_[_loc3_] = 6;
+   }
+   else if(_loc1_ == 102 || _loc1_ == 106 || _loc1_ == 110 || _loc1_ == 114 || _loc1_ == 118 || _loc1_ == 122)
+   {
+      _loc2_[_loc3_] = 7;
+   }
+   else if(_loc1_ == 126 || _loc1_ == 130 || _loc1_ == 134 || _loc1_ == 138 || _loc1_ == 142 || _loc1_ == 146 || _loc1_ == 150)
+   {
+      _loc2_[_loc3_] = 8;
+   }
+   else if(_loc1_ > 150)
+   {
+      _loc2_[_loc3_] = 9;
+   }
+   _root.pop_up_info_mc.popup_refresh.call();
+   return _loc1_;
+}
+
+Low battery FBlockID: f5
+            InstanceID: 01
+            FktID: 0e24
+            OpType: 0c
+            SourceAddress: 0161
+            Data: 010000000000000000000000
 

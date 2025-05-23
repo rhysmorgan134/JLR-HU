@@ -32,6 +32,8 @@ import Climate from './components/mediaComponents/Climate/Climate'
 import ParkingSensors from './components/mediaComponents/Parking/ParkingSensors'
 import Header from './components/dataDisplays/Header'
 import './App.css'
+import ScreenSaver from './components/mediaComponents/ScreenSaver'
+import AmFmTunerPage from './components/mediaComponents/AmFm/AmFmTunerPage'
 
 const ColorModeContext = createContext({ toggleColorMode: () => {} })
 
@@ -216,7 +218,8 @@ function App() {
               <Route path={'/climate'} element={<Climate />} />
               <Route path={'/camera'} element={<Camera settings={settings!} />} />
               <Route path={'/audioDiskPlayer'} element={<AudioDiskPlayerPage />} />
-              <Route path={'/amFmTuner'} element={<AmFmTuner />} />
+              <Route path={'/amFmTuner'} element={<AmFmTunerPage />} />
+              <Route path={'/screensaver'} element={<ScreenSaver />} />
               <Route path={'/audioSettings'} element={<AudioSettings />} />
             </Routes>
             <Modal open={reverse} onClick={() => setReverse(false)}>

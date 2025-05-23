@@ -2,6 +2,7 @@ import { Action, ExtraConfig } from './Globals'
 import { Server } from 'socket.io'
 import { EventEmitter } from 'events'
 import { messages } from 'socketmost'
+import { UsbSettings } from 'socketmost/dist/modules/Messages'
 
 export enum MessageNames {
   Connection = 'connection',
@@ -60,6 +61,11 @@ export class Socket extends EventEmitter {
       socket.on('carplaySwitch', () => {
         this.emit('carplaySwitch')
       })
+
+      socket.on('saveSettings', (settings: UsbSettings) => {
+        console.log('saving settings in socket', settings)
+        this.emit('saveSettings', settings)
+      })
     })
 
     this.io.listen(4000)
@@ -79,5 +85,15 @@ export class Socket extends EventEmitter {
 
   sendStatusUpdate(type: string, data: object) {
     this.io.emit(type, data)
+  }
+
+  sendMostSettings(settings: UsbSettings) {
+    console.log('sending most settings')
+    this.io.emit('usbSettings', settings)
+  }
+
+  sendScreensaver(screensaver: boolean) {
+    console.log('screensaver', screensaver)
+    this.io.emit('screensaver', screensaver)
   }
 }

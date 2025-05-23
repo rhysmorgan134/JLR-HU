@@ -59,6 +59,7 @@ import {
   PASSIVE_ARMING,
   TWO_STAGE_UNLOCKING
 } from '../../../main/PiMostFunctions/CanGateway/CanGatewayTypes'
+import { UsbSettings } from 'socketmost/dist/modules/Messages'
 
 interface CanGatewayStore {
   newSwitch: (source: string) => void
@@ -72,6 +73,15 @@ interface CanGatewayStore {
   setGlobalWindowsClose: (enabled: boolean) => void
   setMirrorFoldBack: (enabled: boolean) => void
   setMirrorDip: (enabled: boolean) => void
+  screensaver: boolean
+}
+
+export interface MostSettings {
+  usb: boolean
+  manualIp: boolean
+  ip: string
+  usbSettings: UsbSettings
+  saveSettings: (settings: UsbSettings) => void
 }
 
 interface CarplayStore {
@@ -184,6 +194,8 @@ export const useCanGatewayStore = create<CanGatewayStore & CanGatewayStatus>()((
   twoStageLocking: false,
   alarmSensors: false,
   mirrorDip: false,
+  screensaver: false,
+  lowBattery: false,
   avgMpg: 0,
   range: 0,
   distance: 0,
@@ -234,6 +246,45 @@ export const useCanGatewayStore = create<CanGatewayStore & CanGatewayStatus>()((
   },
   setMirrorDip: (enabled) => {
     socket.emit('action', MIRROR_DIP(enabled, useCanGatewayStore.getState().mirrorFoldBack))
+  }
+}))
+
+export const useMostSettings = create<MostSettings>()((set) => ({
+  usb: false,
+  manualIp: false,
+  ip: '',
+  usbSettings: {
+    version: '',
+    standalone: false,
+    autoShutdown: false,
+    customShutdown: false,
+    auxPower: false,
+    forty8Khz: false,
+    spare3: false,
+    spare4: false,
+    spare5: false,
+    nodeAddressHigh: 0,
+    nodeAddressLow: 0,
+    groupAddress: 0,
+    shutdownTimeDelay: 0,
+    startupTimeDelay: 0,
+    customShutdownMessage: {
+      fblockId: 0,
+      fktId: 0,
+      optype: 0,
+      data: []
+    },
+    amplifier: {
+      fblockId: 0,
+      targetAddressHigh: 0,
+      targetAddressLow: 0,
+      instanceId: 0,
+      sinkNumber: 0
+    }
+  },
+  saveSettings: (settings: UsbSettings) => {
+    console.log('saving settings in store', settings)
+    socket.emit('saveSettings', settings)
   }
 }))
 
@@ -533,4 +584,16 @@ socket.on('climateFullUpdate', (data) => {
 
 socket.on('reverse', (data) => {
   useCarplayStore.setState(() => ({ reverse: data }))
+})
+
+socket.on('screensaver', (screensaver) => {
+  console.log('screensaver', screensaver)
+  useCanGatewayStore.setState(() => ({ screensaver: screensaver }))
+  console.log(useCanGatewayStore.getState())
+})
+
+socket.on('usbSettings', (data) => {
+  console.log('settings in store')
+  useMostSettings.setState(() => ({ usbSettings: data }))
+  console.log(useMostSettings.getState())
 })
