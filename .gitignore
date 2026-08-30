@@ -20,3 +20,4 @@ dist
 out
 *.log*
 >>>>>>> origin/v4
+/.*-audit.json

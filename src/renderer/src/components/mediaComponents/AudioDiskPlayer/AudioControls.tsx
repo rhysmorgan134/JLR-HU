@@ -63,7 +63,10 @@ export default function AudioControls() {
     e.preventDefault()
   }
 
-  const setShuffle = () => {
+  const setShuffle = (e) => {
+    e.nativeEvent.stopPropagation()
+    e.stopPropagation()
+    e.preventDefault()
     switch (shuffle) {
       case 'off':
         setRandom('disk')
@@ -81,7 +84,7 @@ export default function AudioControls() {
     switch (shuffle) {
       case 'off':
         return (
-          <IconButton onClick={() => setShuffle()}>
+          <IconButton onClick={() => setShuffle(e)}>
             <ShuffleIcon fontSize={'large'} />
           </IconButton>
         )
@@ -148,17 +151,47 @@ export default function AudioControls() {
       sx={{ display: 'flex', justifyContent: 'space-around', flexDirection: 'row' }}
       id={'AudioControls'}
     >
-      <IconButton onClick={() => prevTrack()}>
+      <IconButton
+        onClick={(e) => {
+          prevTrack()
+          e.nativeEvent.stopPropagation()
+          e.stopPropagation()
+          e.preventDefault()
+        }}
+      >
         <FastRewindIcon fontSize={'large'} />
       </IconButton>
       <IconButton>
         {deckState === 'Play' ? (
-          <PauseIcon fontSize={'large'} onClick={(e) => pause()} />
+          <PauseIcon
+            fontSize={'large'}
+            onClick={(e) => {
+              pause()
+              e.nativeEvent.stopPropagation()
+              e.stopPropagation()
+              e.preventDefault()
+            }}
+          />
         ) : (
-          <PlayArrowIcon fontSize={'large'} onClick={(e) => play()} />
+          <PlayArrowIcon
+            fontSize={'large'}
+            onClick={(e) => {
+              play()
+              e.nativeEvent.stopPropagation()
+              e.stopPropagation()
+              e.preventDefault()
+            }}
+          />
         )}
       </IconButton>
-      <IconButton onClick={() => nextTrack()}>
+      <IconButton
+        onClick={(e) => {
+          nextTrack()
+          e.nativeEvent.stopPropagation()
+          e.stopPropagation()
+          e.preventDefault()
+        }}
+      >
         <FastForwardIcon fontSize={'large'} />
       </IconButton>
       {width > 500 ? renderShuffle() : null}

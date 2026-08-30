@@ -1,4 +1,5 @@
 import { SocketMostUsb, messages, JlrAudioControl, UsbServer } from 'socketmost'
+
 import { MessageNames, Socket } from './Socket'
 import { AudioDiskPlayer } from './PiMostFunctions/AudioDiskPlayer/AudioDiskPlayer'
 import { AmFmTuner } from './PiMostFunctions/AmFm/AmFmTuner'
@@ -9,7 +10,7 @@ import { Amplifier } from './PiMostFunctions/Amplifier/Amplifier'
 import { CanGateway } from './PiMostFunctions/CanGateway/CanGateway'
 import { Climate } from './PiMostFunctions/Climate/Climate'
 import winston from 'winston'
-import { ModuleSingle, UsbSettings } from 'socketmost/dist/modules/Messages'
+import { ModuleSingle, UsbSettings } from 'socketmost'
 
 const { Os8104Events } = messages
 
@@ -239,7 +240,7 @@ export class PiMost {
           this.jlrAudioControl.switchSource(sourceMap[source])
         })
 
-        this.socketMostClient.on(Os8104Events.Locked, () => {
+        this.socketMostClient.on(Os8104Events.Unocked, () => {
           this.logger.debug('network locked waiting stability')
           this.socketMostClient.getSettings()
           if (this.stabilityTimeout) clearTimeout(this.stabilityTimeout)
@@ -248,7 +249,7 @@ export class PiMost {
           }, 3000)
         })
 
-        this.socketMostClient.on(Os8104Events.Unlocked, () => {
+        this.socketMostClient.on(Os8104Events.Locked, () => {
           this.logger.warn('unlocked')
           if (this.stabilityTimeout) {
             clearTimeout(this.stabilityTimeout)
@@ -257,6 +258,8 @@ export class PiMost {
             clearInterval(this.sourcesInterval)
           }
         })
+
+        this.socketMostClient.sendCheckForLock()
 
         this.socketMostClient.on(
           Os8104Events.SocketMostMessageRxEvent,

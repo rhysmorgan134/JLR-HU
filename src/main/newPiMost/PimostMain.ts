@@ -1,0 +1,208 @@
+import { SocketMostUsb } from 'socketmost'
+import { Os8104Events } from 'socketmost'
+import {
+  AmFmTuner,
+  Amplifier,
+  AudioControl,
+  AudioDiskPlayer,
+  AuxInput,
+  CanGateway,
+  Carplay,
+  DabTuner,
+  Diagnostics,
+  HMI,
+  NetBlock,
+  NetworkMaster,
+  Satellite,
+  Telephone,
+  TvTuner
+} from './FBlocks'
+import winston from 'winston'
+import { Socket } from '../Socket'
+
+export class PimostMain {
+  socketmost: SocketMostUsb
+  netblock: NetBlock
+  hmi: HMI
+  auxInput: AuxInput
+  audioDiskPlayer: AudioDiskPlayer
+  carplay: Carplay
+  telephone: Telephone
+  tvTuner: TvTuner
+  satellite: Satellite
+  dabTuner: DabTuner
+  amFmTuner: AmFmTuner
+  diagnostics: Diagnostics
+  audioControl: AudioControl
+  amplifier: Amplifier
+  canGateway: CanGateway
+  networkMaster: NetworkMaster
+  logger: winston.Logger
+  socket: Socket
+  constructor(socket: Socket) {
+    this.socket = socket
+    this.logger = winston.loggers.get('pimost')
+    this.logger.debug('pimost starting')
+    this.socketmost = new SocketMostUsb()
+    this.netblock = new NetBlock([], this.socketmost, false, socket)
+    this.hmi = new HMI([], this.socketmost, false, socket)
+    this.auxInput = new AuxInput([], this.socketmost, false, socket)
+    this.audioDiskPlayer = new AudioDiskPlayer([], this.socketmost, false, socket)
+    this.carplay = new Carplay([], this.socketmost, false, socket)
+    this.telephone = new Telephone([], this.socketmost, false, socket)
+    this.tvTuner = new TvTuner([], this.socketmost, false, socket)
+    this.satellite = new Satellite([], this.socketmost, false, socket)
+    this.dabTuner = new DabTuner([], this.socketmost, false, socket)
+    this.amFmTuner = new AmFmTuner([], this.socketmost, false, socket)
+    this.diagnostics = new Diagnostics([], this.socketmost, false, socket)
+    this.audioControl = new AudioControl([], this.socketmost, false, socket)
+    this.amplifier = new Amplifier([], this.socketmost, false, socket)
+    this.canGateway = new CanGateway([], this.socketmost, true, socket)
+    this.networkMaster = new NetworkMaster([], this.socketmost, false, socket)
+
+    this.socket.on('newConnection', () => {
+      this.socket.sendStatusUpdate('AmFmTuner', this.amFmTuner.status)
+      this.socket.sendStatusUpdate('AudioDiskPlayer', this.audioDiskPlayer.status)
+      this.socket.sendStatusUpdate('AudioControl', this.audioControl.status)
+      this.socket.sendStatusUpdate('HMI', this.hmi.status)
+    })
+
+    this.socketmost.on('opened', () => {
+      this.logger.info('socket most connected')
+    })
+
+    this.socketmost.on(Os8104Events.MessageSent, (data) => {
+      console.log(data)
+      this.logger.info('message sent' + data)
+    })
+
+    this.socket.on('button', (data) => {
+      this.logger.info('button received ' + JSON.stringify(data))
+      if ('args' in data) {
+        this[data['device']][data['function']](data['args'])
+      } else {
+        this[data['device']][data['function']]()
+      }
+    })
+
+    this.socket.on('setSource', (data) => {
+      console.log('SWITCHING - ' + data)
+      switch (data) {
+        case 'AudioDiskPlayer':
+          if (!(this.audioControl.currentSource instanceof AudioDiskPlayer)) {
+            this.audioControl.switchSource(this.audioDiskPlayer)
+          }
+          break
+        case 'AmFmTuner':
+          this.logger.info(typeof this.audioControl.currentSource)
+          if (!(this.audioControl.currentSource instanceof AmFmTuner)) {
+            this.audioControl.switchSource(this.amFmTuner)
+          } else {
+            this.logger.info('AMFmTuner not connected')
+          }
+          break
+      }
+    })
+
+    this.hmi.on('HMIShutdown', () => {
+      this.audioControl.stopPlayback()
+    })
+
+    this.hmi.on('HMIActive', () => {
+      setTimeout(() => this.audioControl.startVolumeUpdates(), 500)
+    })
+
+    this.socketmost.on(Os8104Events.SocketMostMessageRxEvent, (message) => {
+      this.logger.info(`message received ${this.convertMessageToHex(message)}`)
+      switch (message.fBlockID) {
+        case 0x01:
+          this.logger.info('sending fblock')
+          this.netblock.checkMessage(message)
+          break
+        case 0x10:
+          this.hmi.checkMessage(message)
+          break
+        case 0x24:
+          this.auxInput.checkMessage(message)
+        case 0x31:
+          if (message.instanceID === 0xa1 || message.instanceID === 0x2) {
+            this.audioDiskPlayer.checkMessage(message)
+          } else {
+            this.carplay.checkMessage(message)
+          }
+          break
+        case 0x50:
+          this.telephone.checkMessage(message)
+          break
+        case 0x42:
+          this.tvTuner.checkMessage(message)
+          break
+        case 0x44:
+          this.satellite.checkMessage(message)
+          break
+        case 0x43:
+          this.dabTuner.checkMessage(message)
+          break
+        case 0x40:
+          this.amFmTuner.checkMessage(message)
+          break
+        case 0x06:
+          this.diagnostics.checkMessage(message)
+          break
+        case 0xf0:
+          this.audioControl.checkMessage(message)
+          break
+        case 0x22:
+          this.amplifier.checkMessage(message)
+          break
+        case 0x02:
+          this.networkMaster.checkMessage(message)
+          break
+        // case 0xf0:
+        //   this.canGateway.checkMessage(message)
+        default:
+          this.logger.error('unhandled fblock: ' + this.convertMessageToHex(message))
+      }
+    })
+
+    // setTimeout(() => {
+    //   this.logger.info('beginning switchcdplayer')
+    //   this.audioControl.switchSource(this.audioDiskPlayer)
+    // }, 10000)
+    //
+    // setInterval(() => {
+    //   this.logger.info('beginning switch amfm')
+    //   this.audioControl.switchSource(this.amFmTuner)
+    //   setTimeout(() => {
+    //     this.logger.info('beginning switchcdplayer')
+    //     this.audioControl.switchSource(this.audioDiskPlayer)
+    //   }, 10000)
+    // }, 20000)
+
+    // setTimeout(() => {
+    //   this.logger.info('beginning switch')
+    //   this.audioControl.switchSource(this.audioDiskPlayer)
+    //   // setTimeout(() => {
+    //   //   this.logger.info('beginning switch2')
+    //   //   this.audioControl.switchSource(this.audioDiskPlayer)
+    //   // }, 10000)
+    //   // setTimeout(() => {
+    //   //   this.amFmTuner.autostore()
+    //   // }, 5000)
+    // }, 10000)
+  }
+
+  convertMessageToHex(message) {
+    let out = {}
+    for (const [key, value] of Object.entries(message)) {
+      if (typeof value === 'number') {
+        out[key] = '0x' + value.toString(16)
+      }
+    }
+    out['data'] = []
+    message.data.forEach((v) => {
+      out['data'].push('0x' + v.toString(16))
+    })
+    return JSON.stringify(out)
+  }
+}

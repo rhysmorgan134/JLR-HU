@@ -2,7 +2,7 @@ import { Action, ExtraConfig } from './Globals'
 import { Server } from 'socket.io'
 import { EventEmitter } from 'events'
 import { messages } from 'socketmost'
-import { UsbSettings } from 'socketmost/dist/modules/Messages'
+import { UsbSettings } from 'socketmost'
 
 export enum MessageNames {
   Connection = 'connection',
@@ -66,6 +66,14 @@ export class Socket extends EventEmitter {
         console.log('saving settings in socket', settings)
         this.emit('saveSettings', settings)
       })
+
+      socket.on('button', (data) => {
+        this.emit('button', data)
+      })
+
+      socket.on('setSource', (data) => {
+        this.emit('setSource', data)
+      })
     })
 
     this.io.listen(4000)
@@ -84,6 +92,7 @@ export class Socket extends EventEmitter {
   }
 
   sendStatusUpdate(type: string, data: object) {
+    console.log('emitting', type, data)
     this.io.emit(type, data)
   }
 
@@ -95,5 +104,9 @@ export class Socket extends EventEmitter {
   sendScreensaver(screensaver: boolean) {
     console.log('screensaver', screensaver)
     this.io.emit('screensaver', screensaver)
+  }
+
+  sendToRoom(room: string, data: Object, type: string, value: boolean | number | string | object) {
+    this.io.to(room).emit(type, value)
   }
 }

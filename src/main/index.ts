@@ -4,7 +4,8 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { DEFAULT_CONFIG } from 'node-carplay/node'
 import { Socket } from './Socket'
 import * as fs from 'fs'
-import { PiMost } from './PiMost'
+// import { PiMost } from './PiMost'
+import { PimostMain } from './newPiMost/PimostMain'
 
 import { ExtraConfig, KeyBindings } from './Globals'
 import './log'
@@ -42,7 +43,8 @@ const EXTRA_CONFIG: ExtraConfig = {
 }
 
 let config: ExtraConfig = EXTRA_CONFIG
-let piMost: null | PiMost
+// let piMost: null | PiMost
+let piMost: null | PimostMain
 let canbus: null
 
 let socket: null | Socket
@@ -71,7 +73,8 @@ fs.stat(configPath, (err) => {
   if (config.most) {
     console.log('creating pi most in main')
   }
-  piMost = new PiMost(socket)
+  // piMost = new PiMost(socket)
+  piMost = new PimostMain(socket)
   if (config.canbus) {
   }
 })

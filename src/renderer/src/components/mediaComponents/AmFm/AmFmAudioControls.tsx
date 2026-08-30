@@ -3,13 +3,13 @@ import FastRewindIcon from '@mui/icons-material/FastRewind'
 import FastForwardIcon from '@mui/icons-material/FastForward'
 import IconButton from '@mui/material/IconButton'
 import { useEffect, useState } from 'react'
-import { useStatusStore } from '../../../Store'
-import { useAmFmStore } from '../../../store/store'
+// import { useStatusStore } from '../../../Store'
+import { useAmFmTunerStore } from '../../../store/store'
 
 export default function AmFmAudioControls({ sendMessage }) {
   const [width, setWidth] = useState(100)
   const [height, setHeight] = useState(100)
-  const [seekForward, seekBack] = useAmFmStore((state) => [state.seekForward, state.seekBack])
+  const [seekForward, seekBack] = useAmFmTunerStore((state) => [state.seekForward, state.seekBack])
   //socket.emit("runFkt", {address: selectedFunction, type: chosenType.split("_")[0], instance: chosenType.split("_")[1], functionName: alignment})
 
   useEffect(() => {

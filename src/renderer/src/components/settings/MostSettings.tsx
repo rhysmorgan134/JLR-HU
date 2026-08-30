@@ -2,7 +2,7 @@ import React from 'react'
 import Grid from '@mui/material/Unstable_Grid2'
 import { Chip, Dialog, DialogContent, FormControlLabel, Switch, TextField } from '@mui/material'
 import { useMostSettings } from '../../store/store'
-import { UsbSettings } from 'socketmost/dist/modules/Messages'
+import { UsbSettings } from 'socketmost'
 import Button from '@mui/material/Button'
 import CustomShutdown from './CustomShutdown'
 

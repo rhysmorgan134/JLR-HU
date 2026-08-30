@@ -2,11 +2,13 @@ import Grid from '@mui/material/Unstable_Grid2'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import { Backdrop, Modal, Slide, Stack } from '@mui/material'
-import { ExitToApp } from '@mui/icons-material'
+import { ExitToApp, Memory } from '@mui/icons-material'
 import React from 'react'
 import AudioSettings from './mediaComponents/Amplifier/AudioSettings'
 import { useNavigate } from 'react-router-dom'
-import { useCarplayStore } from '../store/store'
+import { useAudioControlStore, useCarplayStore } from '../store/store'
+import RadioIcon from '@mui/icons-material/Radio'
+import AlbumIcon from '@mui/icons-material/Album'
 
 const style = {
   position: 'absolute',
@@ -22,10 +24,13 @@ const style = {
   overflow: 'scroll'
 }
 
-export default function Launcher() {
-  const [openSettings, setOpenSettings] = React.useState(false)
-  const setShowSettings = useCarplayStore((state) => state.setShowSettings)
-  const navigate = useNavigate()
-
-  return <div></div>
+export default function SourceSelection() {
+  const [setSource] = useAudioControlStore((state) => [state.setSource])
+  return (
+    <div>
+      <RadioIcon onClick={() => setSource('AmFmTuner')}></RadioIcon>
+      <AlbumIcon onClick={() => setSource('AudioDiskPlayer')}></AlbumIcon>
+      <Memory></Memory>
+    </div>
+  )
 }

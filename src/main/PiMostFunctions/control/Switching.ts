@@ -1,5 +1,5 @@
 import { messages, SocketMostClient, SocketMostUsb } from 'socketmost'
-import { Os8104Events, SocketMostSendMessage, Stream } from 'socketmost/dist/modules/Messages'
+import { Os8104Events, SocketMostSendMessage, Stream } from 'socketmost'
 import { sourceMap, SourceRecord } from '../../Globals'
 import EventEmitter from 'events'
 import winston from 'winston'

@@ -1,254 +1,387 @@
-import Grid from '@mui/material/Unstable_Grid2'
-import Box from '@mui/material/Box'
-import Title from '../Common/Title'
-import Typography from '@mui/material/Typography'
-import { useEffect, useState } from 'react'
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
-import ToggleButton from '@mui/material/ToggleButton'
-import ReplyIcon from '@mui/icons-material/Reply'
-import AmFmAudioControls from './AmFmAudioControls'
-import Button from '@mui/material/Button'
-import { CircularProgress, IconButton, Modal } from '@mui/material'
-import useLongPress from '../../hooks/useLongPress'
-import { useAmFmStore } from '../../../store/store'
+import { Box, Button, Paper, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import FastRewindIcon from '@mui/icons-material/FastRewind'
+import FastForwardIcon from '@mui/icons-material/FastForward'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-const style = {
-  position: 'absolute',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: 400,
-  bgcolor: 'background.paper',
-  border: '2px solid #000',
-  boxShadow: 24,
-  p: 4,
-  display: 'flex',
-  justifyContent: 'center',
-  alignContent: 'center',
-  alignItems: 'center',
-  flexDirection: 'column'
+import { useAmFmTunerStore } from '../../../store/store'
+
+type Preset = { stationName: string; frequency: number }
+
+function PresetButton({
+  number,
+  station,
+  onSelect,
+  onSave
+}: {
+  number: number
+  station?: Preset
+  onSelect: () => void
+  onSave: () => void
+}) {
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const longPressTriggered = useRef(false)
+
+  const startHold = () => {
+    longPressTriggered.current = false
+    holdTimer.current = setTimeout(() => {
+      longPressTriggered.current = true
+      onSave()
+    }, 650)
+  }
+
+  const cancelHold = () => {
+    if (holdTimer.current) clearTimeout(holdTimer.current)
+    holdTimer.current = null
+  }
+
+  return (
+    <Button
+      variant="outlined"
+      onPointerDown={startHold}
+      onPointerUp={cancelHold}
+      onPointerLeave={cancelHold}
+      onPointerCancel={cancelHold}
+      onClick={() => {
+        if (!longPressTriggered.current) onSelect()
+        longPressTriggered.current = false
+      }}
+      sx={{
+        minWidth: 0,
+        minHeight: 64,
+        width: '100%',
+        height: '100%',
+        p: 0.5,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        lineHeight: 1,
+        color: 'common.white',
+        border: '1px solid',
+        borderColor: 'rgba(255, 255, 255, 0.28)',
+        backgroundColor: 'rgba(255, 255, 255, 0.06)',
+        '&:hover': {
+          borderColor: 'rgba(255, 255, 255, 0.5)',
+          backgroundColor: 'rgba(255, 255, 255, 0.12)'
+        }
+      }}
+    >
+      <Typography sx={{ fontSize: 18, fontWeight: 600 }}>{number}</Typography>
+      {station && (
+        <>
+          <Typography
+            sx={{
+              fontSize: 12,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              maxWidth: '100%'
+            }}
+          >
+            {station.stationName || '---'}
+          </Typography>
+          <Typography sx={{ fontSize: 11 }}>
+            {station.frequency ? `${(station.frequency / 1000).toFixed(1)} MHz` : '---'}
+          </Typography>
+        </>
+      )}
+    </Button>
+  )
 }
 
 function AmFmTuner() {
-  const currentPreset = useAmFmStore((state) => state.chosenPreset)
-  const frequency = useAmFmStore((state) => state.frequency)
-  const presetList = useAmFmStore((state) => state.presetList)
-  const currentStation = useAmFmStore((state) => state.currentStation)
-  const autoStore = useAmFmStore((state) => state.autoStore)
-  const [getPresets, startAutoStore, setPresetGroup, changeStation, saveStation] = useAmFmStore(
-    (state) => [
-      state.getPresets,
-      state.startAutoStore,
-      state.setPresetGroup,
-      state.changeStation,
-      state.saveStation
-    ]
-  )
-  // const setAutoStore = useStatusStore(state => state.setAutoStore)
-  const [chosenPreset, setChosenPreset] = useState(1)
-  const [chosenStation, setChosenStation] = useState(1)
   const navigate = useNavigate()
-  //console.log(presetList)
-  const fmMap = {
-    1: 'fm1',
-    2: 'fm2',
-    3: 'am'
-  }
-  const fmReverseMap = {
-    fm1: 1,
-    fm2: 2,
-    am: 3
-  }
+
+  const [
+    frequency,
+    selectedBank,
+    radioText,
+    nowPlaying,
+    fm1,
+    fm2,
+    am,
+    seekForward,
+    seekBack,
+    setTunerType,
+    autostore,
+    getPresets,
+    selectPreset,
+    savePreset
+  ] = useAmFmTunerStore((state) => [
+    state.frequency,
+    state.selectedBank,
+    state.radioText,
+    state.nowPlaying,
+    state.fm1,
+    state.fm2,
+    state.am,
+    state.seekForward,
+    state.seekBack,
+    state.setTunerType,
+    state.autostore,
+    state.getPresets,
+    state.selectPreset,
+    state.savePreset
+  ])
 
   useEffect(() => {
     getPresets()
-  }, [])
+  }, [getPresets])
 
-  useEffect(() => {
-    if (frequency) {
-      console.log(presetList?.[chosenPreset])
-      if (presetList?.[chosenPreset]) {
-        Object.keys(presetList[chosenPreset]).forEach((k) => {
-          console.log(presetList[chosenPreset][k].frequency, frequency)
-          if (presetList[chosenPreset][k].frequency === frequency) {
-            console.log(presetList[currentPreset][k])
-            setChosenStation(k)
-          }
-        })
-      }
-    }
-  }, [frequency])
+  const currentBank = selectedBank as 'fm1' | 'fm2' | 'am'
 
-  const chooseStation = (_data, alignment) => {
-    console.log('change station to: ', chosenPreset, alignment)
-    changeStation(chosenPreset, alignment)
-  }
+  const presets = currentBank === 'fm1' ? fm1 : currentBank === 'fm2' ? fm2 : am
 
-  // const autoStoreStart = () => {
-  //     setAutoStore(true)
-  //     preSendMessage('autoStore')
-  // }
+  const changeTuner = (_event, value) => {
+    if (!value) return
 
-  const onLongPress = (data) => {
-    saveStation(chosenPreset, data.target.value)
-    console.log('longpress', chosenPreset, data.target.value)
-    // preSendMessage('savePreset', [chosenPreset, parseInt(data.target.value)])
-  }
-
-  const setPresetGroupPreSend = (data) => {
-    console.log(chosenPreset, data.target.value)
-    if (chosenPreset !== data.target.value) {
-      setPresetGroup(chosenPreset, data.target.value)
-      setChosenPreset(fmReverseMap[data.target.value])
+    if (value === 'fma') {
+      autostore()
+    } else {
+      setTunerType(value)
     }
   }
 
-  const onClick = () => {
-    console.log('click is triggered')
+  const returnHome = () => {
+    navigate('/home')
   }
 
-  const defaultOptions = {
-    shouldPreventDefault: true,
-    delay: 500
-  }
+  const formatFrequency = () => {
+    if (frequency == null) return '---.-'
 
-  const longPressEvent = useLongPress(onLongPress, onClick, defaultOptions)
+    return (frequency / 1000).toFixed(1)
+  }
 
   return (
-    <Grid
-      container
-      direction={'column'}
-      id={'AudioDiskPlayer'}
-      sx={{ height: '100%', flexGrow: 0 }}
+    <Box
+      sx={{
+        height: '100%',
+        width: '100%',
+        overflow: 'hidden',
+        boxSizing: 'border-box',
+        p: 1.5,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 1.5
+      }}
     >
-      {/*<Grid xs={12} sx={{ height: 0.1 }}>*/}
-      {/*  <Button*/}
-      {/*    variant={'contained'}*/}
-      {/*    onClick={startAutoStore}*/}
-      {/*    sx={{*/}
-      {/*      maxWidth: '150px',*/}
-      {/*      marginLeft: 'auto',*/}
-      {/*      marginRight: 'auto',*/}
-      {/*      marginBottom: '1rem'*/}
-      {/*    }}*/}
-      {/*  >*/}
-      {/*    Auto Store*/}
-      {/*  </Button>*/}
-      {/*</Grid>*/}
-      {/*{renderDeck()}*/}
-      <Grid xs={12} sx={{ height: 0.1 }}>
-        <ToggleButtonGroup
-          exclusive
-          fullWidth={true}
-          value={fmMap[1]}
-          onChange={setPresetGroupPreSend}
-        >
-          <ToggleButton
-            value="fm1"
-            aria-label="left aligned"
-            sx={{ width: '25%', minWidth: '25%' }}
-          >
-            FM1
-          </ToggleButton>
-          <ToggleButton value="fm2" aria-label="centered" sx={{ width: '25%', minWidth: '25%' }}>
-            FM2
-          </ToggleButton>
-          <ToggleButton
-            value="am"
-            aria-label="right aligned"
-            sx={{ width: '25%', minWidth: '25%' }}
-          >
-            AM
-          </ToggleButton>
-          <ToggleButton
-            value="fma"
-            aria-label="right aligned"
-            sx={{ width: '25%', minWidth: '25%' }}
-          >
-            AutoStore
-          </ToggleButton>
-        </ToggleButtonGroup>
-      </Grid>
-      <Grid
-        container
-        xs={12}
+      {/* Header */}
+      <Box
         sx={{
+          height: 55,
+          minHeight: 55,
           display: 'flex',
-          flexGrow: 0,
-          marginRight: '1rem',
-          justifyContent: 'space-around',
-          height: 0.2
+          alignItems: 'center'
         }}
       >
-        <Grid xs={4}>
-          <Title type={'radio'} title={'No Text'} />
-        </Grid>
-        <Grid xs={4}>
-          <Title type={'song'} title={currentStation ? currentStation : 'No Text'} />
-        </Grid>
-        <Grid xs={4}>
-          <Title type={'frequency'} title={`Frequency ${(frequency / 1000).toFixed(1)}`} />
-        </Grid>
-      </Grid>
-      <Grid container xs={12} sx={{ display: 'flex', height: 0.6 }}>
-        <ToggleButtonGroup
-          // value={alignment}
-          exclusive
-          onChange={chooseStation}
-          aria-label="text alignment"
-          sx={{ flexWrap: 'wrap', height: '100%' }}
-          size={'large'}
-          fullWidth={true}
-          value={1}
+        <ArrowBackIcon
+          onClick={returnHome}
+          sx={{
+            fontSize: 42,
+            mr: 2,
+            cursor: 'pointer'
+          }}
+        />
+
+        <Typography
+          sx={{
+            fontSize: 32,
+            fontWeight: 600
+          }}
         >
-          {presetList?.[chosenPreset]?.[chosenStation] ? (
-            Object.keys(presetList[chosenPreset]).map((item) => {
-              return (
-                <ToggleButton
-                  value={item}
-                  {...longPressEvent}
-                  aria-label="left aligned"
-                  sx={{ width: '33.3333%', minWidth: '33.3333%' }}
-                >
-                  {presetList[chosenPreset][item].name !== ''
-                    ? presetList[chosenPreset][item].name
-                    : (presetList[chosenPreset][item].frequency / 1000).toFixed(1)}
-                </ToggleButton>
-              )
-            })
-          ) : (
-            <Typography>
-              Loading Stations: {JSON.stringify(presetList![chosenPreset])} station:
-              {chosenStation}
+          Radio
+        </Typography>
+      </Box>
+
+      {/* Bank selector */}
+      <ToggleButtonGroup
+        exclusive
+        fullWidth
+        value={currentBank}
+        onChange={changeTuner}
+        sx={{
+          height: 60,
+          minHeight: 60,
+
+          '& .MuiToggleButton-root': {
+            fontSize: 20,
+            fontWeight: 600
+          }
+        }}
+      >
+        <ToggleButton value="fm1">FM1</ToggleButton>
+
+        <ToggleButton value="fm2">FM2</ToggleButton>
+
+        <ToggleButton value="am">AM</ToggleButton>
+
+        <ToggleButton value="fma">AUTO</ToggleButton>
+      </ToggleButtonGroup>
+
+      {/* Main radio area */}
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 1.5
+        }}
+      >
+        {/* Current station */}
+        <Paper
+          elevation={0}
+          sx={{
+            borderRadius: 2,
+            display: 'grid',
+            gridTemplateRows: '1fr auto auto auto',
+            justifyItems: 'center',
+            alignItems: 'center',
+            minHeight: 0,
+            overflow: 'hidden',
+            p: 2,
+            rowGap: 1
+          }}
+        >
+          <Typography
+            sx={{
+              fontSize: 42,
+              fontWeight: 600,
+              lineHeight: 1
+            }}
+          >
+            {formatFrequency()}
+            <Typography
+              component="span"
+              sx={{
+                fontSize: 20,
+                ml: 0.5
+              }}
+            >
+              MHz
+            </Typography>
+          </Typography>
+
+          <Typography
+            sx={{
+              fontSize: 22,
+              fontWeight: 500,
+              mt: 1,
+              textAlign: 'center',
+              minHeight: 30
+            }}
+          >
+            {radioText?.includes('STN') ? 'No radio text' : radioText?.trim() || 'No radio text'}
+          </Typography>
+
+          {nowPlaying?.trim() && !nowPlaying?.includes('STN') && (
+            <Typography
+              sx={{
+                fontSize: 16,
+                textAlign: 'center',
+                maxWidth: '100%',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {nowPlaying.trim()}
             </Typography>
           )}
-        </ToggleButtonGroup>
-      </Grid>
-      <Grid xs={12} sx={{ flexGrow: 0, height: 0.1 }}>
-        <AmFmAudioControls sendMessage={() => console.log('send message')} />
-      </Grid>
-    </Grid>
-    // <Modal
-    //   aria-labelledby="transition-modal-title"
-    //   aria-describedby="transition-modal-description"
-    //   open={autoStore}
-    //   // closeAfterTransition
-    //   // slots={{ backdrop: Backdrop }}
-    //   // slotProps={{
-    //   //     backdrop: {
-    //   //         timeout: 500,
-    //   //     },
-    //   // }}
-    // >
-    //   {/*<Slide direction={"up"} in={volume !== prevVolume}>*/}
-    //   <Box sx={style}>
-    //     <Typography>Auto Store In Progress</Typography>
-    //     <CircularProgress />
-    //     <Typography>{frequency}</Typography>
-    //   </Box>
-    //   {/*</Slide>*/}
-    // </Modal>
+
+          {/* Seek buttons */}
+          <Box
+            sx={{
+              display: 'flex',
+              gap: 2,
+              mt: 2
+            }}
+          >
+            <Button
+              variant="outlined"
+              onClick={seekBack}
+              sx={{
+                minWidth: 90,
+                height: 70,
+                borderRadius: 2,
+                color: 'common.white',
+                borderColor: 'rgba(255, 255, 255, 0.35)',
+                backgroundColor: 'rgba(255, 255, 255, 0.06)'
+              }}
+            >
+              <FastRewindIcon sx={{ fontSize: 42 }} />
+            </Button>
+
+            <Button
+              variant="outlined"
+              onClick={seekForward}
+              sx={{
+                minWidth: 90,
+                height: 70,
+                borderRadius: 2,
+                color: 'common.white',
+                borderColor: 'rgba(255, 255, 255, 0.35)',
+                backgroundColor: 'rgba(255, 255, 255, 0.06)'
+              }}
+            >
+              <FastForwardIcon sx={{ fontSize: 42 }} />
+            </Button>
+          </Box>
+        </Paper>
+
+        {/* Presets */}
+        <Paper
+          elevation={0}
+          sx={{
+            borderRadius: 2,
+            p: 1.5,
+            display: 'grid',
+            gridTemplateRows: 'auto minmax(0, 1fr)',
+            minHeight: 0,
+            overflow: 'hidden'
+          }}
+        >
+          <Typography
+            sx={{
+              fontSize: 18,
+              fontWeight: 600,
+              mb: 1
+            }}
+          >
+            PRESETS
+          </Typography>
+
+          <Box
+            sx={{
+              minHeight: 210,
+              height: '100%',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+              gridTemplateRows: 'repeat(3, minmax(0, 1fr))',
+              gap: 1
+            }}
+          >
+            {Array.from({ length: 9 }, (_, index) => {
+              const number = index + 1
+
+              // Support either 0-8 or 1-9 keys
+              const station = presets?.[number] ?? presets?.[index]
+
+              return (
+                <PresetButton
+                  key={number}
+                  number={number}
+                  station={station}
+                  onSelect={() => selectPreset(currentBank, number)}
+                  onSave={() => savePreset(currentBank, number)}
+                />
+              )
+            })}
+          </Box>
+        </Paper>
+      </Box>
+    </Box>
   )
 }
 
