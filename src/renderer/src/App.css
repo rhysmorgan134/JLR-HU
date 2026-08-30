@@ -1,92 +1,28 @@
-.App {
-    text-align: center;
-    flex: 1;
-    padding: 0px;
+:root {
+  font-family: Roboto, system-ui, sans-serif;
+  color: #f4f8ff;
+  background: #070b11;
+  font-synthesis: none;
+  --accent: #67d8ff;
+  --accent-strong: #20b9ff;
+  --accent-soft: rgba(76, 201, 255, 0.14);
+  --panel: rgba(20, 28, 39, 0.88);
+  --panel-strong: rgba(29, 39, 53, 0.96);
+  --stroke: rgba(189, 221, 255, 0.13);
+  --muted: #8e9aaa;
 }
-
-html,
+* { box-sizing: border-box; }
+html, body, #root { width: 100%; height: 100%; min-width: 800px; min-height: 480px; margin: 0; overflow: hidden; }
 body {
-  min-height: 100vh;
-  display: flex;
-  flex: 1;
-  margin: 0px;
-  padding: 0px;
-    background-image: linear-gradient(to top, #09101c, #0b1321, #0d1626, #0e192b, #0f1b30);
-  overflow: hidden;
-
+  background: radial-gradient(circle at 75% -10%, rgba(31,153,222,.22), transparent 42%), radial-gradient(circle at 12% 110%, rgba(36,91,176,.16), transparent 44%), linear-gradient(145deg,#080d14 0%,#0b111b 45%,#070a10 100%);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
-#root {
-  display: flex;
-  flex: 1;
-  width: 100%;
-
-}
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.mainView {
-    height: calc(100% - (38px));
-    margin-top: 0;
-}
-
-.noNavView {
-  height: calc(100% - (38px));
-  margin-top: 0;
-}
-
-hr.style-two {
-    border: 0;
-    height: 1px;
-    margin: 0;
-    padding: 0;
-    background-image: linear-gradient(to right, rgba(48, 48, 48, 0.4), rgba(48, 48, 48, 0.75), rgba(48, 48, 48, 0.4));
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
-}
-
-.App-link {
-  color: #61dafb;
-}
-
-#root {
-  height: 100%;
-}
-
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.bottom-tab {
-    background: rgb(10,18,32);
-    background: linear-gradient(0deg, rgba(10,18,32,1) 50%, rgba(13,23,37,1) 50%);
-
-}
-
-.bottom-button {
-    border-top: solid #1e2533 !important;
-    border-left: solid #00000055 1px !important;
-    border-right: solid #00000055 1px !important;
-}
-
+button, [role='button'] { touch-action: manipulation; }
+.App { width: 100%; height: calc(100% - 42px); overflow: hidden; }
+.App.is-screensaver { height: 100%; }
+.mainView, .noNavView { width: 100%; height: 100%; overflow: hidden; }
+.glass-panel { background: linear-gradient(145deg,rgba(31,42,57,.9),rgba(15,22,32,.88)); border: 1px solid var(--stroke); box-shadow: inset 0 1px 0 rgba(255,255,255,.04),0 16px 35px rgba(0,0,0,.25); backdrop-filter: blur(18px); }
+.touch-card { transition: transform 140ms ease,border-color 140ms ease,background 140ms ease; }
+.touch-card:active { transform: scale(.985); }
+::-webkit-scrollbar { display: none; }

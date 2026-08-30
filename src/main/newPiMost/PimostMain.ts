@@ -7,6 +7,7 @@ import {
   AudioDiskPlayer,
   AuxInput,
   CanGateway,
+  Climate,
   Carplay,
   DabTuner,
   Diagnostics,
@@ -36,6 +37,7 @@ export class PimostMain {
   audioControl: AudioControl
   amplifier: Amplifier
   canGateway: CanGateway
+  climate: Climate
   networkMaster: NetworkMaster
   logger: winston.Logger
   socket: Socket
@@ -58,6 +60,7 @@ export class PimostMain {
     this.audioControl = new AudioControl([], this.socketmost, false, socket)
     this.amplifier = new Amplifier([], this.socketmost, false, socket)
     this.canGateway = new CanGateway([], this.socketmost, true, socket)
+    this.climate = new Climate([], this.socketmost, false, socket)
     this.networkMaster = new NetworkMaster([], this.socketmost, false, socket)
 
     this.socket.on('newConnection', () => {
@@ -65,6 +68,7 @@ export class PimostMain {
       this.socket.sendStatusUpdate('AudioDiskPlayer', this.audioDiskPlayer.status)
       this.socket.sendStatusUpdate('AudioControl', this.audioControl.status)
       this.socket.sendStatusUpdate('HMI', this.hmi.status)
+      this.socket.sendStatusUpdate('Climate', this.climate.status)
     })
 
     this.socketmost.on('opened', () => {
@@ -78,10 +82,16 @@ export class PimostMain {
 
     this.socket.on('button', (data) => {
       this.logger.info('button received ' + JSON.stringify(data))
+      const device = this[data['device']]
+      const action = device?.[data['function']]
+      if (typeof action !== 'function') {
+        this.logger.error(`unknown button action ${data['device']}.${data['function']}`)
+        return
+      }
       if ('args' in data) {
-        this[data['device']][data['function']](data['args'])
+        action.call(device, data['args'])
       } else {
-        this[data['device']][data['function']]()
+        action.call(device)
       }
     })
 
@@ -109,7 +119,12 @@ export class PimostMain {
     })
 
     this.hmi.on('HMIActive', () => {
-      setTimeout(() => this.audioControl.startVolumeUpdates(), 500)
+      setTimeout(() => {
+        this.audioControl.startVolumeUpdates()
+        setTimeout(() => {
+          this.climate.startUpdates()
+        }, 100)
+      }, 500)
     })
 
     this.socketmost.on(Os8104Events.SocketMostMessageRxEvent, (message) => {
@@ -154,6 +169,9 @@ export class PimostMain {
           break
         case 0x22:
           this.amplifier.checkMessage(message)
+          break
+        case 0x71:
+          this.climate.checkMessage(message)
           break
         case 0x02:
           this.networkMaster.checkMessage(message)

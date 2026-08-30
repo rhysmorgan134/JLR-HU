@@ -138,6 +138,31 @@ interface HMIStore {
   screensaver: boolean
 }
 
+type SeatTemp = -3 | -2 | -1 | 0 | 1 | 2 | 3
+
+interface ClimateStore {
+  leftTemp: number | null
+  rightTemp: number | null
+  fanSpeed: number
+  recirc: boolean
+  fanAuto: boolean
+  auto: boolean
+  ac: boolean
+  face: boolean
+  feet: boolean
+  windscreen: boolean
+  leftSeat: SeatTemp
+  rightSeat: SeatTemp
+  setAuto: () => void
+  setSync: () => void
+  setAC: (active: boolean) => void
+  setFace: (active: boolean) => void
+  setFeet: (active: boolean) => void
+  setWindscreen: (active: boolean) => void
+  setLeftSeat: (temperature: SeatTemp) => void
+  setRightSeat: (temperature: SeatTemp) => void
+}
+
 interface persistentStore {
   currentSource: null | string
   setLastAudioSource: (lastAudioSource) => void
@@ -187,6 +212,43 @@ export const useAmFmTunerStore = create<AmFmTunerStore>()((set) => ({
 
 export const useHMIStore = create<HMIStore>()(() => ({
   screensaver: true
+}))
+
+export const useClimateStore = create<ClimateStore>()(() => ({
+  leftTemp: null,
+  rightTemp: null,
+  fanSpeed: 0,
+  recirc: false,
+  fanAuto: false,
+  auto: false,
+  ac: false,
+  face: false,
+  feet: false,
+  windscreen: false,
+  leftSeat: 0,
+  rightSeat: 0,
+  setAuto: () => socket.emit('button', { device: 'climate', function: 'setAuto' }),
+  setSync: () => socket.emit('button', { device: 'climate', function: 'setSync' }),
+  setAC: (active) =>
+    socket.emit('button', { device: 'climate', function: 'setAC', args: { active } }),
+  setFace: (active) =>
+    socket.emit('button', { device: 'climate', function: 'setFace', args: { active } }),
+  setFeet: (active) =>
+    socket.emit('button', { device: 'climate', function: 'setFeet', args: { active } }),
+  setWindscreen: (active) =>
+    socket.emit('button', { device: 'climate', function: 'setWindscreen', args: { active } }),
+  setLeftSeat: (temperature) =>
+    socket.emit('button', {
+      device: 'climate',
+      function: 'setSeat',
+      args: { side: 1, temperature }
+    }),
+  setRightSeat: (temperature) =>
+    socket.emit('button', {
+      device: 'climate',
+      function: 'setSeat',
+      args: { side: 2, temperature }
+    })
 }))
 
 export const useMostSettings = create<MostSettings>()((set) => ({
@@ -464,4 +526,13 @@ socket.on('HMI', (data) => {
       _.merge(draft, data)
     })
   })
+})
+
+socket.on('Climate', (data) => {
+  console.log('Climate data:', data)
+  useClimateStore.setState((state) =>
+    produce(state, (draft) => {
+      _.merge(draft, data)
+    })
+  )
 })

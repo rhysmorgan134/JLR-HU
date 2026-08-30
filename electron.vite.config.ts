@@ -90,6 +90,7 @@ export default defineConfig({
 
   renderer: {
     resolve: {
+      dedupe: ['react', 'react-dom', '@emotion/react', '@emotion/styled', '@mui/material', '@mui/system'],
       alias: {
         '@renderer': resolve('src/renderer/src'),
         stream: 'stream-browserify',
@@ -100,8 +101,9 @@ export default defineConfig({
       include: [
         '@emotion/react',
         '@emotion/styled',
-        '@mui/material/Tooltip',
-        '@mui/material/Unstable_Grid2'
+        '@mui/material',
+        '@mui/system',
+        '@mui/icons-material'
       ],
       esbuildOptions: {
         define: {

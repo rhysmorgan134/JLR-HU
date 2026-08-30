@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Box, Modal, Slider, Stack } from '@mui/material'
-import { VolumeDown, VolumeUp } from '@mui/icons-material'
+import { Box, LinearProgress, Modal, Typography } from '@mui/material'
+import { VolumeUpRounded } from '@mui/icons-material'
 import { useVolumeStore } from '../store/store'
 
 const volumeStyle = {
@@ -8,13 +8,13 @@ const volumeStyle = {
   top: '50%',
   left: '50%',
   transform: 'translate(-50%, -50%)',
-  width: 400,
+  width: 390,
   maxWidth: '80vw',
-  bgcolor: '#000000',
-  border: 'none',
-  borderRadius: 2,
-  boxShadow: 24,
-  p: 4
+  background: 'linear-gradient(145deg,rgba(31,42,57,.97),rgba(11,17,25,.98))',
+  border: '1px solid rgba(189,221,255,.16)',
+  borderRadius: 3,
+  boxShadow: '0 25px 70px rgba(0,0,0,.55)',
+  p: 2.5
 }
 
 export default function VolumeModal() {
@@ -44,19 +44,13 @@ export default function VolumeModal() {
   )
 
   return (
-    <Modal open={open} aria-label="Volume" disableAutoFocus>
+    <Modal open={open} aria-label="Volume" disableAutoFocus hideBackdrop>
       <Box sx={volumeStyle}>
-        <Stack spacing={2} direction="row" alignItems="center">
-          <VolumeDown />
-          <Slider
-            aria-label="Volume level"
-            value={volume ?? 0}
-            min={0}
-            max={35}
-            sx={{ transition: 'none' }}
-          />
-          <VolumeUp />
-        </Stack>
+        <Box sx={{ display: 'grid', gridTemplateColumns: '48px minmax(0,1fr) 40px', alignItems: 'center', gap: 1.7 }}>
+          <Box sx={{ width: 46, height: 46, borderRadius: '50%', display: 'grid', placeItems: 'center', color: 'primary.main', background: 'var(--accent-soft)' }}><VolumeUpRounded /></Box>
+          <Box><Typography sx={{ mb: .8, fontSize: 11, color: 'text.secondary', letterSpacing: 1.5 }}>MEDIA VOLUME</Typography><LinearProgress variant="determinate" value={((volume ?? 0) / 35) * 100} sx={{ height: 7, borderRadius: 5, background: 'rgba(255,255,255,.09)', '& .MuiLinearProgress-bar': { borderRadius: 5, background: 'linear-gradient(90deg,#36bdff,#90e8ff)' } }} /></Box>
+          <Typography sx={{ fontSize: 27, fontWeight: 300, textAlign: 'right' }}>{volume ?? 0}</Typography>
+        </Box>
       </Box>
     </Modal>
   )

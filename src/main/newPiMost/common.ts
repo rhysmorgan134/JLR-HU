@@ -61,6 +61,9 @@ export abstract class FBlock extends EventEmitter {
 
   checkMessage(message: MostRxMessage) {
     //check if this is a multipart messate
+    if (message.fBlockID == 0x71) {
+      this.logger.warn('climate' + message)
+    }
     if (message.telID === 0x01) {
       //multipart, copy message to buffer and set sequence
       this.inProgressMultipart[message.fktID] = message
@@ -208,6 +211,7 @@ export abstract class FBlock extends EventEmitter {
   }
 
   subscribeAll() {
+    this.logger.warn('subscribeAll' + this.socketmost.settings.nodeAddressLow)
     this.socketmost.sendControlMessage(
       this.physicalMessage(OpType.set, 0x01, [
         0x00,

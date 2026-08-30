@@ -146,6 +146,12 @@ const audioControl: Device = {
   fBlockID: 0xf0,
   instanceID: 0x01
 }
+const climate: Device = {
+  addressHigh: 0x01,
+  addressLow: 0x61,
+  fBlockID: 0x71,
+  instanceID: 0xa1
+}
 //interesting stuff, 0x180 subscribes to 303 in master. 0x186 subscribes 303 in master. 0x189 subscribes 0x303 master,
 
 // const netblock:Device = {addressHigh: 0x01, addressLow: 0x6e,}
@@ -565,7 +571,7 @@ export class AudioDiskPlayer extends FBlock {
     //Deck status
     switch (message.opType) {
       case OpType.status:
-        this.updateStatus({ deckStatus: DeckStatus[message.data[0]] })
+        this.updateStatus({ deckStatus: message.data[0] })
     }
   }
 
@@ -647,28 +653,28 @@ export class AudioDiskPlayer extends FBlock {
   0x430(message: MostRxMessage) {
     switch (message.opType) {
       case OpType.status:
-        this.updateStatus({ deckEvent: DeckEvent[message.data.readUint8(0)] })
+        this.updateStatus({ deckEvent: message.data.readUint8(0) })
     }
   }
 
   0x431(message: MostRxMessage) {
     switch (message.opType) {
       case OpType.status:
-        this.updateStatus({ mediaEvent: MediaEvent[message.data.readUint8(0)] })
+        this.updateStatus({ mediaEvent: message.data.readUint8(0) })
     }
   }
 
   0x450(message: MostRxMessage) {
     switch (message.opType) {
       case OpType.status:
-        this.updateStatus({ random: Random[message.data.readUint8(0)] })
+        this.updateStatus({ random: message.data.readUint8(0) })
     }
   }
 
   0x452(message: MostRxMessage) {
     switch (message.opType) {
       case OpType.status:
-        this.updateStatus({ repeat: Repeat[message.data.readUint8(0)] })
+        this.updateStatus({ repeat: message.data.readUint8(0) })
     }
   }
   0xe00(message: MostRxMessage) {
@@ -695,8 +701,20 @@ export class AudioDiskPlayer extends FBlock {
     this.socketmost.sendControlMessage(this.physicalMessage(OpType.set, 0x200, [0x02]))
   }
 
-  random({ random: Random }) {
-    this.socketmost.sendControlMessage(this.physicalMessage(OpType.set, 0x450, [0x00]))
+  activeDisk({ disk }: { disk: number }) {
+    if (!Number.isInteger(disk) || disk < 1 || disk > 6) {
+      this.logger.warn(`invalid CD changer disk: ${disk}`)
+      return
+    }
+    this.socketmost.sendControlMessage(this.physicalMessage(OpType.set, 0x412, [disk]))
+  }
+
+  random({ randomType }: { randomType: Random }) {
+    this.socketmost.sendControlMessage(this.physicalMessage(OpType.set, 0x450, [randomType]))
+  }
+
+  repeat({ repeatType }: { repeatType: Repeat }) {
+    this.socketmost.sendControlMessage(this.physicalMessage(OpType.set, 0x452, [repeatType]))
   }
 }
 
@@ -1029,6 +1047,83 @@ export class AudioControl extends FBlock {
       // console.log('408 complete')
     }
     // this.currentSource = null
+  }
+}
+
+export class Climate extends FBlock {
+  constructor(subscriptions: number[], socketmost: SocketMostUsb, autoSubscribe: boolean, socket: Socket) {
+    super(subscriptions, climate, null, socketmost, autoSubscribe, socket)
+    this.status = {
+      leftTemp: null,
+      rightTemp: null,
+      fanSpeed: 0,
+      recirc: false,
+      fanAuto: false,
+      windscreen: false,
+      ac: false,
+      face: false,
+      feet: false,
+      auto: false,
+      leftSeat: 0,
+      rightSeat: 0
+    }
+  }
+
+  allocate(_message: MostRxMessage): void {}
+  deallocate(_message: MostRxMessage): void {}
+  parseMessage(_message: MostRxMessage): void {}
+  parseShadowMessage(_message: MostRxMessage): void {}
+  startSource(): void {}
+  stopSource(): void {}
+
+  0xc85(message: MostRxMessage): void {
+    if (message.data.length > 0) this.updateStatus({ fanSpeed: message.data.readUInt8(0) })
+  }
+
+  0xc87(message: MostRxMessage): void {
+    if (message.data.length < 4) return
+    const side = message.data.readUInt8(0)
+    if (side === 1) this.updateStatus({ leftTemp: message.data.readUInt16BE(2) / 10 })
+    else if (side === 2) this.updateStatus({ rightTemp: message.data.readUInt16BE(2) / 10 })
+    else if (side === 0 && message.data.length >= 6) this.updateStatus({ leftTemp: message.data.readUInt16BE(2) / 10, rightTemp: message.data.readUInt16BE(4) / 10 })
+  }
+
+  0xc88(message: MostRxMessage): void {
+    if (message.data.length < 3) return
+    const flags = message.data.readUInt8(0)
+    this.updateStatus({
+      recirc: message.data.readUInt8(2) !== 0,
+      fanAuto: message.data.readUInt8(1) === 64,
+      windscreen: (flags & 16) !== 0,
+      ac: (flags & 32) !== 0,
+      face: (flags & 4) !== 0,
+      feet: (flags & 8) !== 0,
+      auto: (flags & 2) !== 0
+    })
+  }
+
+  0xc86(message: MostRxMessage): void {
+    if (message.data.length < 3) return
+    const value = message.data[2] > 3 ? (message.data[2] - 16) * -1 : message.data[2]
+    if (message.data[0] === 1) this.updateStatus({ leftSeat: value })
+    else if (message.data[0] === 2) this.updateStatus({ rightSeat: value })
+  }
+
+  private action(data: number[]): void { this.socketmost.sendControlMessage(this.physicalMessage(OpType.set, 0xe00, data)) }
+  setAuto(): void { this.action([0x02, 0x01]) }
+  setSync(): void { this.action([0x04, 0x01]) }
+  setAC({ active }: { active: boolean }): void { this.action([0x11, active ? 1 : 0, 0x01]) }
+  setWindscreen({ active }: { active: boolean }): void { this.action([0x13, active ? 1 : 0, 0x01, 0x01]) }
+  setFace({ active }: { active: boolean }): void { this.action([0x13, active ? 1 : 0, 0x02, 0x01]) }
+  setFeet({ active }: { active: boolean }): void { this.action([0x13, active ? 1 : 0, 0x03, 0x01]) }
+  setSeat({ side, temperature }: { side: 1 | 2; temperature: number }): void {
+    const parsed = temperature < 0 ? 16 + Math.abs(temperature) : temperature
+    this.action([0x16, side, parsed, 0x01])
+  }
+
+  startUpdates(): void {
+    this.subscribeAll()
+    ;[0xc85, 0xc87, 0xc88, 0xc86].forEach((fktID) => this.socketmost.sendControlMessage(this.physicalMessage(OpType.get, fktID, [])))
   }
 }
 
