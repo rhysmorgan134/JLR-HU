@@ -90,7 +90,14 @@ export default defineConfig({
 
   renderer: {
     resolve: {
-      dedupe: ['react', 'react-dom', '@emotion/react', '@emotion/styled', '@mui/material', '@mui/system'],
+      dedupe: [
+        'react',
+        'react-dom',
+        '@emotion/react',
+        '@emotion/styled',
+        '@mui/material',
+        '@mui/system'
+      ],
       alias: {
         '@renderer': resolve('src/renderer/src'),
         stream: 'stream-browserify',
@@ -105,6 +112,7 @@ export default defineConfig({
         '@mui/system',
         '@mui/icons-material'
       ],
+      exclude: ['pcm-ringbuf-player'],
       esbuildOptions: {
         define: {
           global: 'globalThis'

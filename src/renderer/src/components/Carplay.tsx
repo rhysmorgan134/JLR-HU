@@ -192,6 +192,7 @@ function Carplay({
         setReceivingVideo(true)
         carplayWorker.postMessage({ type: 'start', payload: { config } })
       } else {
+        console.log('device not found')
         setDeviceFound(false)
       }
     },
@@ -229,7 +230,7 @@ function Carplay({
       className={pathname === '/carplay' ? (playing ? 'noNavView' : 'mainView') : ''}
       ref={mainElem}
     >
-      {(deviceFound === false || isLoading) && pathname === '/' && (
+      {(deviceFound === false || isLoading) && pathname === '/carplay' && (
         <div
           style={{
             position: 'absolute',

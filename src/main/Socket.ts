@@ -80,6 +80,7 @@ export class Socket extends EventEmitter {
   }
 
   sendSettings() {
+    console.log('sending settings' + this.config)
     this.io.emit('settings', this.config)
   }
 

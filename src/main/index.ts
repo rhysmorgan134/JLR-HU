@@ -85,6 +85,7 @@ const handleSettingsReq = (): void => {
 }
 
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 app.commandLine.appendSwitch('disable-webusb-security', 'true')
 console.log(app.commandLine.hasSwitch('disable-webusb-security'))
 function createWindow(): void {

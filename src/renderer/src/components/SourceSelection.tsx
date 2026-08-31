@@ -3,9 +3,11 @@ import RadioRoundedIcon from '@mui/icons-material/RadioRounded'
 import AlbumRoundedIcon from '@mui/icons-material/AlbumRounded'
 import UsbRoundedIcon from '@mui/icons-material/UsbRounded'
 import { useAudioControlStore } from '../store/store'
+import { useNavigate } from 'react-router-dom'
 
 export default function SourceSelection({ onSelect = () => {} }: { onSelect?: () => void }) {
   const setSource = useAudioControlStore((state) => state.setSource)
+  const navigate = useNavigate()
   const sources = [
     {
       name: 'Radio',
@@ -24,13 +26,6 @@ export default function SourceSelection({ onSelect = () => {} }: { onSelect?: ()
     {
       name: 'USB Audio',
       detail: 'Not connected',
-      icon: <UsbRoundedIcon />,
-      source: '',
-      active: false
-    },
-    {
-      name: 'CarPlay',
-      detail: 'Apple Carplay',
       icon: <UsbRoundedIcon />,
       source: '',
       active: false
@@ -77,6 +72,40 @@ export default function SourceSelection({ onSelect = () => {} }: { onSelect?: ()
           </Box>
         </Box>
       ))}
+      <Box
+        key={'carplay'}
+        className="touch-card"
+        onClick={() => {
+          navigate('/carplay')
+        }}
+        sx={{
+          minHeight: 132,
+          p: 2,
+          borderRadius: 2.5,
+          border: '1px solid var(--stroke)',
+          background: true
+            ? 'linear-gradient(145deg,rgba(45,61,79,.8),rgba(21,29,40,.8))'
+            : 'rgba(255,255,255,.025)',
+          opacity: true ? 1 : 0.45,
+          cursor: true ? 'pointer' : 'default',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between'
+        }}
+      >
+        <Box
+          sx={{
+            color: true ? 'primary.main' : 'text.secondary',
+            '& svg': { fontSize: 34 }
+          }}
+        >
+          <UsbRoundedIcon />
+        </Box>
+        <Box>
+          <Typography sx={{ fontSize: 17, fontWeight: 600 }}>{'carplay'}</Typography>
+          <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>{'carplay'}</Typography>
+        </Box>
+      </Box>
     </Box>
   )
 }
