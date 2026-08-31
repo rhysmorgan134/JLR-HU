@@ -194,6 +194,7 @@ interface CanGatewayStore {
   range: number | null
   distance: number | null
   avgSpeed: number | null
+  tripMode: 1 | 2 | 3 | null
   setAutoLock: (enabled: boolean) => void
   setDriveAway: (speed: number) => void
   setPassiveArming: (enabled: boolean) => void
@@ -203,6 +204,7 @@ interface CanGatewayStore {
   setGlobalWindowClose: (enabled: boolean) => void
   setMirrorFoldBack: (enabled: boolean) => void
   setMirrorDip: (enabled: boolean) => void
+  setTripMode: (mode: 1 | 2 | 3) => void
 }
 
 type SeatTemp = -3 | -2 | -1 | 0 | 1 | 2 | 3
@@ -266,6 +268,9 @@ interface MostDiagnosticsStore {
   selectedDevice: MostDiagnosticDevice | null
   subscribedDevices: string[]
   subscriptions: MostSubscription[]
+  functions: number[]
+  functionsLoading: boolean
+  functionsError: string | null
   paused: boolean
   logging: boolean
   logPath: string | null
@@ -273,6 +278,8 @@ interface MostDiagnosticsStore {
   requestRegistry: () => void
   selectDevice: (device: MostDiagnosticDevice) => void
   subscribeSelected: () => void
+  requestFunctions: (device?: MostDiagnosticDevice) => void
+  subscribeFunctions: (functions: number[]) => void
   sendMessage: (message: Omit<MostDiagnosticMessage, 'direction' | 'timestamp' | 'data'> & { targetAddress: number; data: number[] }) => void
   clearMessages: () => void
   setPaused: (paused: boolean) => void
@@ -364,7 +371,7 @@ export const useCanGatewayStore = create<CanGatewayStore>()((set, get) => ({
   globalWindowClose: false, globalWindowOpen: false, ambientLight: 0, lights: false,
   mirrorFoldBack: false, mirrorDip: false, passiveArming: false, alarmSensors: false,
   twoStageLocking: false, externalTemp: null, avgMpg: null, range: null,
-  distance: null, avgSpeed: null,
+  distance: null, avgSpeed: null, tripMode: null,
   setAutoLock: (enabled) => socket.emit('button', { device: 'canGateway', function: 'setAutoLock', args: { enabled } }),
   setDriveAway: (speed) => socket.emit('button', { device: 'canGateway', function: 'setDriveAway', args: { speed } }),
   setPassiveArming: (enabled) => socket.emit('button', { device: 'canGateway', function: 'setPassiveArming', args: { enabled } }),
@@ -381,6 +388,10 @@ export const useCanGatewayStore = create<CanGatewayStore>()((set, get) => ({
   },
   setMirrorDip: (enabled) => {
     socket.emit('button', { device: 'canGateway', function: 'setMirrors', args: { foldBack: get().mirrorFoldBack, dip: enabled } })
+  },
+  setTripMode: (mode) => {
+    set({ tripMode: mode })
+    socket.emit('button', { device: 'canGateway', function: 'setTripMode', args: { mode } })
   }
 }))
 
@@ -636,12 +647,15 @@ export const useMostDiagnosticsStore = create<MostDiagnosticsStore>()((set, get)
   selectedDevice: null,
   subscribedDevices: [],
   subscriptions: [],
+  functions: [],
+  functionsLoading: false,
+  functionsError: null,
   paused: false,
   logging: false,
   logPath: null,
   logError: null,
   requestRegistry: () => socket.emit('mostDiagnostics:requestRegistry'),
-  selectDevice: (device) => set({ selectedDevice: device }),
+  selectDevice: (device) => set({ selectedDevice: device, functions: [], functionsError: null }),
   subscribeSelected: () => {
     const device = get().selectedDevice
     if (!device) return
@@ -649,6 +663,17 @@ export const useMostDiagnosticsStore = create<MostDiagnosticsStore>()((set, get)
     set((state) => ({
       subscribedDevices: Array.from(new Set([...state.subscribedDevices, diagnosticDeviceKey(device)]))
     }))
+  },
+  requestFunctions: (requestedDevice) => {
+    const device = requestedDevice || get().selectedDevice
+    if (!device) return
+    set({ selectedDevice: device, functions: [], functionsLoading: true, functionsError: null })
+    socket.emit('mostDiagnostics:requestFunctions', device)
+  },
+  subscribeFunctions: (functions) => {
+    const device = get().selectedDevice
+    if (!device || functions.length === 0) return
+    socket.emit('mostDiagnostics:subscribeFunctions', { device, functions })
   },
   sendMessage: (message) => socket.emit('mostDiagnostics:send', {
     targetAddressHigh: (message.targetAddress >> 8) & 0xff,
@@ -770,11 +795,23 @@ socket.on('Climate', (data) => {
   )
 })
 
-socket.on('mostDiagnostics:message', (message: MostDiagnosticMessage) => {
+const pendingMostDiagnosticMessages: MostDiagnosticMessage[] = []
+let mostDiagnosticFlushTimer: ReturnType<typeof setTimeout> | null = null
+
+const flushMostDiagnosticMessages = () => {
+  mostDiagnosticFlushTimer = null
+  if (pendingMostDiagnosticMessages.length === 0) return
+  const batch = pendingMostDiagnosticMessages.splice(0)
   if (useMostDiagnosticsStore.getState().paused) return
   useMostDiagnosticsStore.setState((state) => ({
-    messages: [...state.messages.slice(-1999), message]
+    messages: [...state.messages, ...batch].slice(-2500)
   }))
+}
+
+socket.on('mostDiagnostics:message', (message: MostDiagnosticMessage) => {
+  if (useMostDiagnosticsStore.getState().paused) return
+  pendingMostDiagnosticMessages.push(message)
+  if (!mostDiagnosticFlushTimer) mostDiagnosticFlushTimer = setTimeout(flushMostDiagnosticMessages, 100)
 })
 
 socket.on('mostDiagnostics:registry', (registry: MostDiagnosticDevice[]) => {
@@ -785,6 +822,16 @@ socket.on('mostDiagnostics:subscriptions', (subscriptions: MostSubscription[]) =
   useMostDiagnosticsStore.setState({
     subscriptions,
     subscribedDevices: subscriptions.map(diagnosticDeviceKey)
+  })
+})
+
+socket.on('mostDiagnostics:functions', (result: { device: MostDiagnosticDevice; functions: number[]; error?: string }) => {
+  const selected = useMostDiagnosticsStore.getState().selectedDevice
+  if (!selected || diagnosticDeviceKey(selected) !== diagnosticDeviceKey(result.device)) return
+  useMostDiagnosticsStore.setState({
+    functions: result.functions,
+    functionsLoading: false,
+    functionsError: result.error || null
   })
 })
 

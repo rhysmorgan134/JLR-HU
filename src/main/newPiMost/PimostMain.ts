@@ -55,6 +55,9 @@ export class PimostMain {
   socket: Socket
   registryData: number[] = []
   registrySequence = -1
+  functionListData: number[] = []
+  functionListSequence = -1
+  functionListDevice: DiagnosticDevice | null = null
   diagnosticsLog: WriteStream | null = null
   diagnosticsLogPath: string | null = null
   headUnitMode: boolean
@@ -175,6 +178,12 @@ export class PimostMain {
     this.socket.on('mostDiagnostics:subscribe', (device: DiagnosticDevice) => {
       this.subscribeToDevice(device)
     })
+    this.socket.on('mostDiagnostics:requestFunctions', (device: DiagnosticDevice) => {
+      this.requestFunctions(device)
+    })
+    this.socket.on('mostDiagnostics:subscribeFunctions', (request) => {
+      this.subscribeToFunctions(request?.device, request?.functions)
+    })
     this.socket.on('mostDiagnostics:send', (message: SocketMostSendMessage) => {
       this.sendManualMessage(message)
     })
@@ -226,6 +235,7 @@ export class PimostMain {
     this.socketmost.on(Os8104Events.SocketMostMessageRxEvent, (message) => {
       this.publishDiagnosticMessage(this.toDiagnosticMessage(message, 'rx'))
       this.captureRegistry(message)
+      this.captureFunctionList(message)
       this.logger.info(`message received ${this.convertMessageToHex(message)}`)
       if (this.headUnitMode !== true) return
       switch (message.fBlockID) {
@@ -386,6 +396,64 @@ export class PimostMain {
         functions: [],
         all: true
       }
+    )
+  }
+
+  requestFunctions(device: DiagnosticDevice) {
+    if (!this.validDiagnosticDevice(device)) return
+    this.functionListDevice = { ...device }
+    this.functionListData = []
+    this.functionListSequence = -1
+    this.sendDiagnosticControlMessage({
+      targetAddressHigh: (device.address >> 8) & 0xff,
+      targetAddressLow: device.address & 0xff,
+      fBlockID: device.fBlockID,
+      instanceID: device.instanceID,
+      fktID: 0x000,
+      opType: 0x01,
+      data: []
+    })
+  }
+
+  subscribeToFunctions(device: DiagnosticDevice, functions: number[]) {
+    if (!this.validDiagnosticDevice(device) || !Array.isArray(functions)) return
+    const selected = Array.from(new Set(functions)).filter(
+      (value) => Number.isInteger(value) && value >= 0 && value <= 0xff
+    )
+    if (!selected.length) return
+    const settings = this.socketmost.settings
+    if (!settings) {
+      this.logger.warn('MOST diagnostics function subscription requested before USB settings were ready')
+      return
+    }
+    for (let index = 0; index < selected.length; index += 4) {
+      this.sendDiagnosticControlMessage({
+        targetAddressHigh: (device.address >> 8) & 0xff,
+        targetAddressLow: device.address & 0xff,
+        fBlockID: device.fBlockID,
+        instanceID: device.instanceID,
+        fktID: 0x001,
+        opType: 0x00,
+        data: [
+          0x01,
+          settings.nodeAddressHigh,
+          settings.nodeAddressLow,
+          ...selected.slice(index, index + 4)
+        ]
+      })
+    }
+    this.socket.setMostSubscription(
+      `diagnostics:${device.address}:${device.fBlockID}:${device.instanceID}`,
+      { owner: 'MOST diagnostics', ...device, functions: selected, all: false }
+    )
+  }
+
+  validDiagnosticDevice(device: DiagnosticDevice) {
+    return Boolean(
+      device &&
+      Number.isInteger(device.address) && device.address >= 0 && device.address <= 0xffff &&
+      Number.isInteger(device.fBlockID) && device.fBlockID >= 0 && device.fBlockID <= 0xff &&
+      Number.isInteger(device.instanceID) && device.instanceID >= 0 && device.instanceID <= 0xff
     )
   }
 
@@ -623,6 +691,61 @@ export class PimostMain {
     this.socket.sendDiagnosticsRegistry(registry)
     this.registryData = []
     this.registrySequence = -1
+  }
+
+  captureFunctionList(message: MostRxMessage) {
+    const device = this.functionListDevice
+    const sourceAddress = ((message.sourceAddrHigh || 0) << 8) | (message.sourceAddrLow || 0)
+    if (
+      !device ||
+      message.fktID !== 0x000 ||
+      message.fBlockID !== device.fBlockID ||
+      message.instanceID !== device.instanceID ||
+      sourceAddress !== device.address
+    ) return
+
+    const bytes = Array.from(message.data.subarray(0, message.telLen))
+    if (message.telID === 0x01) {
+      this.functionListSequence = bytes[0]
+      this.functionListData = bytes.slice(1)
+      return
+    }
+    if (message.telID === 0x02 || message.telID === 0x03) {
+      if (bytes[0] !== this.functionListSequence + 1) {
+        this.functionListData = []
+        this.functionListSequence = -1
+        this.socket.sendDiagnosticsFunctions(device, [], 'Function-list sequence error')
+        return
+      }
+      this.functionListSequence = bytes[0]
+      this.functionListData.push(...bytes.slice(1))
+      if (message.telID !== 0x03) return
+    } else {
+      this.functionListData = bytes
+    }
+
+    const boundaries: number[] = []
+    for (let index = 0; index + 1 < this.functionListData.length; index += 3) {
+      boundaries.push(
+        ((this.functionListData[index] << 4) | (this.functionListData[index + 1] >> 4)) & 0xfff
+      )
+      if (index + 2 < this.functionListData.length) {
+        boundaries.push(
+          (((this.functionListData[index + 1] & 0x0f) << 8) |
+            this.functionListData[index + 2]) & 0xfff
+        )
+      }
+    }
+    if (boundaries[boundaries.length - 1] === 0) boundaries.pop()
+    const functions: number[] = []
+    let enabled = true
+    for (let id = 0; id < 0x1000; id += 1) {
+      if (boundaries.includes(id)) enabled = !enabled
+      if (enabled) functions.push(id)
+    }
+    this.socket.sendDiagnosticsFunctions(device, functions)
+    this.functionListData = []
+    this.functionListSequence = -1
   }
 
   convertMessageToHex(message) {

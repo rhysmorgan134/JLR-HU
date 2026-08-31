@@ -255,6 +255,8 @@ export class HMI extends FBlock {
 }
 
 export class CanGateway extends FBlock {
+  updateTimer: ReturnType<typeof setTimeout> | null = null
+
   constructor(
     subscriptions: number[],
     socketmost: SocketMostUsb,
@@ -281,6 +283,8 @@ export class CanGateway extends FBlock {
       range: null,
       distance: null,
       avgSpeed: null,
+      tripMode: null,
+      parkingActive: false,
       parkingSensors: {
         frontLeft: 0,
         frontCentreLeft: 0,
@@ -332,6 +336,11 @@ export class CanGateway extends FBlock {
   }
 
   0xe15(message: MostRxMessage): void {
+    if (message.opType === OpType.set && message.telLen >= 2 && message.data.readUInt8(0) === 0x00) {
+      const tripMode = message.data.readUInt8(1)
+      if (tripMode >= 0x01 && tripMode <= 0x03) this.updateStatus({ tripMode })
+      return
+    }
     if (message.data.length < 15) return
     this.updateStatus({
       avgMpg: message.data.readUInt16BE(5) / 10,
@@ -396,11 +405,32 @@ export class CanGateway extends FBlock {
     })
   }
 
+  private updateReverse(message: MostRxMessage): void {
+    if (message.data.length < 1) return
+    const parkingActive = message.data.readUInt8(0) !== 0
+    this.updateStatus({ parkingActive })
+    this.socket.sendReverse(parkingActive)
+  }
+
+  // E14 is documented by the original JLR-HU notes. The captured 0x161 HMI
+  // uses E18 for the same inactive/active (00/01) camera state.
+  0xe14(message: MostRxMessage): void {
+    this.updateReverse(message)
+  }
+
+  0xe18(message: MostRxMessage): void {
+    this.updateReverse(message)
+  }
+
   startUpdates(): void {
-    this.subscribeAll()
-    ;[0xa04, 0xe05, 0xe09, 0xe0a, 0xe0f, 0xe15, 0xe17, 0xe1a, 0xe1b, 0xe21, 0xe27, 0xe29, 0xe2a].forEach((fktID) =>
-      this.socketmost.sendControlMessage(this.physicalMessage(OpType.get, fktID, []))
-    )
+    if (this.updateTimer) clearTimeout(this.updateTimer)
+    this.updateTimer = setTimeout(() => {
+      this.updateTimer = null
+      this.subscribeAll()
+      ;[0xa04, 0xe05, 0xe09, 0xe0a, 0xe0f, 0xe14, 0xe15, 0xe17, 0xe18, 0xe1a, 0xe1b, 0xe21, 0xe27, 0xe29, 0xe2a].forEach((fktID) =>
+        this.socketmost.sendControlMessage(this.physicalMessage(OpType.get, fktID, []))
+      )
+    }, 500)
   }
 
   private setProperty(fktID: number, data: number[]): void {
@@ -417,6 +447,11 @@ export class CanGateway extends FBlock {
   }
   setMirrors({ foldBack, dip }: { foldBack: boolean; dip: boolean }): void {
     this.setProperty(0xe17, [foldBack ? 1 : 0, dip ? 1 : 0, 0])
+  }
+  setTripMode({ mode }: { mode: number }): void {
+    if (!Number.isInteger(mode) || mode < 0x01 || mode > 0x03) return
+    this.setProperty(0xe15, [0x00, mode])
+    this.updateStatus({ tripMode: mode })
   }
 }
 

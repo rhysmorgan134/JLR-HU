@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Box, Dialog, DialogContent, IconButton, Typography } from '@mui/material'
+import { Box, Dialog, DialogContent, IconButton, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import AppsRoundedIcon from '@mui/icons-material/AppsRounded'
 import MusicNoteRoundedIcon from '@mui/icons-material/MusicNoteRounded'
@@ -43,7 +43,7 @@ function Base() {
     <Box sx={{ minWidth: 0, display: 'grid', gridTemplateRows: 'minmax(0,1fr) 142px', gap: 1.5 }}>
       <Box className="glass-panel" sx={{ position: 'relative', borderRadius: 3, overflow: 'hidden', p: 2.5, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
         <Box sx={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 76% 52%,rgba(53,183,255,.18),transparent 30%)', pointerEvents: 'none' }} />
-        <Box><Typography sx={{ color: 'primary.main', fontSize: 12, fontWeight: 700, letterSpacing: 2 }}>TRIP COMPUTER</Typography><Typography sx={{ mt: .4, fontSize: 30, fontWeight: 300, letterSpacing: -.6 }}>Journey at a glance.</Typography></Box>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}><Box><Typography sx={{ color: 'primary.main', fontSize: 12, fontWeight: 700, letterSpacing: 2 }}>TRIP COMPUTER</Typography><Typography sx={{ mt: .4, fontSize: 30, fontWeight: 300, letterSpacing: -.6 }}>Journey at a glance.</Typography></Box><ToggleButtonGroup exclusive size="small" value={trip.tripMode} onChange={(_, mode) => mode !== null && trip.setTripMode(mode)} sx={{ '& .MuiToggleButton-root': { minWidth: 54, px: 1.4, py: .65, color: 'text.secondary', borderColor: 'rgba(255,255,255,.12)', fontSize: 11, fontWeight: 700 }, '& .Mui-selected': { color: 'primary.main !important', background: 'var(--accent-soft) !important' } }}><ToggleButton value={1}>Trip A</ToggleButton><ToggleButton value={2}>Trip B</ToggleButton><ToggleButton value={3}>Auto</ToggleButton></ToggleButtonGroup></Box>
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 1.2 }}>
           {[['Average', trip.avgMpg, 'mpg'], ['Range', trip.range, 'mi'], ['Distance', trip.distance, 'mi'], ['Avg speed', trip.avgSpeed, 'mph']].map(([label,value,unit]) => <Box key={label as string} sx={{ borderLeft: '2px solid rgba(103,216,255,.35)', pl: 1.2 }}><Typography sx={{ fontSize: 11, color: 'text.secondary' }}>{label}</Typography><Typography sx={{ mt: .2, fontSize: 23, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{value == null ? '—' : Number(value).toFixed(unit === 'mpg' || unit === 'mph' ? 1 : 0)} <Typography component="span" sx={{ fontSize: 11, color: 'text.secondary' }}>{unit}</Typography></Typography></Box>)}
         </Box>

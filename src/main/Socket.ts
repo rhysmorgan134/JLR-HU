@@ -88,6 +88,14 @@ export class Socket extends EventEmitter {
         this.emit('mostDiagnostics:subscribe', data)
       })
 
+      socket.on('mostDiagnostics:requestFunctions', (data) => {
+        this.emit('mostDiagnostics:requestFunctions', data)
+      })
+
+      socket.on('mostDiagnostics:subscribeFunctions', (data) => {
+        this.emit('mostDiagnostics:subscribeFunctions', data)
+      })
+
       socket.on('mostDiagnostics:send', (data) => {
         this.emit('mostDiagnostics:send', data)
       })
@@ -158,6 +166,10 @@ export class Socket extends EventEmitter {
 
   sendDiagnosticsRegistry(data: object[]) {
     this.io.emit('mostDiagnostics:registry', data)
+  }
+
+  sendDiagnosticsFunctions(device: object, functions: number[], error?: string) {
+    this.io.emit('mostDiagnostics:functions', { device, functions, error })
   }
 
   setMostSubscription(key: string, data: object) {
