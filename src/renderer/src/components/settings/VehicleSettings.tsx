@@ -1,203 +1,23 @@
-import {
-  FormControlLabel,
-  styled,
-  SwitchProps,
-  ToggleButton,
-  ToggleButtonGroup,
-  Typography
-} from '@mui/material'
-import Box from '@mui/material/Box'
-import Switch from '@mui/material/Switch'
-import Grid from '@mui/material/Unstable_Grid2'
-import { useCanGatewayStore } from '../../store/store' // Grid version 2
-
-const IOSSwitch = styled((props: SwitchProps) => (
-  <Switch focusVisibleClassName=".Mui-focusVisible" disableRipple {...props} />
-))(({ theme }) => ({
-  width: 42,
-  height: 26,
-  padding: 0,
-  marginRight: '10px',
-  '& .MuiSwitch-switchBase': {
-    padding: 0,
-    margin: 2,
-    transitionDuration: '300ms',
-    '&.Mui-checked': {
-      transform: 'translateX(16px)',
-      color: '#fff',
-      '& + .MuiSwitch-track': {
-        backgroundColor: theme.palette.mode === 'dark' ? '#2ECA45' : '#65C466',
-        opacity: 1,
-        border: 0
-      },
-      '&.Mui-disabled + .MuiSwitch-track': {
-        opacity: 0.5
-      }
-    },
-    '&.Mui-focusVisible .MuiSwitch-thumb': {
-      color: '#33cf4d',
-      border: '6px solid #fff'
-    },
-    '&.Mui-disabled .MuiSwitch-thumb': {
-      color: theme.palette.mode === 'light' ? theme.palette.grey[100] : theme.palette.grey[600]
-    },
-    '&.Mui-disabled + .MuiSwitch-track': {
-      opacity: theme.palette.mode === 'light' ? 0.7 : 0.3
-    }
-  },
-  '& .MuiSwitch-thumb': {
-    boxSizing: 'border-box',
-    width: 22,
-    height: 22
-  },
-  '& .MuiSwitch-track': {
-    borderRadius: 26 / 2,
-    backgroundColor: theme.palette.mode === 'light' ? '#E9E9EA' : '#39393D',
-    opacity: 1,
-    transition: theme.transitions.create(['background-color'], {
-      duration: 500
-    })
-  }
-}))
+import { Box, Switch, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
+import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
+import DirectionsCarRoundedIcon from '@mui/icons-material/DirectionsCarRounded'
+import { useNavigate } from 'react-router-dom'
+import { useCanGatewayStore } from '../../store/store'
 
 export function VehicleSettings() {
-  const [
-    autoLock,
-    driveAwayLocking,
-    globalWindowClose,
-    globalWindowOpen,
-    mirrorFoldBack,
-    passiveArming,
-    twoStageLocking,
-    alarmSensors,
-    mirrorDip,
-    setAutoLock,
-    setDriveAway,
-    setGlobalWindowsClose,
-    setGlobalWindowsOpen,
-    setMirrorFoldBack,
-    setPassiveArming,
-    setTwoStageUnlocking,
-    setAlarmSensors,
-    setMirrorDip
-  ] = useCanGatewayStore((state) => [
-    state.autoLock,
-    state.driveAwayLocking,
-    state.globalWindowClose,
-    state.globalWindowOpen,
-    state.mirrorFoldBack,
-    state.passiveArming,
-    state.twoStageLocking,
-    state.alarmSensors,
-    state.mirrorDip,
-    state.setAutoLock,
-    state.setDriveAway,
-    state.setGlobalWindowsClose,
-    state.setGlobalWindowsOpen,
-    state.setMirrorFoldBack,
-    state.setPassiveArming,
-    state.setTwoStageUnlocking,
-    state.setAlarmSensors,
-    state.setMirrorDip
-  ])
-
-  const driveAway = [
-    <ToggleButton value={0} key={'0'}>
-      OFF
-    </ToggleButton>,
-    <ToggleButton value={1} key={'1'}>
-      5 MPH
-    </ToggleButton>,
-    <ToggleButton value={2} key={'2'}>
-      10 MPH
-    </ToggleButton>,
-    <ToggleButton value={3} key={'3'}>
-      15 MPH
-    </ToggleButton>
-  ]
-
-  const handleChange = (event: React.MouseEvent<HTMLElement>, newAlignment: number) => {
-    setDriveAway(newAlignment)
-  }
-
-  const control = {
-    value: driveAwayLocking,
-    onChange: handleChange,
-    exclusive: true
-  }
-
-  return (
-    <Grid container sx={{ marginTop: '10px', maxHeight: '80%', flexGrow: 1 }}>
-      <Grid xs={6}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-around' }}>
-          <Typography sx={{ flexGrow: 1 }}>Auto Locking</Typography>
-          <IOSSwitch checked={autoLock} onChange={() => setAutoLock(!autoLock)} />
-        </Box>
-      </Grid>
-      <Grid xs={6} sx={{ height: '20%' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-around' }}>
-          <Typography sx={{ flexGrow: 1 }}>Mirror Fold Back</Typography>
-          <IOSSwitch checked={mirrorFoldBack} onChange={() => setMirrorFoldBack(!mirrorFoldBack)} />
-        </Box>
-      </Grid>
-      <Grid xs={6} sx={{ height: '20%' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-around' }}>
-          <Typography sx={{ flexGrow: 1 }}>Global Window Close</Typography>
-          <IOSSwitch
-            checked={globalWindowClose}
-            onChange={() => setGlobalWindowsClose(!globalWindowClose)}
-          />
-        </Box>
-      </Grid>
-      <Grid xs={6} sx={{ height: '20%' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-around' }}>
-          <Typography sx={{ flexGrow: 1 }}>Reverse Mirror Dip</Typography>
-          <IOSSwitch checked={mirrorDip} onChange={() => setMirrorDip(!mirrorDip)} />
-        </Box>
-      </Grid>
-      <Grid xs={6} sx={{ height: '20%' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-around' }}>
-          <Typography sx={{ flexGrow: 1 }}>Global Window Open</Typography>
-          <IOSSwitch
-            checked={globalWindowOpen}
-            onChange={() => setGlobalWindowsOpen(!globalWindowOpen)}
-          />
-        </Box>
-      </Grid>
-      <Grid xs={6} sx={{ height: '20%' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-around' }}>
-          <Typography sx={{ flexGrow: 1 }}>Passive Arming</Typography>
-          <IOSSwitch checked={passiveArming} onChange={() => setPassiveArming(!passiveArming)} />
-        </Box>
-      </Grid>
-      <Grid xs={6} sx={{ height: '20%' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-around' }}>
-          <Typography sx={{ flexGrow: 1 }}>Two Stage Locking</Typography>
-          <IOSSwitch
-            checked={twoStageLocking}
-            onChange={() => setTwoStageUnlocking(!twoStageLocking)}
-          />
-        </Box>
-      </Grid>
-      <Grid xs={6} sx={{ height: '20%' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-around' }}>
-          <Typography sx={{ flexGrow: 1 }}>Alarm Sensors</Typography>
-          <IOSSwitch checked={alarmSensors} onChange={() => setAlarmSensors(!alarmSensors)} />
-        </Box>
-      </Grid>
-      <Grid xs={12} sx={{ height: '20%' }}>
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'centre',
-            alignItems: 'center'
-          }}
-        >
-          <Typography sx={{ flexGrow: 1 }}>Drive Away Locking</Typography>
-          <ToggleButtonGroup {...control}>{driveAway}</ToggleButtonGroup>
-        </Box>
-      </Grid>
-    </Grid>
-  )
+  const navigate = useNavigate()
+  const car = useCanGatewayStore()
+  const options = [
+    ['Auto relock', car.autoLock, car.setAutoLock], ['Two-stage unlocking', car.twoStageLocking, car.setTwoStageLocking],
+    ['Passive arming', car.passiveArming, car.setPassiveArming], ['Alarm sensors', car.alarmSensors, car.setAlarmSensors],
+    ['Mirror fold-back', car.mirrorFoldBack, car.setMirrorFoldBack], ['Reverse mirror dip', car.mirrorDip, car.setMirrorDip],
+    ['Global window open', car.globalWindowOpen, car.setGlobalWindowOpen], ['Global window close', car.globalWindowClose, car.setGlobalWindowClose]
+  ] as const
+  return <Box sx={{ height: '100%', p: 1.5, display: 'grid', gridTemplateRows: '48px minmax(0,1fr)', gap: 1.2, overflow: 'hidden' }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}><Box className="settings-back" onClick={() => navigate('/settings')}><ArrowBackRoundedIcon /></Box><Box><Typography sx={{ fontSize: 24, fontWeight: 600 }}>Vehicle settings</Typography><Typography sx={{ mt: -.4, color: 'text.secondary', fontSize: 11, letterSpacing: 1.2 }}>SECURITY &amp; CONVENIENCE</Typography></Box></Box>
+    <Box sx={{ minHeight: 0, display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 230px', gap: 1.2 }}>
+      <Box className="glass-panel" sx={{ borderRadius: 3, p: 1.2, display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: .7, overflow: 'hidden' }}>{options.map(([label, checked, change]) => <Box key={label} sx={{ px: 1.2, minHeight: 48, borderRadius: 2, background: 'rgba(255,255,255,.035)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}><Typography sx={{ fontSize: 13, fontWeight: 500 }}>{label}</Typography><Switch size="small" checked={checked} onChange={(_, value) => change(value)} /></Box>)}</Box>
+      <Box className="glass-panel" sx={{ borderRadius: 3, p: 1.5, display: 'flex', flexDirection: 'column', gap: 1.4, overflow: 'hidden' }}><Box sx={{ width: 42, height: 42, borderRadius: 2, display: 'grid', placeItems: 'center', color: 'primary.main', background: 'var(--accent-soft)' }}><DirectionsCarRoundedIcon /></Box><Box><Typography sx={{ fontSize: 12, color: 'text.secondary', mb: .7 }}>Drive-away locking</Typography><ToggleButtonGroup orientation="vertical" fullWidth exclusive size="small" value={car.driveAwayLocking} onChange={(_, value) => value !== null && car.setDriveAway(value)}><ToggleButton value={0}>Off</ToggleButton><ToggleButton value={1}>5 mph</ToggleButton><ToggleButton value={2}>10 mph</ToggleButton><ToggleButton value={3}>15 mph</ToggleButton></ToggleButtonGroup></Box><Box sx={{ mt: 'auto', display: 'flex', justifyContent: 'space-between' }}><Typography sx={{ fontSize: 11, color: 'text.secondary' }}>Outside</Typography><Typography sx={{ fontSize: 13, fontWeight: 600 }}>{car.externalTemp == null ? '—' : `${car.externalTemp.toFixed(1)}°C`}</Typography></Box></Box>
+    </Box>
+  </Box>
 }

@@ -23,6 +23,8 @@ export interface MostSettings {
   ip: string
   usbSettings: UsbSettings
   saveSettings: (settings: UsbSettings) => void
+  requestSettings: () => void
+  bootToDfu: () => void
 }
 
 interface CarplayStore {
@@ -38,6 +40,13 @@ interface CarplayStore {
   setPlaying: (playing: boolean) => void
   focus: boolean
   setFocus: (focus: boolean) => void
+  keyCommand: string
+  commandCounter: number
+}
+
+interface HMICommandStore {
+  path: string | null
+  nonce: number
 }
 
 type DiskInfo = {
@@ -138,6 +147,64 @@ interface HMIStore {
   screensaver: boolean
 }
 
+interface ParkingAssistStore {
+  parkingSensors: ParkingSensors
+  parkingActive: boolean
+}
+
+interface AmplifierStore {
+  balance: number
+  loudness: boolean
+  bass: number
+  treble: number
+  fader: number
+  subwoofer: number
+  centre: number
+  mode: number
+  surround: number
+  source: number | null
+  mixerLevel: number[]
+  setBalance: (value: number) => void
+  setLoudness: (enabled: boolean) => void
+  setBass: (value: number) => void
+  setTreble: (value: number) => void
+  setFader: (value: number) => void
+  setSubwoofer: (value: number) => void
+  setCentre: (value: number) => void
+  setMode: (value: number) => void
+  setSurround: (value: number) => void
+}
+
+interface CanGatewayStore {
+  hours: number | null
+  minutes: number | null
+  autoLock: boolean
+  driveAwayLocking: number
+  globalWindowClose: boolean
+  globalWindowOpen: boolean
+  ambientLight: number
+  lights: boolean
+  mirrorFoldBack: boolean
+  mirrorDip: boolean
+  passiveArming: boolean
+  alarmSensors: boolean
+  twoStageLocking: boolean
+  externalTemp: number | null
+  avgMpg: number | null
+  range: number | null
+  distance: number | null
+  avgSpeed: number | null
+  setAutoLock: (enabled: boolean) => void
+  setDriveAway: (speed: number) => void
+  setPassiveArming: (enabled: boolean) => void
+  setTwoStageLocking: (enabled: boolean) => void
+  setAlarmSensors: (enabled: boolean) => void
+  setGlobalWindowOpen: (enabled: boolean) => void
+  setGlobalWindowClose: (enabled: boolean) => void
+  setMirrorFoldBack: (enabled: boolean) => void
+  setMirrorDip: (enabled: boolean) => void
+}
+
 type SeatTemp = -3 | -2 | -1 | 0 | 1 | 2 | 3
 
 interface ClimateStore {
@@ -166,6 +233,56 @@ interface ClimateStore {
 interface persistentStore {
   currentSource: null | string
   setLastAudioSource: (lastAudioSource) => void
+}
+
+export type MostDiagnosticDevice = {
+  address: number
+  fBlockID: number
+  instanceID: number
+}
+
+export type MostDiagnosticMessage = {
+  direction: 'rx' | 'tx'
+  timestamp: number
+  sourceAddress?: number
+  targetAddress?: number
+  fBlockID: number
+  instanceID: number
+  fktID: number
+  opType: number
+  telID?: number
+  data: number[]
+}
+
+export type MostSubscription = MostDiagnosticDevice & {
+  owner: string
+  functions: number[]
+  all: boolean
+}
+
+interface MostDiagnosticsStore {
+  messages: MostDiagnosticMessage[]
+  registry: MostDiagnosticDevice[]
+  selectedDevice: MostDiagnosticDevice | null
+  subscribedDevices: string[]
+  subscriptions: MostSubscription[]
+  paused: boolean
+  logging: boolean
+  logPath: string | null
+  logError: string | null
+  requestRegistry: () => void
+  selectDevice: (device: MostDiagnosticDevice) => void
+  subscribeSelected: () => void
+  sendMessage: (message: Omit<MostDiagnosticMessage, 'direction' | 'timestamp' | 'data'> & { targetAddress: number; data: number[] }) => void
+  clearMessages: () => void
+  setPaused: (paused: boolean) => void
+  setLogging: (enabled: boolean) => void
+}
+
+interface MostOperatingModeStore {
+  headUnit: boolean
+  known: boolean
+  nodeAddress: number | null
 }
 
 export const useAmFmTunerStore = create<AmFmTunerStore>()((set) => ({
@@ -212,6 +329,59 @@ export const useAmFmTunerStore = create<AmFmTunerStore>()((set) => ({
 
 export const useHMIStore = create<HMIStore>()(() => ({
   screensaver: true
+}))
+
+export const useParkingAssistStore = create<ParkingAssistStore>()(() => ({
+  parkingSensors: {
+    frontLeft: 0,
+    frontCentreLeft: 0,
+    frontCentreRight: 0,
+    frontRight: 0,
+    rearLeft: 0,
+    rearCentreLeft: 0,
+    rearCentreRight: 0,
+    rearRight: 0
+  },
+  parkingActive: false
+}))
+
+export const useAmplifierStore = create<AmplifierStore>()((set, get) => ({
+  balance: 0, loudness: false, bass: 0, treble: 0, fader: 0, subwoofer: 0,
+  centre: 0, mode: 0, surround: 0, source: null, mixerLevel: [],
+  setBalance: (value) => { set({ balance: value }); socket.emit('button', { device: 'amplifier', function: 'setBalance', args: { value } }) },
+  setLoudness: (enabled) => { set({ loudness: enabled }); socket.emit('button', { device: 'amplifier', function: 'setLoudness', args: { enabled } }) },
+  setBass: (value) => { set({ bass: value }); socket.emit('button', { device: 'amplifier', function: 'setBass', args: { value } }) },
+  setTreble: (value) => { set({ treble: value }); socket.emit('button', { device: 'amplifier', function: 'setTreble', args: { value } }) },
+  setFader: (value) => { set({ fader: value }); socket.emit('button', { device: 'amplifier', function: 'setFader', args: { value } }) },
+  setSubwoofer: (value) => { set({ subwoofer: value }); socket.emit('button', { device: 'amplifier', function: 'setSubwoofer', args: { value } }) },
+  setCentre: (value) => { set({ centre: value }); socket.emit('button', { device: 'amplifier', function: 'setCentre', args: { mode: get().mode, value } }) },
+  setMode: (value) => { set({ mode: value }); socket.emit('button', { device: 'amplifier', function: 'setMode', args: { value } }) },
+  setSurround: (value) => { set({ surround: value }); socket.emit('button', { device: 'amplifier', function: 'setSurround', args: { value } }) }
+}))
+
+export const useCanGatewayStore = create<CanGatewayStore>()((set, get) => ({
+  hours: null, minutes: null, autoLock: false, driveAwayLocking: 0,
+  globalWindowClose: false, globalWindowOpen: false, ambientLight: 0, lights: false,
+  mirrorFoldBack: false, mirrorDip: false, passiveArming: false, alarmSensors: false,
+  twoStageLocking: false, externalTemp: null, avgMpg: null, range: null,
+  distance: null, avgSpeed: null,
+  setAutoLock: (enabled) => socket.emit('button', { device: 'canGateway', function: 'setAutoLock', args: { enabled } }),
+  setDriveAway: (speed) => socket.emit('button', { device: 'canGateway', function: 'setDriveAway', args: { speed } }),
+  setPassiveArming: (enabled) => socket.emit('button', { device: 'canGateway', function: 'setPassiveArming', args: { enabled } }),
+  setTwoStageLocking: (enabled) => socket.emit('button', { device: 'canGateway', function: 'setTwoStageLocking', args: { enabled } }),
+  setAlarmSensors: (enabled) => socket.emit('button', { device: 'canGateway', function: 'setAlarmSensors', args: { enabled } }),
+  setGlobalWindowOpen: (enabled) => {
+    socket.emit('button', { device: 'canGateway', function: 'setGlobalWindows', args: { open: enabled, close: get().globalWindowClose } })
+  },
+  setGlobalWindowClose: (enabled) => {
+    socket.emit('button', { device: 'canGateway', function: 'setGlobalWindows', args: { open: get().globalWindowOpen, close: enabled } })
+  },
+  setMirrorFoldBack: (enabled) => {
+    socket.emit('button', { device: 'canGateway', function: 'setMirrors', args: { foldBack: enabled, dip: get().mirrorDip } })
+  },
+  setMirrorDip: (enabled) => {
+    socket.emit('button', { device: 'canGateway', function: 'setMirrors', args: { foldBack: get().mirrorFoldBack, dip: enabled } })
+  }
 }))
 
 export const useClimateStore = create<ClimateStore>()(() => ({
@@ -262,7 +432,7 @@ export const useMostSettings = create<MostSettings>()((set) => ({
     customShutdown: false,
     auxPower: false,
     forty8Khz: false,
-    spare3: false,
+    debug: false,
     spare4: false,
     spare5: false,
     nodeAddressHigh: 0,
@@ -284,10 +454,9 @@ export const useMostSettings = create<MostSettings>()((set) => ({
       sinkNumber: 0
     }
   },
-  saveSettings: (settings: UsbSettings) => {
-    console.log('saving settings in store', settings)
-    socket.emit('saveSettings', settings)
-  }
+  saveSettings: (settings: UsbSettings) => socket.emit('mostUsb:saveSettings', settings),
+  requestSettings: () => socket.emit('mostUsb:getSettings'),
+  bootToDfu: () => socket.emit('mostUsb:bootToDfu')
 }))
 
 export const useCarplayStore = create<CarplayStore>()((set) => ({
@@ -317,8 +486,12 @@ export const useCarplayStore = create<CarplayStore>()((set) => ({
   focus: false,
   setFocus: (focus) => {
     set(() => ({ focus: focus }))
-  }
+  },
+  keyCommand: '',
+  commandCounter: 0
 }))
+
+export const useHMICommandStore = create<HMICommandStore>()(() => ({ path: null, nonce: 0 }))
 
 //
 // export const useAmFmStore = create<AmFmTuner>()((_set) => ({
@@ -454,8 +627,51 @@ export const usePersistantStore = create<persistentStore>()(
   )
 )
 
+const diagnosticDeviceKey = (device: MostDiagnosticDevice) =>
+  `${device.address}:${device.fBlockID}:${device.instanceID}`
+
+export const useMostDiagnosticsStore = create<MostDiagnosticsStore>()((set, get) => ({
+  messages: [],
+  registry: [],
+  selectedDevice: null,
+  subscribedDevices: [],
+  subscriptions: [],
+  paused: false,
+  logging: false,
+  logPath: null,
+  logError: null,
+  requestRegistry: () => socket.emit('mostDiagnostics:requestRegistry'),
+  selectDevice: (device) => set({ selectedDevice: device }),
+  subscribeSelected: () => {
+    const device = get().selectedDevice
+    if (!device) return
+    socket.emit('mostDiagnostics:subscribe', device)
+    set((state) => ({
+      subscribedDevices: Array.from(new Set([...state.subscribedDevices, diagnosticDeviceKey(device)]))
+    }))
+  },
+  sendMessage: (message) => socket.emit('mostDiagnostics:send', {
+    targetAddressHigh: (message.targetAddress >> 8) & 0xff,
+    targetAddressLow: message.targetAddress & 0xff,
+    fBlockID: message.fBlockID,
+    instanceID: message.instanceID,
+    fktID: message.fktID,
+    opType: message.opType,
+    data: message.data
+  }),
+  clearMessages: () => set({ messages: [] }),
+  setPaused: (paused) => set({ paused }),
+  setLogging: (enabled) => socket.emit('mostDiagnostics:setLogging', enabled)
+}))
+
+export const useMostOperatingModeStore = create<MostOperatingModeStore>()(() => ({
+  headUnit: false,
+  known: false,
+  nodeAddress: null
+}))
+
 const URL = 'http://localhost:4000'
-const socket = io(URL)
+export const socket = io(URL)
 
 socket.on('settings', (settings: ExtraConfig) => {
   console.log('received settings', settings)
@@ -528,6 +744,23 @@ socket.on('HMI', (data) => {
   })
 })
 
+let parkingSensorTimeout: ReturnType<typeof setTimeout> | undefined
+socket.on('CanGateway', (data) => {
+  useCanGatewayStore.setState((state) => ({ ...state, ...data }))
+  if (data?.parkingSensors) {
+    useParkingAssistStore.setState((state) => ({
+      parkingSensors: { ...state.parkingSensors, ...data.parkingSensors },
+      parkingActive: true
+    }))
+    if (parkingSensorTimeout) clearTimeout(parkingSensorTimeout)
+    parkingSensorTimeout = setTimeout(() => {
+      useParkingAssistStore.setState({ parkingActive: false })
+    }, 1200)
+  }
+})
+
+socket.on('Amplifier', (data) => useAmplifierStore.setState((state) => ({ ...state, ...data })))
+
 socket.on('Climate', (data) => {
   console.log('Climate data:', data)
   useClimateStore.setState((state) =>
@@ -535,4 +768,46 @@ socket.on('Climate', (data) => {
       _.merge(draft, data)
     })
   )
+})
+
+socket.on('mostDiagnostics:message', (message: MostDiagnosticMessage) => {
+  if (useMostDiagnosticsStore.getState().paused) return
+  useMostDiagnosticsStore.setState((state) => ({
+    messages: [...state.messages.slice(-1999), message]
+  }))
+})
+
+socket.on('mostDiagnostics:registry', (registry: MostDiagnosticDevice[]) => {
+  useMostDiagnosticsStore.setState({ registry })
+})
+
+socket.on('mostDiagnostics:subscriptions', (subscriptions: MostSubscription[]) => {
+  useMostDiagnosticsStore.setState({
+    subscriptions,
+    subscribedDevices: subscriptions.map(diagnosticDeviceKey)
+  })
+})
+
+socket.on('mostDiagnostics:logging', (status: { enabled: boolean; path: string | null; error?: string }) => {
+  useMostDiagnosticsStore.setState({
+    logging: status.enabled,
+    logPath: status.path,
+    logError: status.error || null
+  })
+})
+
+socket.on('mostOperatingMode', (mode: MostOperatingModeStore) => {
+  useMostOperatingModeStore.setState(mode)
+})
+
+socket.on('HMICommand', (command: { type: 'navigate' | 'carplay'; path?: string; command?: string }) => {
+  if (command.type === 'navigate' && command.path) {
+    useHMICommandStore.setState((state) => ({ path: command.path!, nonce: state.nonce + 1 }))
+  } else if (command.type === 'carplay' && command.command) {
+    useCarplayStore.setState((state) => ({ keyCommand: command.command!, commandCounter: state.commandCounter + 1 }))
+  }
+})
+
+socket.on('connect', () => {
+  socket.emit('mostDiagnostics:getSubscriptions')
 })

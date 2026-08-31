@@ -2,6 +2,7 @@ import { Box, Typography } from '@mui/material'
 import RadioRoundedIcon from '@mui/icons-material/RadioRounded'
 import AlbumRoundedIcon from '@mui/icons-material/AlbumRounded'
 import UsbRoundedIcon from '@mui/icons-material/UsbRounded'
+import PhoneIphoneRoundedIcon from '@mui/icons-material/PhoneIphoneRounded'
 import { useAudioControlStore } from '../store/store'
 import { useNavigate } from 'react-router-dom'
 
@@ -14,6 +15,7 @@ export default function SourceSelection({ onSelect = () => {} }: { onSelect?: ()
       detail: 'FM · AM',
       icon: <RadioRoundedIcon />,
       source: 'AmFmTuner',
+      route: undefined,
       active: true
     },
     {
@@ -21,6 +23,15 @@ export default function SourceSelection({ onSelect = () => {} }: { onSelect?: ()
       detail: '6-disc changer',
       icon: <AlbumRoundedIcon />,
       source: 'AudioDiskPlayer',
+      route: undefined,
+      active: true
+    },
+    {
+      name: 'CarPlay',
+      detail: 'Phone projection',
+      icon: <PhoneIphoneRoundedIcon />,
+      source: 'Carplay',
+      route: '/carplay',
       active: true
     },
     {
@@ -28,11 +39,12 @@ export default function SourceSelection({ onSelect = () => {} }: { onSelect?: ()
       detail: 'Not connected',
       icon: <UsbRoundedIcon />,
       source: '',
+      route: undefined,
       active: false
     }
   ]
   return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 1.5 }}>
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 1.5 }}>
       {sources.map((item) => (
         <Box
           key={item.name}
@@ -40,6 +52,7 @@ export default function SourceSelection({ onSelect = () => {} }: { onSelect?: ()
           onClick={() => {
             if (item.active) {
               setSource(item.source)
+              if (item.route) navigate(item.route)
               onSelect()
             }
           }}
@@ -72,40 +85,6 @@ export default function SourceSelection({ onSelect = () => {} }: { onSelect?: ()
           </Box>
         </Box>
       ))}
-      <Box
-        key={'carplay'}
-        className="touch-card"
-        onClick={() => {
-          navigate('/carplay')
-        }}
-        sx={{
-          minHeight: 132,
-          p: 2,
-          borderRadius: 2.5,
-          border: '1px solid var(--stroke)',
-          background: true
-            ? 'linear-gradient(145deg,rgba(45,61,79,.8),rgba(21,29,40,.8))'
-            : 'rgba(255,255,255,.025)',
-          opacity: true ? 1 : 0.45,
-          cursor: true ? 'pointer' : 'default',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between'
-        }}
-      >
-        <Box
-          sx={{
-            color: true ? 'primary.main' : 'text.secondary',
-            '& svg': { fontSize: 34 }
-          }}
-        >
-          <UsbRoundedIcon />
-        </Box>
-        <Box>
-          <Typography sx={{ fontSize: 17, fontWeight: 600 }}>{'carplay'}</Typography>
-          <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>{'carplay'}</Typography>
-        </Box>
-      </Box>
     </Box>
   )
 }

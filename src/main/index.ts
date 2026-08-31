@@ -32,6 +32,7 @@ const DEFAULT_BINDINGS: KeyBindings = {
 
 const EXTRA_CONFIG: ExtraConfig = {
   ...DEFAULT_CONFIG,
+  diagnosticMode: false,
   kiosk: true,
   camera: '',
   microphone: '',
@@ -122,19 +123,19 @@ function createWindow(): void {
   })
 
   mainWindow.webContents.session.setDevicePermissionHandler((details) => {
-    if (details.device.vendorId === 4884) {
-      return true
-    } else {
-      return false
-    }
+    return details.device.vendorId === 0x0483
   })
 
   mainWindow.webContents.session.on('select-usb-device', (event, details, callback) => {
     event.preventDefault()
     const selectedDevice = details.deviceList.find((device) => {
-      return device.vendorId === 4884 && (device.productId === 5408 || device.productId === 5408)
+      return device.vendorId === 0x0483
     })
-
+    console.log(
+      selectedDevice
+        ? `selected STM32 DFU device ${selectedDevice.deviceName} (${selectedDevice.vendorId.toString(16)}:${selectedDevice.productId.toString(16)})`
+        : 'no STM32 DFU device found in WebUSB device list'
+    )
     callback(selectedDevice?.deviceId)
   })
   // app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');

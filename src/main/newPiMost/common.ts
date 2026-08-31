@@ -208,6 +208,14 @@ export abstract class FBlock extends EventEmitter {
         ])
       )
     }
+    this.socket.setMostSubscription(this.subscriptionKey(), {
+      owner: this.constructor.name,
+      address: (this.physicalDevice.addressHigh << 8) | this.physicalDevice.addressLow,
+      fBlockID: this.physicalDevice.fBlockID,
+      instanceID: this.physicalDevice.instanceID,
+      functions: [...this.subscriptions],
+      all: false
+    })
   }
 
   subscribeAll() {
@@ -219,6 +227,14 @@ export abstract class FBlock extends EventEmitter {
         this.socketmost.settings.nodeAddressLow
       ])
     )
+    this.socket.setMostSubscription(this.subscriptionKey(), {
+      owner: this.constructor.name,
+      address: (this.physicalDevice.addressHigh << 8) | this.physicalDevice.addressLow,
+      fBlockID: this.physicalDevice.fBlockID,
+      instanceID: this.physicalDevice.instanceID,
+      functions: [],
+      all: true
+    })
   }
 
   updateStatus(data) {
@@ -235,6 +251,11 @@ export abstract class FBlock extends EventEmitter {
         this.socketmost.settings.nodeAddressLow
       ])
     )
+    this.socket.removeMostSubscription(this.subscriptionKey())
+  }
+
+  subscriptionKey() {
+    return `${this.physicalDevice.addressHigh}:${this.physicalDevice.addressLow}:${this.physicalDevice.fBlockID}:${this.physicalDevice.instanceID}`
   }
 
   physicalMessage(opType: number, functionId: number, data: number[]): SocketMostSendMessage {

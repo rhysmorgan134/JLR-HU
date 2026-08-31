@@ -1,9 +1,10 @@
 import { FBlock } from './common'
-import { MostRxMessage, Os8104Events } from 'socketmost'
+import { AllocResult, MostRxMessage, Os8104Events, SocketMostSendMessage } from 'socketmost'
 import {
   DeckEvent,
   DeckStatus,
   Device,
+  ErrorTypes,
   FBlockMap,
   MediaEvent,
   NetworkStatus,
@@ -28,7 +29,9 @@ const cdPlayerShadow: Device = {
   instanceID: 0xa1
 }
 const cdPlayerShadowFunctions = [0x00, 0xc80, 0xc81, 0xe00]
-const carplay: Device = { addressHigh: 0x1, addressLow: 0x89, fBlockID: 0x31, instanceID: 0x5 }
+// Set false to restore the original play -> MessageSent -> subscribeAll startup path.
+const USE_SEQUENCED_CD_STARTUP = true
+const carplay: Device = { addressHigh: 0x1, addressLow: 0x6e, fBlockID: 0x31, instanceID: 0x5 }
 const carplayFunctions = [
   0x0, 0x01, 0x90, 0x91, 0x92, 0x101, 0x102, 0x200, 0x201, 0x202, 0x412, 0x413, 0x420, 0x430, 0x431,
   0x450, 0x451, 0x452, 0xc11, 0xc13, 0xc31, 0xc32, 0xc33, 0xc34
@@ -40,6 +43,7 @@ const carplayShadow: Device = {
   instanceID: 0xa2
 }
 const carplayShadowFunctions = [0x00, 0xc80, 0xc81, 0xe00]
+const canGatewayDevice: Device = { addressHigh: 0x01, addressLow: 0x61, fBlockID: 0xf5, instanceID: 0x01 }
 const amFmTuner: Device = { addressHigh: 0x01, addressLow: 0x80, fBlockID: 0x40, instanceID: 0x01 }
 const amFmTunerFunctions = [
   0x0, 0x1, 0x2, 0x101, 0x102, 0x103, 0xd00, 0xd01, 0xd02, 0xd03, 0xd05, 0xd08, 0xd09, 0xd0a, 0xd0b,
@@ -52,7 +56,9 @@ const amFmTunerShadow: Device = {
   instanceID: 0xa1
 }
 const amFmTunerShadowFunctions = [0x00, 0x01, 0x02, 0xc80, 0xc81, 0xd19, 0xe00]
-const amplifier: Device = { addressHigh: 0x01, addressLow: 0x86, fBlockID: 0x22, instanceID: 0x05 }
+// The legacy UI controls the AudioAmplifier shadow hosted by the JLR head unit.
+// The physical amplifier at 0x0186/0x05 does not expose these property FktIDs.
+const amplifier: Device = { addressHigh: 0x01, addressLow: 0x61, fBlockID: 0x22, instanceID: 0xa1 }
 const amplifierFunctions = [
   0x00, 0x01, 0x02, 0x111, 0x112, 0x113, 0x202, 0x203, 0x427, 0x430, 0x431, 0x441, 0x461, 0x466,
   0x46d, 0xe04, 0xe05, 0xe07, 0xe08
@@ -181,6 +187,24 @@ export class HMI extends FBlock {
 
   stopSource(): void {}
 
+  0xca1(message: MostRxMessage): void {
+    if (message.data.length < 2 || message.data[1] !== 0x01) return
+    if (message.data[0] === 0x03) this.emit('skipForward')
+    else if (message.data[0] === 0x04) this.emit('skipBackward')
+  }
+
+  0xe00(message: MostRxMessage): void {
+    if (message.data.length >= 3 && message.data[0] === 0x11 && message.data[1] === 0x31 && message.data[2] === 0x01) {
+      this.emit('cycleSource')
+    }
+  }
+
+  0xe01(message: MostRxMessage): void {
+    if (message.data.length >= 3 && message.data[0] === 0x12 && message.data[1] === 0x1c && message.data[2] === 0x01) {
+      this.emit('musicSettings')
+    }
+  }
+
   0xc81(message: MostRxMessage) {
     if (message.data[0] === 0x00) {
       this.logger.info(
@@ -237,7 +261,37 @@ export class CanGateway extends FBlock {
     autoSubscribe: boolean,
     socket: Socket
   ) {
-    super(subscriptions, cdPlayer, cdPlayerShadow, socketmost, autoSubscribe, socket)
+    super(subscriptions, canGatewayDevice, null, socketmost, autoSubscribe, socket)
+    this.status = {
+      hours: null,
+      minutes: null,
+      autoLock: false,
+      driveAwayLocking: 0,
+      globalWindowClose: false,
+      globalWindowOpen: false,
+      ambientLight: 0,
+      lights: false,
+      mirrorFoldBack: false,
+      mirrorDip: false,
+      passiveArming: false,
+      alarmSensors: false,
+      twoStageLocking: false,
+      externalTemp: null,
+      avgMpg: null,
+      range: null,
+      distance: null,
+      avgSpeed: null,
+      parkingSensors: {
+        frontLeft: 0,
+        frontCentreLeft: 0,
+        frontCentreRight: 0,
+        frontRight: 0,
+        rearLeft: 0,
+        rearCentreLeft: 0,
+        rearCentreRight: 0,
+        rearRight: 0
+      }
+    }
   }
 
   allocate(message: MostRxMessage): void {}
@@ -251,11 +305,125 @@ export class CanGateway extends FBlock {
   startSource(): void {}
 
   stopSource(): void {}
+
+  0xa04(message: MostRxMessage): void {
+    if (message.data.length < 2) return
+    this.updateStatus({ hours: message.data.readUInt8(0), minutes: message.data.readUInt8(1) })
+  }
+
+  0xe05(message: MostRxMessage): void {
+    if (message.data.length < 4) return
+    this.updateStatus({ lights: message.data.readUInt8(1) !== 0, ambientLight: message.data.readUInt8(3) })
+  }
+
+  0xe09(message: MostRxMessage): void {
+    if (message.data.length < 1) return
+    this.updateStatus({ alarmSensors: message.data.readUInt8(0) === 0 })
+  }
+
+  0xe0a(message: MostRxMessage): void {
+    if (message.data.length < 1) return
+    this.updateStatus({ twoStageLocking: message.data.readUInt8(0) !== 0 })
+  }
+
+  0xe0f(message: MostRxMessage): void {
+    if (message.data.length < 2) return
+    this.updateStatus({ externalTemp: message.data.readUInt16BE(0) / 100 })
+  }
+
+  0xe15(message: MostRxMessage): void {
+    if (message.data.length < 15) return
+    this.updateStatus({
+      avgMpg: message.data.readUInt16BE(5) / 10,
+      avgSpeed: message.data.readUInt16BE(7) / 10,
+      distance: message.data.readUInt16BE(11),
+      range: message.data.readUInt16BE(13)
+    })
+  }
+
+  0xe17(message: MostRxMessage): void {
+    if (message.data.length < 2) return
+    this.updateStatus({
+      mirrorFoldBack: (message.data.readUInt8(0) & 0x01) !== 0,
+      mirrorDip: (message.data.readUInt8(1) & 0x01) !== 0
+    })
+  }
+
+  0xe21(message: MostRxMessage): void {
+    if (message.data.length < 1) return
+    const flags = message.data.readUInt8(0)
+    this.updateStatus({ globalWindowClose: (flags & 0x20) !== 0, globalWindowOpen: (flags & 0x10) !== 0 })
+  }
+
+  0xe27(message: MostRxMessage): void {
+    if (message.data.length < 1) return
+    this.updateStatus({ driveAwayLocking: message.data.readUInt8(0) })
+  }
+
+  0xe29(message: MostRxMessage): void {
+    if (message.data.length < 1) return
+    this.updateStatus({ passiveArming: message.data.readUInt8(0) !== 0 })
+  }
+
+  0xe2a(message: MostRxMessage): void {
+    if (message.data.length < 1) return
+    this.updateStatus({ autoLock: message.data.readUInt8(0) !== 0 })
+  }
+
+  0xe1a(message: MostRxMessage): void {
+    if (message.data.length < 4) return
+    this.updateStatus({
+      parkingSensors: {
+        ...this.status['parkingSensors'],
+        frontLeft: 31 - (message.data.readUInt8(0) & 31),
+        frontCentreLeft: 31 - (message.data.readUInt8(1) & 31),
+        frontCentreRight: 31 - (message.data.readUInt8(2) & 31),
+        frontRight: 31 - (message.data.readUInt8(3) & 31)
+      }
+    })
+  }
+
+  0xe1b(message: MostRxMessage): void {
+    if (message.data.length < 4) return
+    this.updateStatus({
+      parkingSensors: {
+        ...this.status['parkingSensors'],
+        rearLeft: 31 - (message.data.readUInt8(0) & 31),
+        rearCentreLeft: 31 - (message.data.readUInt8(1) & 31),
+        rearCentreRight: 31 - (message.data.readUInt8(2) & 31),
+        rearRight: 31 - (message.data.readUInt8(3) & 31)
+      }
+    })
+  }
+
+  startUpdates(): void {
+    this.subscribeAll()
+    ;[0xa04, 0xe05, 0xe09, 0xe0a, 0xe0f, 0xe15, 0xe17, 0xe1a, 0xe1b, 0xe21, 0xe27, 0xe29, 0xe2a].forEach((fktID) =>
+      this.socketmost.sendControlMessage(this.physicalMessage(OpType.get, fktID, []))
+    )
+  }
+
+  private setProperty(fktID: number, data: number[]): void {
+    this.socketmost.sendControlMessage(this.physicalMessage(OpType.set, fktID, data))
+  }
+
+  setAutoLock({ enabled }: { enabled: boolean }): void { this.setProperty(0xe2a, [enabled ? 1 : 0]) }
+  setDriveAway({ speed }: { speed: number }): void { this.setProperty(0xe27, [speed]) }
+  setPassiveArming({ enabled }: { enabled: boolean }): void { this.setProperty(0xe29, [enabled ? 1 : 0]) }
+  setTwoStageLocking({ enabled }: { enabled: boolean }): void { this.setProperty(0xe0a, [enabled ? 1 : 0]) }
+  setAlarmSensors({ enabled }: { enabled: boolean }): void { this.setProperty(0xe09, [enabled ? 0 : 1]) }
+  setGlobalWindows({ open, close }: { open: boolean; close: boolean }): void {
+    this.setProperty(0xe21, [(open ? 0x10 : 0) | (close ? 0x20 : 0) | 0x03])
+  }
+  setMirrors({ foldBack, dip }: { foldBack: boolean; dip: boolean }): void {
+    this.setProperty(0xe17, [foldBack ? 1 : 0, dip ? 1 : 0, 0])
+  }
 }
 
 export class NetBlock extends FBlock {
   implementedFblocks: number[]
   registry: Object
+  fblocksAdvertised: boolean
 
   constructor(
     subscriptions: number[],
@@ -267,9 +435,10 @@ export class NetBlock extends FBlock {
     this.implementedFblocks = [
       0x10, 0xa3, 0x06, 0x6e, 0x40, 0xa1, 0x31, 0xa1, 0x52, 0xd1, 0x60, 0x01, 0x50, 0xa1, 0x05,
       0xd1, 0x24, 0xa1, 0x22, 0xd1, 0x11, 0xd1, 0x44, 0xa1, 0x05, 0xd2, 0x42, 0xa1, 0x31, 0xa2,
-      0x43, 0xa1, 0x31, 0xa2
+      0x43, 0xa1, 0x31, 0xa2, 0x31, 0x05
     ]
     this.registry = {}
+    this.fblocksAdvertised = false
   }
 
   allocate(message: MostRxMessage): void {}
@@ -294,6 +463,8 @@ export class NetBlock extends FBlock {
         this.socketmost.sendControlMessage(
           this.createResponseMessage(message, this.implementedFblocks, OpType.status)
         )
+        this.fblocksAdvertised = true
+        this.emit('fblocksAdvertised')
         this.logger.debug(
           'fblocks sent' +
             this.convertMessageToHex(
@@ -546,12 +717,82 @@ export class AudioDiskPlayer extends FBlock {
   parseShadowMessage(message: MostRxMessage): void {}
 
   async startSource() {
-    return new Promise((resolve, reject) => {
+    if (!USE_SEQUENCED_CD_STARTUP) return this.startSourceLegacy()
+
+    this.logger.info('CD startup: activating physical source')
+    await this.sendAndWaitForTransmit(this.physicalMessage(OpType.set, 0x200, [0x00]))
+
+    this.logger.info('CD startup: subscribing to notifications')
+    const subscriptionResponse = this.waitForPhysicalResponse(0x001, 750)
+    this.subscribeAll()
+    const response = await subscriptionResponse
+    if (response?.opType === OpType.error || response?.opType === OpType.errorAck) {
+      this.logger.error(
+        `CD notification subscription rejected: ${this.convertMessageToHex(response)}`
+      )
+    } else if (response) {
+      this.logger.info(
+        `CD notification subscription confirmed: ${this.convertMessageToHex(response)}`
+      )
+    } else {
+      this.logger.warn('CD notification subscription was transmitted but not explicitly confirmed')
+    }
+
+    this.logger.info('CD startup: requesting initial status')
+    for (const fktID of [0x200, 0x201, 0x202, 0x420, 0x430, 0x431, 0x450, 0x452]) {
+      this.socketmost.sendControlMessage(this.physicalMessage(OpType.get, fktID, []))
+    }
+    return 1
+  }
+
+  startSourceLegacy() {
+    return new Promise((resolve) => {
       this.play()
       this.socketmost.once(Os8104Events.MessageSent, () => {
         this.subscribeAll()
         resolve(1)
       })
+    })
+  }
+
+  sendAndWaitForTransmit(message: SocketMostSendMessage, timeout = 500) {
+    return new Promise<void>((resolve) => {
+      let timer: NodeJS.Timeout
+      const transmitted = () => {
+        clearTimeout(timer)
+        resolve()
+      }
+      this.socketmost.once(Os8104Events.MessageSent, transmitted)
+      this.socketmost.sendControlMessage(message)
+      timer = setTimeout(() => {
+        this.socketmost.off(Os8104Events.MessageSent, transmitted)
+        this.logger.warn('CD startup: timed out waiting for transmit acknowledgement')
+        resolve()
+      }, timeout)
+    })
+  }
+
+  waitForPhysicalResponse(fktID: number, timeout: number) {
+    return new Promise<MostRxMessage | null>((resolve) => {
+      let timer: NodeJS.Timeout
+      const received = (message: MostRxMessage) => {
+        if (
+          message.sourceAddrHigh === this.physicalDevice.addressHigh &&
+          message.sourceAddrLow === this.physicalDevice.addressLow &&
+          message.fBlockID === this.physicalDevice.fBlockID &&
+          message.instanceID === this.physicalDevice.instanceID &&
+          message.fktID === fktID
+        ) {
+          clearTimeout(timer)
+          this.socketmost.off(Os8104Events.SocketMostMessageRxEvent, received)
+          resolve(message)
+        }
+      }
+      this.socketmost.on(Os8104Events.SocketMostMessageRxEvent, received)
+      timer = setTimeout(() => {
+        this.socketmost.off(Os8104Events.SocketMostMessageRxEvent, received)
+        resolve(null)
+      }, timeout)
     })
   }
 
@@ -685,6 +926,11 @@ export class AudioDiskPlayer extends FBlock {
     }
   }
 
+  0xc34(message: MostRxMessage) {
+    this.logger.info(`AudioDiskPlayer next-track status: ${message.data.toString('hex')}`)
+    this.updateStatus({ nextTrackStatus: Array.from(message.data) })
+  }
+
   nextTrack() {
     this.socketmost.sendControlMessage(this.physicalMessage(OpType.increment, 0x202, [0x01]))
   }
@@ -730,9 +976,59 @@ export class Carplay extends FBlock {
     this.status = {}
   }
 
-  allocate(message: MostRxMessage): void {}
+  allocate(message: MostRxMessage): void {
+    if (message.opType !== OpType.startResult) {
+      this.socketmost.sendControlMessage(
+        this.createErrorMessage(message, ErrorTypes.OpTypeNotAvailable)
+      )
+      return
+    }
 
-  deallocate(message: MostRxMessage): void {}
+    const sourceNumber = message.data.readUInt8(0)
+    this.socketmost.once(Os8104Events.AllocResult, (result: AllocResult) => {
+      const response = this.createResponseMessage(
+        message,
+        [
+          sourceNumber,
+          // Temporary test override: the working CarPlay allocation reports a source delay of 0x05.
+          0x05,
+          result.loc1,
+          result.loc2,
+          result.loc3,
+          result.loc4
+        ],
+        OpType.result
+      )
+      this.logger.info(`sending CarPlay allocate response ${this.convertMessageToHex(response)}`)
+      this.socketmost.sendControlMessage(response)
+    })
+    this.socketmost.allocate()
+  }
+
+  deallocate(message: MostRxMessage): void {
+    if (message.opType !== OpType.startResult) {
+      this.socketmost.sendControlMessage(
+        this.createErrorMessage(message, ErrorTypes.OpTypeNotAvailable)
+      )
+      return
+    }
+
+    const sourceNumber = message.data.readUInt8(0)
+    this.socketmost.once(Os8104Events.DeallocResult, () => {
+      const response = this.createResponseMessage(message, [sourceNumber], OpType.result)
+      this.logger.info(`sending CarPlay deallocate response ${this.convertMessageToHex(response)}`)
+      this.socketmost.sendControlMessage(response)
+    })
+    this.socketmost.deallocate()
+  }
+
+  0x101(message: MostRxMessage) {
+    this.allocate(message)
+  }
+
+  0x102(message: MostRxMessage) {
+    this.deallocate(message)
+  }
 
   parseMessage(message: MostRxMessage): void {}
 
@@ -1003,12 +1299,39 @@ export class AudioControl extends FBlock {
     )
     let result = await this.sendMethod(this.physicalMessage(OpType.startResultAck, 0x405, data405))
     this.logger.info(`405 result ${result}`)
+
+    // Allocating CarPlay's synchronous channels briefly unlocks the OS8104.
+    // Do not send 0x407 until the driver confirms that the ring is locked again.
+    if (device instanceof Carplay && !this.socketmost.locked) {
+      const relocked = await new Promise<boolean>((resolve) => {
+        const onLocked = () => {
+          clearTimeout(timeout)
+          resolve(true)
+        }
+        const timeout = setTimeout(() => {
+          this.socketmost.removeListener(Os8104Events.Locked, onLocked)
+          resolve(false)
+        }, 1000)
+        this.socketmost.once(Os8104Events.Locked, onLocked)
+      })
+
+      if (!relocked) {
+        this.logger.error('CarPlay allocation completed but the MOST network did not relock')
+        return
+      }
+    }
+
     result = await this.sendMethod(this.physicalMessage(OpType.startResultAck, 0x407, data407))
 
     this.logger.info(`407 result ${result}`)
     this.currentSource = device
     this.updateStatus({ currentSource: device.constructor.name })
-    device.startSource()
+    if (USE_SEQUENCED_CD_STARTUP && device instanceof AudioDiskPlayer) {
+      const startResult = await device.startSource()
+      this.logger.info(`source startup complete ${startResult ?? ''}`)
+    } else {
+      device.startSource()
+    }
   }
 
   startSource(): void {}
@@ -1051,7 +1374,12 @@ export class AudioControl extends FBlock {
 }
 
 export class Climate extends FBlock {
-  constructor(subscriptions: number[], socketmost: SocketMostUsb, autoSubscribe: boolean, socket: Socket) {
+  constructor(
+    subscriptions: number[],
+    socketmost: SocketMostUsb,
+    autoSubscribe: boolean,
+    socket: Socket
+  ) {
     super(subscriptions, climate, null, socketmost, autoSubscribe, socket)
     this.status = {
       leftTemp: null,
@@ -1085,7 +1413,11 @@ export class Climate extends FBlock {
     const side = message.data.readUInt8(0)
     if (side === 1) this.updateStatus({ leftTemp: message.data.readUInt16BE(2) / 10 })
     else if (side === 2) this.updateStatus({ rightTemp: message.data.readUInt16BE(2) / 10 })
-    else if (side === 0 && message.data.length >= 6) this.updateStatus({ leftTemp: message.data.readUInt16BE(2) / 10, rightTemp: message.data.readUInt16BE(4) / 10 })
+    else if (side === 0 && message.data.length >= 6)
+      this.updateStatus({
+        leftTemp: message.data.readUInt16BE(2) / 10,
+        rightTemp: message.data.readUInt16BE(4) / 10
+      })
   }
 
   0xc88(message: MostRxMessage): void {
@@ -1109,13 +1441,27 @@ export class Climate extends FBlock {
     else if (message.data[0] === 2) this.updateStatus({ rightSeat: value })
   }
 
-  private action(data: number[]): void { this.socketmost.sendControlMessage(this.physicalMessage(OpType.set, 0xe00, data)) }
-  setAuto(): void { this.action([0x02, 0x01]) }
-  setSync(): void { this.action([0x04, 0x01]) }
-  setAC({ active }: { active: boolean }): void { this.action([0x11, active ? 1 : 0, 0x01]) }
-  setWindscreen({ active }: { active: boolean }): void { this.action([0x13, active ? 1 : 0, 0x01, 0x01]) }
-  setFace({ active }: { active: boolean }): void { this.action([0x13, active ? 1 : 0, 0x02, 0x01]) }
-  setFeet({ active }: { active: boolean }): void { this.action([0x13, active ? 1 : 0, 0x03, 0x01]) }
+  private action(data: number[]): void {
+    this.socketmost.sendControlMessage(this.physicalMessage(OpType.set, 0xe00, data))
+  }
+  setAuto(): void {
+    this.action([0x02, 0x01])
+  }
+  setSync(): void {
+    this.action([0x04, 0x01])
+  }
+  setAC({ active }: { active: boolean }): void {
+    this.action([0x11, active ? 1 : 0, 0x01])
+  }
+  setWindscreen({ active }: { active: boolean }): void {
+    this.action([0x13, active ? 1 : 0, 0x01, 0x01])
+  }
+  setFace({ active }: { active: boolean }): void {
+    this.action([0x13, active ? 1 : 0, 0x02, 0x01])
+  }
+  setFeet({ active }: { active: boolean }): void {
+    this.action([0x13, active ? 1 : 0, 0x03, 0x01])
+  }
   setSeat({ side, temperature }: { side: 1 | 2; temperature: number }): void {
     const parsed = temperature < 0 ? 16 + Math.abs(temperature) : temperature
     this.action([0x16, side, parsed, 0x01])
@@ -1123,7 +1469,9 @@ export class Climate extends FBlock {
 
   startUpdates(): void {
     this.subscribeAll()
-    ;[0xc85, 0xc87, 0xc88, 0xc86].forEach((fktID) => this.socketmost.sendControlMessage(this.physicalMessage(OpType.get, fktID, [])))
+    ;[0xc85, 0xc87, 0xc88, 0xc86].forEach((fktID) =>
+      this.socketmost.sendControlMessage(this.physicalMessage(OpType.get, fktID, []))
+    )
   }
 }
 
@@ -1138,8 +1486,41 @@ export class Amplifier extends FBlock {
     super(subscriptions, amplifier, amplifierShadow, socketmost, autoSubscribe, socket)
     this.status = {
       0xda1: [],
-      0xda0: []
+      0xda0: [],
+      balance: 0,
+      loudness: false,
+      bass: 0,
+      treble: 0,
+      fader: 0,
+      subwoofer: 0,
+      centre: 0,
+      mode: 0,
+      surround: 0,
+      source: null,
+      mixerLevel: []
     }
+  }
+
+  private isStatus(message: MostRxMessage): boolean { return message.opType === OpType.status }
+  0x200(message: MostRxMessage) { if (this.isStatus(message) && message.data.length) this.updateStatus({ balance: message.data.readInt8(0) }) }
+  0x201(message: MostRxMessage) { if (this.isStatus(message) && message.data.length) this.updateStatus({ loudness: message.data.readUInt8(0) !== 0 }) }
+  0x202(message: MostRxMessage) { if (this.isStatus(message) && message.data.length) this.updateStatus({ bass: message.data.readInt8(0) }) }
+  0x203(message: MostRxMessage) { if (this.isStatus(message) && message.data.length) this.updateStatus({ treble: message.data.readInt8(0) }) }
+  0x204(message: MostRxMessage) { if (this.isStatus(message) && message.data.length) this.updateStatus({ fader: message.data.readInt8(0) }) }
+  0x400(message: MostRxMessage) { if (this.isStatus(message) && message.data.length) this.updateStatus({ volume: Array.from(message.data) }) }
+  0x402(message: MostRxMessage) { if (this.isStatus(message) && message.data.length) this.updateStatus({ subwoofer: message.data.readInt8(0) }) }
+  0x467(message: MostRxMessage) { if (this.isStatus(message)) this.updateStatus({ mixerLevel: Array.from(message.data) }) }
+  0xe09(message: MostRxMessage) { if (this.isStatus(message) && message.data.length) this.updateStatus({ source: message.data.readUInt8(0) }) }
+  0xe20(message: MostRxMessage) { if (this.isStatus(message) && message.data.length >= 2) this.updateStatus({ centre: message.data.readInt8(1) }) }
+  0xe21(message: MostRxMessage) { if (this.isStatus(message) && message.data.length) this.updateStatus({ surround: message.data.readInt8(0) }) }
+  0xe22(message: MostRxMessage) {
+    if (!this.isStatus(message) || !message.data.length) return
+    const mode = message.data.readUInt8(0)
+    if (mode > 2) {
+      this.logger.warn(`Ignoring invalid amplifier listening mode ${mode}: ${this.convertMessageToHex(message)}`)
+      return
+    }
+    this.updateStatus({ mode, ...(message.data.length > 1 ? { centre: message.data.readInt8(1) } : {}) })
   }
 
   0xda1(message) {
@@ -1166,6 +1547,35 @@ export class Amplifier extends FBlock {
   startSource(): void {}
 
   stopSource(): void {}
+
+  startUpdates(): void {
+    this.subscribeAll()
+    ;[0x200, 0x201, 0x202, 0x203, 0x204, 0x400, 0x402, 0x467, 0xe09, 0xe20, 0xe21, 0xe22].forEach((fktID) =>
+      this.socketmost.sendControlMessage(this.physicalMessage(OpType.get, fktID, []))
+    )
+  }
+
+  private setProperty(fktID: number, value: number): void {
+    this.socketmost.sendControlMessage(this.physicalMessage(OpType.set, fktID, [value & 0xff]))
+  }
+  setBalance({ value }: { value: number }): void { this.setProperty(0x200, Math.max(-10, Math.min(10, value))) }
+  setLoudness({ enabled }: { enabled: boolean }): void { this.setProperty(0x201, enabled ? 1 : 0) }
+  setBass({ value }: { value: number }): void { this.setProperty(0x202, value) }
+  setTreble({ value }: { value: number }): void { this.setProperty(0x203, value) }
+  setFader({ value }: { value: number }): void { this.setProperty(0x204, Math.max(-10, Math.min(10, value))) }
+  setSubwoofer({ value }: { value: number }): void { this.setProperty(0x402, value) }
+  setMode({ value }: { value: number }): void {
+    if (!Number.isInteger(value) || value < 0 || value > 2) {
+      this.logger.warn(`Ignoring invalid amplifier listening mode ${value}`)
+      return
+    }
+    this.logger.info(`Setting amplifier listening mode to ${value} via 0xE22`)
+    this.setProperty(0xe22, value)
+  }
+  setCentre({ mode, value }: { mode: number; value: number }): void {
+    this.socketmost.sendControlMessage(this.physicalMessage(OpType.set, 0xe20, [mode, value & 0xff]))
+  }
+  setSurround({ value }: { value: number }): void { this.setProperty(0xe21, value) }
 }
 
 export class NetworkMaster extends FBlock {

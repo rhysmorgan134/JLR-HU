@@ -10,7 +10,7 @@ import ThermostatRoundedIcon from '@mui/icons-material/ThermostatRounded'
 import AudioDiskOverview from './components/mediaComponents/AudioDiskPlayer/AudioDiskOverview'
 import AmFmOverview from './components/mediaComponents/AmFm/AmFmOverview'
 import SourceSelection from './components/SourceSelection'
-import { useAudioControlStore, useClimateStore, usePersistantStore } from './store/store'
+import { useAudioControlStore, useCanGatewayStore, useClimateStore, usePersistantStore } from './store/store'
 
 function Base() {
   const [sourcesOpen, setSourcesOpen] = useState(false)
@@ -18,12 +18,14 @@ function Base() {
   const currentAudioSource = usePersistantStore((state) => state.currentSource)
   const navigate = useNavigate()
   const climate = useClimateStore()
+  const trip = useCanGatewayStore()
 
   useEffect(() => { if (currentSource === null && currentAudioSource !== null) setSource(currentAudioSource) }, [])
 
   const openCurrentSource = () => {
     if (currentSource === 'AudioDiskPlayer') navigate('/AudioDiskPlayer')
     if (currentSource === 'AmFmTuner') navigate('/AmFmTuner')
+    if (currentSource === 'Carplay') navigate('/carplay')
   }
 
   const sourceOverview = currentSource === 'AudioDiskPlayer' ? <AudioDiskOverview /> : currentSource === 'AmFmTuner' ? <AmFmOverview /> : <Box sx={{ height: '100%', display: 'grid', placeItems: 'center', color: 'text.secondary' }}><Typography>Select an audio source</Typography></Box>
@@ -34,17 +36,16 @@ function Base() {
       <Box sx={{ display: 'grid', gap: 1 }}>
         <IconButton sx={{ width: 42, height: 42, color: 'white', background: 'rgba(255,255,255,.06)' }}><MusicNoteRoundedIcon /></IconButton>
         <IconButton onClick={() => navigate('/climate')} sx={{ width: 42, height: 42, color: 'text.secondary' }}><DirectionsCarRoundedIcon /></IconButton>
-        <IconButton sx={{ width: 42, height: 42, color: 'text.secondary' }}><SettingsRoundedIcon /></IconButton>
+        <IconButton onClick={() => navigate('/settings')} sx={{ width: 42, height: 42, color: 'text.secondary' }}><SettingsRoundedIcon /></IconButton>
       </Box>
     </Box>
 
     <Box sx={{ minWidth: 0, display: 'grid', gridTemplateRows: 'minmax(0,1fr) 142px', gap: 1.5 }}>
       <Box className="glass-panel" sx={{ position: 'relative', borderRadius: 3, overflow: 'hidden', p: 2.5, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
         <Box sx={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 76% 52%,rgba(53,183,255,.18),transparent 30%)', pointerEvents: 'none' }} />
-        <Box><Typography sx={{ color: 'primary.main', fontSize: 12, fontWeight: 700, letterSpacing: 2 }}>WELCOME</Typography><Typography sx={{ mt: .4, fontSize: 30, fontWeight: 300, letterSpacing: -.6 }}>Your drive, connected.</Typography></Box>
-        <Box sx={{ display: 'flex', alignItems: 'end', justifyContent: 'space-between' }}>
-          <Box><Typography sx={{ fontSize: 13, color: 'text.secondary' }}>System status</Typography><Typography sx={{ mt: .4, fontSize: 17, fontWeight: 600, color: '#65e2a8' }}>MOST network ready</Typography></Box>
-          <Box sx={{ width: 120, height: 54, display: 'flex', alignItems: 'end', gap: .5, opacity: .75 }}>{[14,24,33,19,42,31,47,26,37,18,29,13].map((h,i)=><Box key={i} sx={{ flex: 1, height: h, borderRadius: 2, background: i > 7 ? 'primary.main' : 'rgba(103,216,255,.26)' }} />)}</Box>
+        <Box><Typography sx={{ color: 'primary.main', fontSize: 12, fontWeight: 700, letterSpacing: 2 }}>TRIP COMPUTER</Typography><Typography sx={{ mt: .4, fontSize: 30, fontWeight: 300, letterSpacing: -.6 }}>Journey at a glance.</Typography></Box>
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 1.2 }}>
+          {[['Average', trip.avgMpg, 'mpg'], ['Range', trip.range, 'mi'], ['Distance', trip.distance, 'mi'], ['Avg speed', trip.avgSpeed, 'mph']].map(([label,value,unit]) => <Box key={label as string} sx={{ borderLeft: '2px solid rgba(103,216,255,.35)', pl: 1.2 }}><Typography sx={{ fontSize: 11, color: 'text.secondary' }}>{label}</Typography><Typography sx={{ mt: .2, fontSize: 23, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{value == null ? '—' : Number(value).toFixed(unit === 'mpg' || unit === 'mph' ? 1 : 0)} <Typography component="span" sx={{ fontSize: 11, color: 'text.secondary' }}>{unit}</Typography></Typography></Box>)}
         </Box>
       </Box>
 
