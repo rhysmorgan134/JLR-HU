@@ -7,13 +7,15 @@ import DirectionsCarRoundedIcon from '@mui/icons-material/DirectionsCarRounded'
 import HubRoundedIcon from '@mui/icons-material/HubRounded'
 import UsbRoundedIcon from '@mui/icons-material/UsbRounded'
 import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded'
+import SystemUpdateAltRoundedIcon from '@mui/icons-material/SystemUpdateAltRounded'
 
 const sections = [
   { path: '/settings/audio', title: 'Audio', detail: 'Tone, balance and listening preferences', icon: GraphicEqRoundedIcon },
   { path: '/settings/app', title: 'Application', detail: 'Display and system preferences', icon: TuneRoundedIcon },
   { path: '/settings/car', title: 'Vehicle', detail: 'Vehicle and convenience settings', icon: DirectionsCarRoundedIcon },
   { path: '/settings/most', title: 'MOST diagnostics', detail: 'Network registry and live message monitor', icon: HubRoundedIcon },
-  { path: '/settings/pimost-usb', title: 'PiMOST USB', detail: 'Interface, node and standalone settings', icon: UsbRoundedIcon }
+  { path: '/settings/pimost-usb', title: 'PiMOST USB', detail: 'Interface, node and standalone settings', icon: UsbRoundedIcon },
+  { path: '/settings/update', title: 'Software update', detail: 'Install releases and reboot the system', icon: SystemUpdateAltRoundedIcon }
 ]
 
 export default function SettingsHub() {

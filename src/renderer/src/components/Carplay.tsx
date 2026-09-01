@@ -41,11 +41,14 @@ function Carplay({
   const [canvasElement, setCanvasElement] = useState<HTMLCanvasElement | null>(null)
   const mainElem = useRef<HTMLDivElement>(null)
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const [stream, playing, setPlaying, setFocus] = useCarplayStore((state) => [
+  const [stream, playing, setPlaying, setFocus, setStorePlugged, setMedia, clearMedia] = useCarplayStore((state) => [
     state.stream,
     state.playing,
     state.setPlaying,
-    state.setFocus
+    state.setFocus,
+    state.setPlugged,
+    state.setMedia,
+    state.clearMedia
   ])
   const config = {
     fps: settings.fps,
@@ -104,6 +107,7 @@ function Carplay({
       switch (type) {
         case 'plugged':
           setPlugged(true)
+          setStorePlugged(true)
           if (settings.piMost && settings?.most?.stream) {
             console.log('setting most stream')
             stream(settings.most.stream)
@@ -111,6 +115,8 @@ function Carplay({
           break
         case 'unplugged':
           setPlugged(false)
+          setStorePlugged(false)
+          clearMedia()
           break
         case 'requestBuffer':
           clearRetryTimeout()
@@ -121,7 +127,21 @@ function Carplay({
           processAudio(ev.data.message)
           break
         case 'media':
-          //TODO: implement
+          if (ev.data.message.payload?.type === 1) {
+            const media = ev.data.message.payload.media
+            const update: Parameters<typeof setMedia>[0] = {}
+            if ('MediaSongName' in media)
+              update.mediaSongName = media.MediaSongName?.trim() || null
+            if ('MediaAlbumName' in media)
+              update.mediaAlbumName = media.MediaAlbumName?.trim() || null
+            if ('MediaArtistName' in media)
+              update.mediaArtistName = media.MediaArtistName?.trim() || null
+            if ('MediaAPPName' in media)
+              update.mediaAppName = media.MediaAPPName?.trim() || null
+            if (Object.keys(update).length > 0) setMedia(update)
+          } else if (ev.data.message.payload?.type === 3) {
+            setMedia({ mediaAlbumCover: ev.data.message.payload.base64Image || null })
+          }
           break
         case 'command':
           const {
@@ -154,6 +174,9 @@ function Carplay({
     getAudioPlayer,
     processAudio,
     renderWorker,
+    clearMedia,
+    setMedia,
+    setStorePlugged,
     startRecording,
     stopRecording
   ])
@@ -213,12 +236,12 @@ function Carplay({
       }
     }
 
-    //checkDevice()
+    checkDevice()
   }, [carplayWorker, checkDevice])
 
-  // const onClick = useCallback(() => {
-  //   checkDevice(true)
-  // }, [checkDevice])
+  const onClick = useCallback(() => {
+    checkDevice(true)
+  }, [checkDevice])
 
   const sendTouchEvent = useCarplayTouch(carplayWorker, width, height)
 
@@ -242,7 +265,7 @@ function Carplay({
           }}
         >
           {deviceFound === false && (
-            <button rel="noopener noreferrer">Plug-In Carplay Dongle and Press</button>
+            <button rel="noopener noreferrer" onClick={onClick}>Plug-In Carplay Dongle and Press</button>
           )}
           {deviceFound && (
             <RotatingLines

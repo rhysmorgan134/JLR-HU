@@ -1,4 +1,4 @@
-import { MostRxMessage, SocketMostSendMessage } from 'socketmost'
+import { MostRxMessage, Os8104Events, SocketMostSendMessage } from 'socketmost'
 import { Device, ErrorTypes, OpType } from './types'
 import { SocketMostUsb } from 'socketmost'
 import winston from 'winston'
@@ -20,6 +20,7 @@ export abstract class FBlock extends EventEmitter {
   socket: Socket
   room: null | string
   inProgressMultipart: Object
+  subscriptionGeneration: number
   protected constructor(
     subscriptions: number[],
     physicalDevice: Device | null,
@@ -31,6 +32,7 @@ export abstract class FBlock extends EventEmitter {
     super()
     this.status = {}
     this.inProgressMultipart = {}
+    this.subscriptionGeneration = 0
     this.logger = winston.loggers.get('pimost')
     this.subscriptions = subscriptions
     this.physicalDevice = physicalDevice
@@ -237,6 +239,41 @@ export abstract class FBlock extends EventEmitter {
     })
   }
 
+  subscribeAllWithRetry(retryDelays = [500, 1500]) {
+    const generation = ++this.subscriptionGeneration
+    let updateObserved = false
+    const received = (message: MostRxMessage) => {
+      if (
+        message.sourceAddrHigh === this.physicalDevice.addressHigh &&
+        message.sourceAddrLow === this.physicalDevice.addressLow &&
+        message.fBlockID === this.physicalDevice.fBlockID &&
+        message.instanceID === this.physicalDevice.instanceID &&
+        message.fktID !== 0x001 &&
+        message.opType === OpType.status
+      ) {
+        updateObserved = true
+        this.logger.info(
+          `${this.constructor.name} notification subscription verified by FktID 0x${message.fktID.toString(16)} update`
+        )
+        this.socketmost.off(Os8104Events.SocketMostMessageRxEvent, received)
+      }
+    }
+    this.socketmost.on(Os8104Events.SocketMostMessageRxEvent, received)
+    this.subscribeAll()
+    retryDelays.forEach((delay, index) => {
+      setTimeout(() => {
+        if (generation !== this.subscriptionGeneration || updateObserved) return
+        this.logger.warn(`${this.constructor.name} notification subscription produced no updates; retry ${index + 1}`)
+        this.subscribeAll()
+      }, delay)
+    })
+    setTimeout(() => {
+      this.socketmost.off(Os8104Events.SocketMostMessageRxEvent, received)
+      if (generation === this.subscriptionGeneration && !updateObserved)
+        this.logger.warn(`${this.constructor.name} notification subscription produced no updates after retries`)
+    }, Math.max(...retryDelays, 0) + 750)
+  }
+
   updateStatus(data) {
     this.status = { ...this.status, ...data }
     this.socket.sendStatusUpdate(this.constructor.name, data)
@@ -244,6 +281,7 @@ export abstract class FBlock extends EventEmitter {
   }
 
   unsubscribe() {
+    this.subscriptionGeneration++
     this.socketmost.sendControlMessage(
       this.physicalMessage(OpType.set, 0x01, [
         0x02,

@@ -6,6 +6,7 @@ import { Socket } from './Socket'
 import * as fs from 'fs'
 // import { PiMost } from './PiMost'
 import { PimostMain } from './newPiMost/PimostMain'
+import { AppUpdater } from './AppUpdater'
 
 import { ExtraConfig, KeyBindings } from './Globals'
 import './log'
@@ -94,7 +95,7 @@ function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 800, //config!.width,
     height: 480, //config!.height,
-    kiosk: false, //config!.kiosk,
+    kiosk: !is.dev,
     show: false,
     frame: false,
     autoHideMenuBar: true,
@@ -122,19 +123,20 @@ function createWindow(): void {
     return true
   })
 
+  const allowedUsbVendors = new Set([0x0483, 0x1314])
   mainWindow.webContents.session.setDevicePermissionHandler((details) => {
-    return details.device.vendorId === 0x0483
+    return allowedUsbVendors.has(details.device.vendorId)
   })
 
   mainWindow.webContents.session.on('select-usb-device', (event, details, callback) => {
     event.preventDefault()
-    const selectedDevice = details.deviceList.find((device) => {
-      return device.vendorId === 0x0483
-    })
+    const selectedDevice = details.deviceList.find((device) =>
+      allowedUsbVendors.has(device.vendorId)
+    )
     console.log(
       selectedDevice
-        ? `selected STM32 DFU device ${selectedDevice.deviceName} (${selectedDevice.vendorId.toString(16)}:${selectedDevice.productId.toString(16)})`
-        : 'no STM32 DFU device found in WebUSB device list'
+        ? `selected USB device ${selectedDevice.deviceName} (${selectedDevice.vendorId.toString(16)}:${selectedDevice.productId.toString(16)})`
+        : 'no supported device found in WebUSB device list'
     )
     callback(selectedDevice?.deviceId)
   })
@@ -199,6 +201,8 @@ app.whenReady().then(() => {
   // ipcMain.on('startStream', startMostStream)
 
   ipcMain.on('quit', quit)
+
+  new AppUpdater(() => mainWindow || null).register()
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.

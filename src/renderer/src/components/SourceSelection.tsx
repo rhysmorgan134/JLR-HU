@@ -3,11 +3,12 @@ import RadioRoundedIcon from '@mui/icons-material/RadioRounded'
 import AlbumRoundedIcon from '@mui/icons-material/AlbumRounded'
 import UsbRoundedIcon from '@mui/icons-material/UsbRounded'
 import PhoneIphoneRoundedIcon from '@mui/icons-material/PhoneIphoneRounded'
-import { useAudioControlStore } from '../store/store'
+import { useAudioControlStore, useCarplayStore } from '../store/store'
 import { useNavigate } from 'react-router-dom'
 
 export default function SourceSelection({ onSelect = () => {} }: { onSelect?: () => void }) {
   const setSource = useAudioControlStore((state) => state.setSource)
+  const carplayPlugged = useCarplayStore((state) => state.plugged)
   const navigate = useNavigate()
   const sources = [
     {
@@ -28,11 +29,11 @@ export default function SourceSelection({ onSelect = () => {} }: { onSelect?: ()
     },
     {
       name: 'CarPlay',
-      detail: 'Phone projection',
+      detail: carplayPlugged ? 'Phone connected' : 'Not connected',
       icon: <PhoneIphoneRoundedIcon />,
       source: 'Carplay',
       route: '/carplay',
-      active: true
+      active: carplayPlugged
     },
     {
       name: 'USB Audio',

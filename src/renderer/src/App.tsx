@@ -19,6 +19,7 @@ import ParkingAssistOverlay from './components/ParkingAssistOverlay'
 import AudioSettings from './components/mediaComponents/Amplifier/AudioSettings'
 import { VehicleSettings } from './components/settings/VehicleSettings'
 import ApplicationSettings from './components/settings/ApplicationSettings'
+import SoftwareUpdate from './components/settings/SoftwareUpdate'
 
 export const ColorModeContext = createContext({ toggleColorMode: () => {} })
 
@@ -56,6 +57,7 @@ function AppRoutes() {
           <Route path="/settings/most" element={<MostDiagnostics />} />
           <Route path="/settings/pimost-usb" element={<PiMostUsbSettings />} />
           <Route path="/settings/most-logs" element={<MostLogViewer />} />
+          <Route path="/settings/update" element={<SoftwareUpdate />} />
         </Routes>
       </main>
     </>

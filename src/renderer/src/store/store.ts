@@ -30,6 +30,15 @@ export interface MostSettings {
 interface CarplayStore {
   settings: null | ExtraConfig
   saveSettings: (settings: ExtraConfig) => void
+  plugged: boolean
+  setPlugged: (plugged: boolean) => void
+  mediaSongName: string | null
+  mediaAlbumName: string | null
+  mediaArtistName: string | null
+  mediaAppName: string | null
+  mediaAlbumCover: string | null
+  setMedia: (media: Partial<Pick<CarplayStore, 'mediaSongName' | 'mediaAlbumName' | 'mediaArtistName' | 'mediaAppName' | 'mediaAlbumCover'>>) => void
+  clearMedia: () => void
   playing: boolean
   getSettings: () => void
   stream: (stream: messages.Stream) => void
@@ -150,6 +159,8 @@ interface HMIStore {
 interface ParkingAssistStore {
   parkingSensors: ParkingSensors
   parkingActive: boolean
+  manualOpen: boolean
+  setManualOpen: (open: boolean) => void
 }
 
 interface AmplifierStore {
@@ -338,7 +349,7 @@ export const useHMIStore = create<HMIStore>()(() => ({
   screensaver: true
 }))
 
-export const useParkingAssistStore = create<ParkingAssistStore>()(() => ({
+export const useParkingAssistStore = create<ParkingAssistStore>()((set) => ({
   parkingSensors: {
     frontLeft: 0,
     frontCentreLeft: 0,
@@ -349,7 +360,9 @@ export const useParkingAssistStore = create<ParkingAssistStore>()(() => ({
     rearCentreRight: 0,
     rearRight: 0
   },
-  parkingActive: false
+  parkingActive: false,
+  manualOpen: false,
+  setManualOpen: (manualOpen) => set({ manualOpen })
 }))
 
 export const useAmplifierStore = create<AmplifierStore>()((set, get) => ({
@@ -479,6 +492,21 @@ export const useCarplayStore = create<CarplayStore>()((set) => ({
   getSettings: () => {
     socket.emit('getSettings')
   },
+  plugged: false,
+  setPlugged: (plugged) => set(() => ({ plugged })),
+  mediaSongName: null,
+  mediaAlbumName: null,
+  mediaArtistName: null,
+  mediaAppName: null,
+  mediaAlbumCover: null,
+  setMedia: (media) => set(() => media),
+  clearMedia: () => set(() => ({
+    mediaSongName: null,
+    mediaAlbumName: null,
+    mediaArtistName: null,
+    mediaAppName: null,
+    mediaAlbumCover: null
+  })),
   stream: (stream) => {
     socket.emit('stream', stream)
   },

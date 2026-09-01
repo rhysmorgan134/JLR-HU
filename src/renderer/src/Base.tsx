@@ -7,10 +7,12 @@ import SettingsRoundedIcon from '@mui/icons-material/SettingsRounded'
 import DirectionsCarRoundedIcon from '@mui/icons-material/DirectionsCarRounded'
 import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded'
 import ThermostatRoundedIcon from '@mui/icons-material/ThermostatRounded'
+import LocalParkingRoundedIcon from '@mui/icons-material/LocalParkingRounded'
 import AudioDiskOverview from './components/mediaComponents/AudioDiskPlayer/AudioDiskOverview'
 import AmFmOverview from './components/mediaComponents/AmFm/AmFmOverview'
+import CarplayOverview from './components/mediaComponents/CarplayOverview'
 import SourceSelection from './components/SourceSelection'
-import { useAudioControlStore, useCanGatewayStore, useClimateStore, usePersistantStore } from './store/store'
+import { useAudioControlStore, useCanGatewayStore, useClimateStore, useParkingAssistStore, usePersistantStore } from './store/store'
 
 function Base() {
   const [sourcesOpen, setSourcesOpen] = useState(false)
@@ -19,6 +21,7 @@ function Base() {
   const navigate = useNavigate()
   const climate = useClimateStore()
   const trip = useCanGatewayStore()
+  const openParkingAssist = useParkingAssistStore((state) => state.setManualOpen)
 
   useEffect(() => { if (currentSource === null && currentAudioSource !== null) setSource(currentAudioSource) }, [])
 
@@ -28,13 +31,14 @@ function Base() {
     if (currentSource === 'Carplay') navigate('/carplay')
   }
 
-  const sourceOverview = currentSource === 'AudioDiskPlayer' ? <AudioDiskOverview /> : currentSource === 'AmFmTuner' ? <AmFmOverview /> : <Box sx={{ height: '100%', display: 'grid', placeItems: 'center', color: 'text.secondary' }}><Typography>Select an audio source</Typography></Box>
+  const sourceOverview = currentSource === 'AudioDiskPlayer' ? <AudioDiskOverview /> : currentSource === 'AmFmTuner' ? <AmFmOverview /> : currentSource === 'Carplay' ? <CarplayOverview /> : <Box sx={{ height: '100%', display: 'grid', placeItems: 'center', color: 'text.secondary' }}><Typography>Select an audio source</Typography></Box>
 
   return <Box sx={{ height: '100%', p: 1.5, display: 'grid', gridTemplateColumns: '58px minmax(0,1fr)', gap: 1.5, overflow: 'hidden' }}>
     <Box className="glass-panel" sx={{ borderRadius: 3, py: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between' }}>
       <IconButton onClick={() => setSourcesOpen(true)} sx={{ width: 44, height: 44, color: 'primary.main', background: 'var(--accent-soft)' }}><AppsRoundedIcon /></IconButton>
       <Box sx={{ display: 'grid', gap: 1 }}>
         <IconButton sx={{ width: 42, height: 42, color: 'white', background: 'rgba(255,255,255,.06)' }}><MusicNoteRoundedIcon /></IconButton>
+        <IconButton aria-label="Open parking assist" onClick={() => openParkingAssist(true)} sx={{ width: 42, height: 42, color: 'text.secondary' }}><LocalParkingRoundedIcon /></IconButton>
         <IconButton onClick={() => navigate('/climate')} sx={{ width: 42, height: 42, color: 'text.secondary' }}><DirectionsCarRoundedIcon /></IconButton>
         <IconButton onClick={() => navigate('/settings')} sx={{ width: 42, height: 42, color: 'text.secondary' }}><SettingsRoundedIcon /></IconButton>
       </Box>

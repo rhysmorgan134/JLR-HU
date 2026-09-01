@@ -426,7 +426,7 @@ export class CanGateway extends FBlock {
     if (this.updateTimer) clearTimeout(this.updateTimer)
     this.updateTimer = setTimeout(() => {
       this.updateTimer = null
-      this.subscribeAll()
+      this.subscribeAllWithRetry()
       ;[0xa04, 0xe05, 0xe09, 0xe0a, 0xe0f, 0xe14, 0xe15, 0xe17, 0xe18, 0xe1a, 0xe1b, 0xe21, 0xe27, 0xe29, 0xe2a].forEach((fktID) =>
         this.socketmost.sendControlMessage(this.physicalMessage(OpType.get, fktID, []))
       )
@@ -450,7 +450,13 @@ export class CanGateway extends FBlock {
   }
   setTripMode({ mode }: { mode: number }): void {
     if (!Number.isInteger(mode) || mode < 0x01 || mode > 0x03) return
-    this.setProperty(0xe15, [0x00, mode])
+    const send = () => this.setProperty(0xe15, [0x00, mode])
+    this.logger.info(`setting trip mode ${mode}: F5/E15 SET 00 ${mode.toString(16).padStart(2, '0')}`)
+    send()
+    setTimeout(send, 150)
+    setTimeout(() => {
+      this.socketmost.sendControlMessage(this.physicalMessage(OpType.get, 0xe15, []))
+    }, 300)
     this.updateStatus({ tripMode: mode })
   }
 }
@@ -548,7 +554,7 @@ export class AmFmTuner extends FBlock {
     await new Promise<void>((resolve) => {
       const onMessageSent = () => {
         this.socketmost.off(Os8104Events.MessageSent, onMessageSent)
-        this.subscribeAll()
+        this.subscribeAllWithRetry()
         resolve()
       }
 
@@ -758,20 +764,7 @@ export class AudioDiskPlayer extends FBlock {
     await this.sendAndWaitForTransmit(this.physicalMessage(OpType.set, 0x200, [0x00]))
 
     this.logger.info('CD startup: subscribing to notifications')
-    const subscriptionResponse = this.waitForPhysicalResponse(0x001, 750)
-    this.subscribeAll()
-    const response = await subscriptionResponse
-    if (response?.opType === OpType.error || response?.opType === OpType.errorAck) {
-      this.logger.error(
-        `CD notification subscription rejected: ${this.convertMessageToHex(response)}`
-      )
-    } else if (response) {
-      this.logger.info(
-        `CD notification subscription confirmed: ${this.convertMessageToHex(response)}`
-      )
-    } else {
-      this.logger.warn('CD notification subscription was transmitted but not explicitly confirmed')
-    }
+    this.subscribeAllWithRetry()
 
     this.logger.info('CD startup: requesting initial status')
     for (const fktID of [0x200, 0x201, 0x202, 0x420, 0x430, 0x431, 0x450, 0x452]) {
@@ -784,7 +777,7 @@ export class AudioDiskPlayer extends FBlock {
     return new Promise((resolve) => {
       this.play()
       this.socketmost.once(Os8104Events.MessageSent, () => {
-        this.subscribeAll()
+        this.subscribeAllWithRetry()
         resolve(1)
       })
     })
@@ -1020,13 +1013,33 @@ export class Carplay extends FBlock {
     }
 
     const sourceNumber = message.data.readUInt8(0)
-    this.socketmost.once(Os8104Events.AllocResult, (result: AllocResult) => {
+    this.socketmost.once(Os8104Events.AllocResult, async (result: AllocResult) => {
+      const nodePosition = await new Promise<number>((resolve) => {
+        let settled = false
+        const onPosition = (position: number) => {
+          if (settled) return
+          settled = true
+          clearTimeout(timeout)
+          resolve(position)
+        }
+        const timeout = setTimeout(() => {
+          if (settled) return
+          settled = true
+          this.socketmost.removeListener(Os8104Events.PositionUpdate, onPosition)
+          this.logger.warn(
+            `CarPlay node-position request timed out; using last known position ${this.socketmost.position}`
+          )
+          resolve(this.socketmost.position)
+        }, 500)
+
+        this.socketmost.once(Os8104Events.PositionUpdate, onPosition)
+        this.socketmost.getPosition()
+      })
       const response = this.createResponseMessage(
         message,
         [
           sourceNumber,
-          // Temporary test override: the working CarPlay allocation reports a source delay of 0x05.
-          0x05,
+          nodePosition,
           result.loc1,
           result.loc2,
           result.loc3,
@@ -1034,7 +1047,9 @@ export class Carplay extends FBlock {
         ],
         OpType.result
       )
-      this.logger.info(`sending CarPlay allocate response ${this.convertMessageToHex(response)}`)
+      this.logger.info(
+        `sending CarPlay allocate response with node position ${nodePosition}: ${this.convertMessageToHex(response)}`
+      )
       this.socketmost.sendControlMessage(response)
     })
     this.socketmost.allocate()
@@ -1270,7 +1285,7 @@ export class AudioControl extends FBlock {
 
   startVolumeUpdates(): void {
     this.logger.info('subscribing to AudioControl notifications')
-    this.subscribeAll()
+    this.subscribeAllWithRetry()
     this.getVolumes()
   }
 
@@ -1335,8 +1350,6 @@ export class AudioControl extends FBlock {
     let result = await this.sendMethod(this.physicalMessage(OpType.startResultAck, 0x405, data405))
     this.logger.info(`405 result ${result}`)
 
-    // Allocating CarPlay's synchronous channels briefly unlocks the OS8104.
-    // Do not send 0x407 until the driver confirms that the ring is locked again.
     if (device instanceof Carplay && !this.socketmost.locked) {
       const relocked = await new Promise<boolean>((resolve) => {
         const onLocked = () => {
@@ -1503,7 +1516,7 @@ export class Climate extends FBlock {
   }
 
   startUpdates(): void {
-    this.subscribeAll()
+    this.subscribeAllWithRetry()
     ;[0xc85, 0xc87, 0xc88, 0xc86].forEach((fktID) =>
       this.socketmost.sendControlMessage(this.physicalMessage(OpType.get, fktID, []))
     )
@@ -1584,7 +1597,7 @@ export class Amplifier extends FBlock {
   stopSource(): void {}
 
   startUpdates(): void {
-    this.subscribeAll()
+    this.subscribeAllWithRetry()
     ;[0x200, 0x201, 0x202, 0x203, 0x204, 0x400, 0x402, 0x467, 0xe09, 0xe20, 0xe21, 0xe22].forEach((fktID) =>
       this.socketmost.sendControlMessage(this.physicalMessage(OpType.get, fktID, []))
     )
