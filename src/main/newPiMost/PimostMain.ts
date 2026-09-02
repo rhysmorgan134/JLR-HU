@@ -19,6 +19,7 @@ import {
 } from './FBlocks'
 import winston from 'winston'
 import { Socket } from '../Socket'
+import { SubscriptionManager } from './SubscriptionManager'
 
 export class PimostMain {
   socketmost: SocketMostUsb
@@ -39,26 +40,46 @@ export class PimostMain {
   networkMaster: NetworkMaster
   logger: winston.Logger
   socket: Socket
+  subscriptionManager: SubscriptionManager
   constructor(socket: Socket) {
     this.socket = socket
     this.logger = winston.loggers.get('pimost')
     this.logger.debug('pimost starting')
     this.socketmost = new SocketMostUsb()
-    this.netblock = new NetBlock([], this.socketmost, false, socket)
-    this.hmi = new HMI([], this.socketmost, false, socket)
-    this.auxInput = new AuxInput([], this.socketmost, false, socket)
-    this.audioDiskPlayer = new AudioDiskPlayer([], this.socketmost, false, socket)
-    this.carplay = new Carplay([], this.socketmost, false, socket)
-    this.telephone = new Telephone([], this.socketmost, false, socket)
-    this.tvTuner = new TvTuner([], this.socketmost, false, socket)
-    this.satellite = new Satellite([], this.socketmost, false, socket)
-    this.dabTuner = new DabTuner([], this.socketmost, false, socket)
-    this.amFmTuner = new AmFmTuner([], this.socketmost, false, socket)
-    this.diagnostics = new Diagnostics([], this.socketmost, false, socket)
-    this.audioControl = new AudioControl([], this.socketmost, false, socket)
-    this.amplifier = new Amplifier([], this.socketmost, false, socket)
-    this.canGateway = new CanGateway([], this.socketmost, true, socket)
-    this.networkMaster = new NetworkMaster([], this.socketmost, false, socket)
+    this.subscriptionManager = new SubscriptionManager(this.socketmost)
+    this.netblock = new NetBlock([], this.socketmost, false, socket, this.subscriptionManager)
+    this.hmi = new HMI([], this.socketmost, false, socket, this.subscriptionManager)
+    this.auxInput = new AuxInput([], this.socketmost, false, socket, this.subscriptionManager)
+    this.audioDiskPlayer = new AudioDiskPlayer(
+      [],
+      this.socketmost,
+      true,
+      socket,
+      this.subscriptionManager
+    )
+    this.carplay = new Carplay([], this.socketmost, false, socket, this.subscriptionManager)
+    this.telephone = new Telephone([], this.socketmost, false, socket, this.subscriptionManager)
+    this.tvTuner = new TvTuner([], this.socketmost, false, socket, this.subscriptionManager)
+    this.satellite = new Satellite([], this.socketmost, false, socket, this.subscriptionManager)
+    this.dabTuner = new DabTuner([], this.socketmost, false, socket, this.subscriptionManager)
+    this.amFmTuner = new AmFmTuner([], this.socketmost, false, socket, this.subscriptionManager)
+    this.diagnostics = new Diagnostics([], this.socketmost, false, socket, this.subscriptionManager)
+    this.audioControl = new AudioControl(
+      [],
+      this.socketmost,
+      false,
+      socket,
+      this.subscriptionManager
+    )
+    this.amplifier = new Amplifier([], this.socketmost, false, socket, this.subscriptionManager)
+    this.canGateway = new CanGateway([], this.socketmost, true, socket, this.subscriptionManager)
+    this.networkMaster = new NetworkMaster(
+      [],
+      this.socketmost,
+      false,
+      socket,
+      this.subscriptionManager
+    )
 
     this.socket.on('newConnection', () => {
       this.socket.sendStatusUpdate('AmFmTuner', this.amFmTuner.status)
@@ -108,9 +129,9 @@ export class PimostMain {
       this.audioControl.stopPlayback()
     })
 
-    this.hmi.on('HMIActive', () => {
-      setTimeout(() => this.audioControl.startVolumeUpdates(), 500)
-    })
+    // this.hmi.on('HMIActive', () => {
+    //   setTimeout(() => this.audioControl.startVolumeUpdates(), 500)
+    // })
 
     this.socketmost.on(Os8104Events.SocketMostMessageRxEvent, (message) => {
       this.logger.info(`message received ${this.convertMessageToHex(message)}`)
@@ -122,44 +143,46 @@ export class PimostMain {
         case 0x10:
           this.hmi.checkMessage(message)
           break
-        case 0x24:
-          this.auxInput.checkMessage(message)
+        // case 0x24:
+        //   this.auxInput.checkMessage(message)
+        //   break
         case 0x31:
           if (message.instanceID === 0xa1 || message.instanceID === 0x2) {
             this.audioDiskPlayer.checkMessage(message)
-          } else {
-            this.carplay.checkMessage(message)
           }
+          // else {
+          //   this.carplay.checkMessage(message)
+          // }
           break
-        case 0x50:
-          this.telephone.checkMessage(message)
-          break
-        case 0x42:
-          this.tvTuner.checkMessage(message)
-          break
-        case 0x44:
-          this.satellite.checkMessage(message)
-          break
-        case 0x43:
-          this.dabTuner.checkMessage(message)
-          break
-        case 0x40:
-          this.amFmTuner.checkMessage(message)
-          break
-        case 0x06:
-          this.diagnostics.checkMessage(message)
-          break
-        case 0xf0:
-          this.audioControl.checkMessage(message)
-          break
-        case 0x22:
-          this.amplifier.checkMessage(message)
-          break
-        case 0x02:
-          this.networkMaster.checkMessage(message)
-          break
+        // case 0x50:
+        //   this.telephone.checkMessage(message)
+        //   break
+        // case 0x42:
+        //   this.tvTuner.checkMessage(message)
+        //   break
+        // case 0x44:
+        //   this.satellite.checkMessage(message)
+        //   break
+        // case 0x43:
+        //   this.dabTuner.checkMessage(message)
+        //   break
+        // case 0x40:
+        //   this.amFmTuner.checkMessage(message)
+        //   break
+        // case 0x06:
+        //   this.diagnostics.checkMessage(message)
+        //   break
         // case 0xf0:
-        //   this.canGateway.checkMessage(message)
+        //   this.audioControl.checkMessage(message)
+        //   break
+        // case 0x22:
+        //   this.amplifier.checkMessage(message)
+        //   break
+        // case 0x02:
+        //   this.networkMaster.checkMessage(message)
+        //   break
+        // // case 0xf0:
+        // //   this.canGateway.checkMessage(message)
         default:
           this.logger.error('unhandled fblock: ' + this.convertMessageToHex(message))
       }
@@ -193,6 +216,8 @@ export class PimostMain {
   }
 
   convertMessageToHex(message) {
+    // TODO: Include telLen in persisted MOST diagnostics logs so an empty payload can be
+    // distinguished from a one-byte payload containing 0x00.
     let out = {}
     for (const [key, value] of Object.entries(message)) {
       if (typeof value === 'number') {

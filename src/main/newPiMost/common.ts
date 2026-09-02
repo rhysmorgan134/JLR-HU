@@ -1,14 +1,15 @@
 import { MostRxMessage, SocketMostSendMessage } from 'socketmost'
-import { Device, ErrorTypes, OpType } from './types'
+import { Device, ErrorTypes, OpType, SubscriptionRecord } from './types'
 import { SocketMostUsb } from 'socketmost'
 import winston from 'winston'
 import { EventEmitter } from 'events'
 import { Socket } from '../Socket'
+import { SubscriptionManager } from './SubscriptionManager'
 
 export abstract class FBlock extends EventEmitter {
   subscriptions: number[]
-  physicalDevice: Device
-  shadowDevice: Device
+  physicalDevice: Device | null = null
+  shadowDevice: Device | null = null
   socketmost: SocketMostUsb
   autoSubscribe: boolean
   isShadow: boolean
@@ -20,19 +21,23 @@ export abstract class FBlock extends EventEmitter {
   socket: Socket
   room: null | string
   inProgressMultipart: Object
+  subscriptionManager: SubscriptionManager
+  subscriptionRecord: SubscriptionRecord | null
   protected constructor(
     subscriptions: number[],
     physicalDevice: Device | null,
     shadowDevice: Device | null,
     socketmost: SocketMostUsb,
     autoSubscribe: boolean,
-    socket: Socket
+    socket: Socket,
+    subscriptionManager: SubscriptionManager
   ) {
     super()
     this.status = {}
     this.inProgressMultipart = {}
     this.logger = winston.loggers.get('pimost')
     this.subscriptions = subscriptions
+    this.subscriptionManager = subscriptionManager
     this.physicalDevice = physicalDevice
     this.shadowDevice = shadowDevice
     this.socketmost = socketmost
@@ -45,6 +50,18 @@ export abstract class FBlock extends EventEmitter {
     this.methodSend = new MethodSend(this.logger, this.socketmost)
     this.room = null
     this.socket = socket
+    this.subscriptionRecord =
+      this.physicalDevice != null
+        ? {
+            fBlockID: this.physicalDevice.fBlockID,
+            instanceID: this.physicalDevice.instanceID,
+            sourceAddressHigh: 0x01,
+            sourceAddressLow: 0x6e,
+            subscriptionList: subscriptions,
+            targetAddressHigh: this.physicalDevice.addressHigh,
+            targetAddressLow: this.physicalDevice.addressLow
+          }
+        : null
     this.methodSend.on('waiting', (waiting) => {
       this.waitingAck = waiting
     })
@@ -151,7 +168,7 @@ export abstract class FBlock extends EventEmitter {
         `shadow ${message.fBlockID.toString(16)} instID ${message.instanceID.toString(16)} active`
       )
       this.socketmost.sendControlMessage(this.createResponseMessage(message, [], OpType.status))
-      if (this.autoSubscribe && this.subscriptions.length > 0) {
+      if (this.autoSubscribe) {
         this.subscribe()
       }
     } else if (message.data[0] === 0x02) {
@@ -182,29 +199,30 @@ export abstract class FBlock extends EventEmitter {
   }
 
   subscribe() {
-    if (this.subscriptions.length > 4) {
-      for (let i = 0; i < this.subscriptions.length; i += 4) {
-        this.socketmost.sendControlMessage(
-          this.physicalMessage(OpType.set, 0x01, [
-            0x01,
-            this.socketmost.settings.nodeAddressHigh,
-            this.socketmost.settings.nodeAddressLow,
-            ...(this.subscriptions.length < i + 4
-              ? this.subscriptions.slice(i, this.subscriptions.length)
-              : this.subscriptions.slice(i, i + 4))
-          ])
-        )
-      }
-    } else {
-      this.socketmost.sendControlMessage(
-        this.physicalMessage(OpType.set, 0x01, [
-          0x01,
-          this.socketmost.settings.nodeAddressHigh,
-          this.socketmost.settings.nodeAddressLow,
-          ...this.subscriptions
-        ])
-      )
-    }
+    // if (this.subscriptions.length > 4) {
+    //   for (let i = 0; i < this.subscriptions.length; i += 4) {
+    //     this.socketmost.sendControlMessage(
+    //       this.physicalMessage(OpType.set, 0x01, [
+    //         0x01,
+    //         this.socketmost.settings.nodeAddressHigh,
+    //         this.socketmost.settings.nodeAddressLow,
+    //         ...(this.subscriptions.length < i + 4
+    //           ? this.subscriptions.slice(i, this.subscriptions.length)
+    //           : this.subscriptions.slice(i, i + 4))
+    //       ])
+    //     )
+    //   }
+    // } else {
+    //   this.socketmost.sendControlMessage(
+    //     this.physicalMessage(OpType.set, 0x01, [
+    //       0x01,
+    //       this.socketmost.settings.nodeAddressHigh,
+    //       this.socketmost.settings.nodeAddressLow,
+    //       ...this.subscriptions
+    //     ])
+    //   )
+    // }
+    this.subscriptionManager.createSubscription(this.subscriptionRecord!)
   }
 
   subscribeAll() {

@@ -1,3 +1,5 @@
+import { toNumber } from 'lodash'
+
 export type Device = {
   addressHigh: number
   addressLow: number
@@ -184,3 +186,15 @@ export enum TunerTypes {
   'am' = 3,
   'fma' = 4
 }
+
+export type SubscriptionRecord = {
+  fBlockID: number
+  targetAddressHigh: number
+  targetAddressLow: number
+  instanceID: number
+  subscriptionList: number[]
+  sourceAddressHigh: number
+  sourceAddressLow: number
+}
+
+export type SubscriptionRecordList = SubscriptionRecord[]

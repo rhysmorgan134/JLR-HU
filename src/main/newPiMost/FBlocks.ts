@@ -15,6 +15,7 @@ import {
 import { SocketMostUsb } from 'socketmost'
 import { Socket } from '../Socket'
 import { Action } from '../Globals'
+import { SubscriptionManager } from './SubscriptionManager'
 
 const cdPlayer: Device = { addressHigh: 0x01, addressLow: 0x80, fBlockID: 0x31, instanceID: 0x02 }
 const cdPlayerFunctions = [
@@ -155,9 +156,10 @@ export class HMI extends FBlock {
     subscriptions: number[],
     socketmost: SocketMostUsb,
     autoSubscribe: boolean,
-    socket: Socket
+    socket: Socket,
+    subscriptionManager: SubscriptionManager
   ) {
-    super(subscriptions, null, null, socketmost, autoSubscribe, socket)
+    super(subscriptions, hmi, null, socketmost, autoSubscribe, socket, subscriptionManager)
     this.status = {
       0xc02: 0x01
     }
@@ -229,9 +231,10 @@ export class CanGateway extends FBlock {
     subscriptions: number[],
     socketmost: SocketMostUsb,
     autoSubscribe: boolean,
-    socket: Socket
+    socket: Socket,
+    subscriptionManager: SubscriptionManager
   ) {
-    super(subscriptions, cdPlayer, cdPlayerShadow, socketmost, autoSubscribe, socket)
+    super(subscriptions, null, null, socketmost, autoSubscribe, socket, subscriptionManager)
   }
 
   allocate(message: MostRxMessage): void {}
@@ -255,9 +258,10 @@ export class NetBlock extends FBlock {
     subscriptions: number[],
     socketmost: SocketMostUsb,
     autoSubscribe: boolean,
-    socket: Socket
+    socket: Socket,
+    subscriptionManager: SubscriptionManager
   ) {
-    super(subscriptions, null, null, socketmost, autoSubscribe, socket)
+    super(subscriptions, null, null, socketmost, autoSubscribe, socket, subscriptionManager)
     this.implementedFblocks = [
       0x10, 0xa3, 0x06, 0x6e, 0x40, 0xa1, 0x31, 0xa1, 0x52, 0xd1, 0x60, 0x01, 0x50, 0xa1, 0x05,
       0xd1, 0x24, 0xa1, 0x22, 0xd1, 0x11, 0xd1, 0x44, 0xa1, 0x05, 0xd2, 0x42, 0xa1, 0x31, 0xa2,
@@ -313,9 +317,18 @@ export class AmFmTuner extends FBlock {
     subscriptions: number[],
     socketmost: SocketMostUsb,
     autoSubscribe: boolean,
-    socket: Socket
+    socket: Socket,
+    subscriptionManager: SubscriptionManager
   ) {
-    super(subscriptions, amFmTuner, amFmTunerShadow, socketmost, autoSubscribe, socket)
+    super(
+      subscriptions,
+      amFmTuner,
+      amFmTunerShadow,
+      socketmost,
+      autoSubscribe,
+      socket,
+      subscriptionManager
+    )
 
     this.status = {}
     this.fm1 = {}
@@ -496,9 +509,18 @@ export class AuxInput extends FBlock {
     subscriptions: number[],
     socketmost: SocketMostUsb,
     autoSubscribe: boolean,
-    socket: Socket
+    socket: Socket,
+    subscriptionManager: SubscriptionManager
   ) {
-    super(subscriptions, auxInput, auxInputShadow, socketmost, autoSubscribe, socket)
+    super(
+      subscriptions,
+      auxInput,
+      auxInputShadow,
+      socketmost,
+      autoSubscribe,
+      socket,
+      subscriptionManager
+    )
     this.status = {}
   }
 
@@ -522,9 +544,18 @@ export class AudioDiskPlayer extends FBlock {
     subscriptions: number[],
     socketmost: SocketMostUsb,
     autoSubscribe: boolean,
-    socket: Socket
+    socket: Socket,
+    subscriptionManager: SubscriptionManager
   ) {
-    super(subscriptions, cdPlayer, cdPlayerShadow, socketmost, autoSubscribe, socket)
+    super(
+      subscriptions,
+      cdPlayer,
+      cdPlayerShadow,
+      socketmost,
+      autoSubscribe,
+      socket,
+      subscriptionManager
+    )
     this.status = {
       deckStatus: null
     }
@@ -706,9 +737,18 @@ export class Carplay extends FBlock {
     subscriptions: number[],
     socketmost: SocketMostUsb,
     autoSubscribe: boolean,
-    socket: Socket
+    socket: Socket,
+    subscriptionManager: SubscriptionManager
   ) {
-    super(subscriptions, carplay, carplayShadow, socketmost, autoSubscribe, socket)
+    super(
+      subscriptions,
+      carplay,
+      carplayShadow,
+      socketmost,
+      autoSubscribe,
+      socket,
+      subscriptionManager
+    )
     this.status = {}
   }
 
@@ -731,9 +771,18 @@ export class Telephone extends FBlock {
     subscriptions: number[],
     socketmost: SocketMostUsb,
     autoSubscribe: boolean,
-    socket: Socket
+    socket: Socket,
+    subscriptionManager: SubscriptionManager
   ) {
-    super(subscriptions, telephone, telephoneShadow, socketmost, autoSubscribe, socket)
+    super(
+      subscriptions,
+      telephone,
+      telephoneShadow,
+      socketmost,
+      autoSubscribe,
+      socket,
+      subscriptionManager
+    )
     this.status = {}
   }
 
@@ -756,9 +805,18 @@ export class Satellite extends FBlock {
     subscriptions: number[],
     socketmost: SocketMostUsb,
     autoSubscribe: boolean,
-    socket: Socket
+    socket: Socket,
+    subscriptionManager: SubscriptionManager
   ) {
-    super(subscriptions, SDARS, SDARSSshadow, socketmost, autoSubscribe, socket)
+    super(
+      subscriptions,
+      SDARS,
+      SDARSSshadow,
+      socketmost,
+      autoSubscribe,
+      socket,
+      subscriptionManager
+    )
     this.status = {}
   }
 
@@ -781,9 +839,18 @@ export class DabTuner extends FBlock {
     subscriptions: number[],
     socketmost: SocketMostUsb,
     autoSubscribe: boolean,
-    socket: Socket
+    socket: Socket,
+    subscriptionManager: SubscriptionManager
   ) {
-    super(subscriptions, DABTuner, DABTunerShadow, socketmost, autoSubscribe, socket)
+    super(
+      subscriptions,
+      DABTuner,
+      DABTunerShadow,
+      socketmost,
+      autoSubscribe,
+      socket,
+      subscriptionManager
+    )
     this.status = {}
   }
 
@@ -806,9 +873,18 @@ export class TvTuner extends FBlock {
     subscriptions: number[],
     socketmost: SocketMostUsb,
     autoSubscribe: boolean,
-    socket: Socket
+    socket: Socket,
+    subscriptionManager: SubscriptionManager
   ) {
-    super(subscriptions, TVTuner, TVTunerShadow, socketmost, autoSubscribe, socket)
+    super(
+      subscriptions,
+      TVTuner,
+      TVTunerShadow,
+      socketmost,
+      autoSubscribe,
+      socket,
+      subscriptionManager
+    )
     this.status = {}
   }
 
@@ -833,9 +909,10 @@ export class Diagnostics extends FBlock {
     subscriptions: number[],
     socketmost: SocketMostUsb,
     autoSubscribe: boolean,
-    socket: Socket
+    socket: Socket,
+    subscriptionManager: SubscriptionManager
   ) {
-    super(subscriptions, null, null, socketmost, autoSubscribe, socket)
+    super(subscriptions, null, null, socketmost, autoSubscribe, socket, subscriptionManager)
     this.status = {
       0xd22: [
         0xf1, 0x8c, 0x30, 0x38, 0x31, 0x37, 0x32, 0x30, 0x33, 0x32, 0x34, 0x30, 0x30, 0x30, 0x00,
@@ -875,9 +952,10 @@ export class AudioControl extends FBlock {
     subscriptions: number[],
     socketmost: SocketMostUsb,
     autoSubscribe: boolean,
-    socket: Socket
+    socket: Socket,
+    subscriptionManager: SubscriptionManager
   ) {
-    super(subscriptions, audioControl, null, socketmost, autoSubscribe, socket)
+    super(subscriptions, audioControl, null, socketmost, autoSubscribe, socket, subscriptionManager)
     this.status = {
       currentSource: null,
       audioVolume: null,
@@ -1038,9 +1116,18 @@ export class Amplifier extends FBlock {
     subscriptions: number[],
     socketmost: SocketMostUsb,
     autoSubscribe: boolean,
-    socket: Socket
+    socket: Socket,
+    subscriptionManager: SubscriptionManager
   ) {
-    super(subscriptions, amplifier, amplifierShadow, socketmost, autoSubscribe, socket)
+    super(
+      subscriptions,
+      amplifier,
+      amplifierShadow,
+      socketmost,
+      autoSubscribe,
+      socket,
+      subscriptionManager
+    )
     this.status = {
       0xda1: [],
       0xda0: []
@@ -1080,9 +1167,17 @@ export class NetworkMaster extends FBlock {
     socketmost: SocketMostUsb,
     autoSubscribe: boolean,
     socket: Socket,
-    subscribeList: Device[]
+    subscriptionManager: SubscriptionManager
   ) {
-    super(subscriptions, amplifier, amplifierShadow, socketmost, autoSubscribe, socket)
+    super(
+      subscriptions,
+      amplifier,
+      amplifierShadow,
+      socketmost,
+      autoSubscribe,
+      socket,
+      subscriptionManager
+    )
     this.status = {
       networkMap: {},
       networkStatus: NetworkStatus.notOk
