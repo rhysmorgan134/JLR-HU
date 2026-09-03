@@ -1,9 +1,10 @@
 import { FBlock } from './common'
-import { MostRxMessage, Os8104Events } from 'socketmost'
+import { AllocResult, MostRxMessage, Os8104Events } from 'socketmost'
 import {
   DeckEvent,
   DeckStatus,
   Device,
+  ErrorTypes,
   FBlockMap,
   MediaEvent,
   NetworkStatus,
@@ -141,6 +142,13 @@ const f5Subscriptions2 = [
   0xe1b, 0xe18, 0xe09, 0xe24, 0xe27, 0xe2a, 0xe29, 0x409
 ]
 
+const climate: Device = {
+  addressHigh: 0x01,
+  addressLow: 0x61,
+  fBlockID: 0x71,
+  instanceID: 0xa1
+}
+
 const audioControl: Device = {
   addressHigh: 0x01,
   addressLow: 0x61,
@@ -189,7 +197,9 @@ export class HMI extends FBlock {
       }, 500)
 
       if (this.autoSubscribe && this.subscriptions.length > 0) {
-        this.subscribe()
+        setTimeout(() => {
+          this.subscribe()
+        }, 500)
       }
     } else if (message.data[0] === 0x02) {
       this.logger.info(
@@ -212,6 +222,79 @@ export class HMI extends FBlock {
     }
   }
 
+  publishActiveState(active: boolean): void {
+    const value = active ? 0x01 : 0x00
+
+    this.status = {
+      ...this.status,
+      0xc02: value
+    }
+
+    this.socketmost.sendControlMessage({
+      targetAddressHigh: 0x01,
+      targetAddressLow: 0x61,
+      fBlockID: 0x10,
+      instanceID: 0xa3,
+      fktID: 0xc02,
+      opType: OpType.status,
+      data: [value]
+    })
+
+    this.logger.info(`published HMI active state ${value}`)
+  }
+
+  0xca1(message: MostRxMessage): void {
+    if (message.data.length < 2 || message.data[1] !== 0x01) {
+      return
+    }
+
+    if (message.data[0] === 0x01) {
+      this.logger.info('HMI power button pressed')
+      this.emit('powerButton')
+    } else if (message.data[0] === 0x02) {
+      this.logger.info('HMI home button pressed')
+      this.emit('homeButton')
+    } else if (message.data[0] === 0x03) {
+      this.emit('skipForward')
+    } else if (message.data[0] === 0x04) {
+      this.emit('skipBackward')
+    }
+  }
+
+  0xe00(message: MostRxMessage): void {
+    if (
+      (message.opType === OpType.set || message.opType === OpType.setGet) &&
+      message.data.length >= 2 &&
+      message.data[0] === 0x01 &&
+      message.data[1] === 0x01
+    ) {
+      this.logger.info('HMI startup activation received')
+      this.publishActiveState(true)
+      this.emit('startupActivate')
+      return
+    }
+
+    if (
+      message.data.length >= 3 &&
+      message.data[0] === 0x11 &&
+      message.data[1] === 0x31 &&
+      message.data[2] === 0x01
+    ) {
+      this.emit('cycleSource')
+    }
+  }
+
+  0xe01(message: MostRxMessage): void {
+    if (
+      message.data.length >= 3 &&
+      message.data[0] === 0x12 &&
+      message.data[1] === 0x1c &&
+      message.data[2] === 0x01
+    ) {
+      this.emit('musicSettings')
+    }
+  }
+
   // 0xe00(message: MostRxMessage) {
   //   // switch (message.opType) {
   //   //   case OpType.set:
@@ -227,6 +310,9 @@ export class HMI extends FBlock {
 }
 
 export class CanGateway extends FBlock {
+  mostCcf302Captured: boolean
+  mostCcf303Captured: boolean
+  mostCcfProperties: Record<string, number>
   constructor(
     subscriptions: number[],
     socketmost: SocketMostUsb,
@@ -235,6 +321,9 @@ export class CanGateway extends FBlock {
     subscriptionManager: SubscriptionManager
   ) {
     super(subscriptions, null, null, socketmost, autoSubscribe, socket, subscriptionManager)
+    this.mostCcf302Captured = false
+    this.mostCcf303Captured = false
+    this.mostCcfProperties = {}
   }
 
   allocate(message: MostRxMessage): void {}
@@ -248,6 +337,140 @@ export class CanGateway extends FBlock {
   startSource(): void {}
 
   stopSource(): void {}
+
+  0xa04(message: MostRxMessage): void {
+    if (message.data.length < 2) return
+
+    this.updateStatus({
+      hours: message.data.readUInt8(0),
+      minutes: message.data.readUInt8(1)
+    })
+  }
+  0xe05(message: MostRxMessage): void {
+    if (message.data.length < 4) return
+
+    this.updateStatus({
+      lights: message.data.readUInt8(1) !== 0,
+      ambientLight: message.data.readUInt8(3)
+    })
+  }
+
+  0xe09(message: MostRxMessage): void {
+    if (message.data.length < 1) return
+
+    this.updateStatus({
+      alarmSensors: message.data.readUInt8(0) === 0
+    })
+  }
+
+  0xe0a(message: MostRxMessage): void {
+    if (message.data.length < 1) return
+
+    this.updateStatus({
+      twoStageLocking: message.data.readUInt8(0) !== 0
+    })
+  }
+
+  0xe0f(message: MostRxMessage): void {
+    if (message.data.length < 2) return
+
+    this.updateStatus({
+      externalTemp: message.data.readUInt16BE(0) / 100
+    })
+  }
+
+  0xe15(message: MostRxMessage): void {
+    if (
+      message.opType === OpType.set &&
+      message.telLen >= 2 &&
+      message.data.readUInt8(0) === 0x00
+    ) {
+      const tripMode = message.data.readUInt8(1)
+
+      if (tripMode >= 0x01 && tripMode <= 0x03) {
+        this.updateStatus({ tripMode })
+      }
+
+      return
+    }
+
+    if (message.data.length < 15) return
+
+    this.updateStatus({
+      avgMpg: message.data.readUInt16BE(5) / 10,
+      avgSpeed: message.data.readUInt16BE(7) / 10,
+      distance: message.data.readUInt16BE(11) / 10.0,
+      range: message.data.readUInt16BE(13)
+    })
+  }
+
+  0xe17(message: MostRxMessage): void {
+    if (message.data.length < 2) return
+
+    this.updateStatus({
+      mirrorFoldBack: (message.data.readUInt8(0) & 0x01) !== 0,
+
+      mirrorDip: (message.data.readUInt8(1) & 0x01) !== 0
+    })
+  }
+
+  0xe21(message: MostRxMessage): void {
+    if (message.data.length < 1) return
+
+    const flags = message.data.readUInt8(0)
+
+    this.updateStatus({
+      globalWindowClose: (flags & 0x20) !== 0,
+      globalWindowOpen: (flags & 0x10) !== 0
+    })
+  }
+
+  0xe27(message: MostRxMessage): void {
+    if (message.data.length < 1) return
+
+    this.updateStatus({
+      driveAwayLocking: message.data.readUInt8(0)
+    })
+  }
+
+  0xe1a(message: MostRxMessage): void {
+    if (message.data.length < 4) return
+
+    this.updateStatus({
+      parkingSensors: {
+        ...this.status['parkingSensors'],
+
+        frontLeft: 31 - (message.data.readUInt8(0) & 31),
+
+        frontCentreLeft: 31 - (message.data.readUInt8(1) & 31),
+
+        frontCentreRight: 31 - (message.data.readUInt8(2) & 31),
+
+        frontRight: 31 - (message.data.readUInt8(3) & 31)
+      }
+    })
+  }
+
+  0xe1b(message: MostRxMessage): void {
+    if (message.data.length < 4) return
+
+    this.updateStatus({
+      parkingSensors: {
+        ...this.status['parkingSensors'],
+
+        rearLeft: 31 - (message.data.readUInt8(0) & 31),
+
+        rearCentreLeft: 31 - (message.data.readUInt8(1) & 31),
+
+        rearCentreRight: 31 - (message.data.readUInt8(2) & 31),
+
+        rearRight: 31 - (message.data.readUInt8(3) & 31)
+      }
+    })
+  }
+
+  // TODO Camera
+  // TODO Low Battery
 }
 
 export class NetBlock extends FBlock {
@@ -710,6 +933,14 @@ export class AudioDiskPlayer extends FBlock {
     }
   }
 
+  0xc34(message: MostRxMessage): void {
+    this.logger.info(`AudioDiskPlayer next-track status: ${message.data.toString('hex')}`)
+
+    this.updateStatus({
+      nextTrackStatus: Array.from(message.data)
+    })
+  }
+
   nextTrack() {
     this.socketmost.sendControlMessage(this.physicalMessage(OpType.increment, 0x202, [0x01]))
   }
@@ -752,9 +983,75 @@ export class Carplay extends FBlock {
     this.status = {}
   }
 
-  allocate(message: MostRxMessage): void {}
+  allocate(message: MostRxMessage): void {
+    if (message.opType !== OpType.startResult) {
+      this.socketmost.sendControlMessage(
+        this.createErrorMessage(message, ErrorTypes.OpTypeNotAvailable)
+      )
+      return
+    }
 
-  deallocate(message: MostRxMessage): void {}
+    const sourceNumber = message.data.readUInt8(0)
+
+    this.socketmost.once(Os8104Events.AllocResult, async (result: AllocResult) => {
+      const nodePosition = await new Promise<number>((resolve) => {
+        let settled = false
+
+        const onPosition = (position: number) => {
+          if (settled) return
+
+          settled = true
+          clearTimeout(timeout)
+          resolve(position)
+        }
+
+        const timeout = setTimeout(() => {
+          if (settled) return
+
+          settled = true
+
+          this.socketmost.removeListener(Os8104Events.PositionUpdate, onPosition)
+
+          this.logger.warn(
+            `CarPlay node-position request timed out; ` +
+              `using last known position ${this.socketmost.position}`
+          )
+
+          resolve(this.socketmost.position)
+        }, 500)
+
+        this.socketmost.once(Os8104Events.PositionUpdate, onPosition)
+
+        this.socketmost.getPosition()
+      })
+
+      const response = this.createResponseMessage(
+        message,
+        [sourceNumber, nodePosition, result.loc1, result.loc2, result.loc3, result.loc4],
+        OpType.result
+      )
+
+      this.logger.info(
+        `sending CarPlay allocate response with node position ` +
+          `${nodePosition}: ${this.convertMessageToHex(response)}`
+      )
+
+      this.socketmost.sendControlMessage(response)
+    })
+
+    this.socketmost.allocate()
+  }
+
+  deallocate(message: MostRxMessage): void {
+    this.socketmost.deallocate()
+    this.socketmost.sendControlMessage(
+      this.createResponseMessage(message, [message.data[0]], OpType.status)
+    )
+  }
+
+  0x102(message: MostRxMessage): void {
+    this.deallocate(message)
+  }
 
   parseMessage(message: MostRxMessage): void {}
 
@@ -943,6 +1240,101 @@ export class Diagnostics extends FBlock {
   startSource(): void {}
 
   stopSource(): void {}
+}
+
+export class Climate extends FBlock {
+  status: Object
+  constructor(
+    subscriptions: number[],
+    socketmost: SocketMostUsb,
+    autoSubscribe: boolean,
+    socket: Socket,
+    subscriptionManager: SubscriptionManager
+  ) {
+    super(subscriptions, null, null, socketmost, autoSubscribe, socket, subscriptionManager)
+    this.status = {}
+  }
+  allocate(message): void {}
+
+  deallocate(message): void {}
+
+  parseMessage(message): void {}
+
+  parseShadowMessage(message): void {}
+
+  startSource(): void {}
+
+  stopSource(): void {}
+
+  0xc85(message: MostRxMessage): void {
+    if (message.data.length > 0) {
+      this.updateStatus({
+        fanSpeed: message.data.readUInt8(0)
+      })
+    }
+  }
+
+  0xc87(message: MostRxMessage): void {
+    if (message.data.length < 4) return
+
+    const side = message.data.readUInt8(0)
+
+    if (side === 1) {
+      this.updateStatus({
+        leftTemp: message.data.readUInt16BE(2) / 10
+      })
+    } else if (side === 2) {
+      this.updateStatus({
+        rightTemp: message.data.readUInt16BE(2) / 10
+      })
+    } else if (side === 0 && message.data.length >= 6) {
+      this.updateStatus({
+        leftTemp: message.data.readUInt16BE(2) / 10,
+
+        rightTemp: message.data.readUInt16BE(4) / 10
+      })
+    }
+  }
+
+  0xc88(message: MostRxMessage): void {
+    if (message.data.length < 3) return
+
+    const flags = message.data.readUInt8(0)
+
+    this.updateStatus({
+      recirc: message.data.readUInt8(2) !== 0,
+
+      fanAuto: message.data.readUInt8(1) === 64,
+
+      windscreen: (flags & 16) !== 0,
+
+      ac: (flags & 32) !== 0,
+
+      face: (flags & 4) !== 0,
+
+      feet: (flags & 8) !== 0,
+
+      auto: (flags & 2) !== 0
+    })
+  }
+
+  0xc86(message: MostRxMessage): void {
+    if (message.data.length < 3) return
+
+    const raw = message.data[2]
+
+    const value = raw > 3 ? (raw - 16) * -1 : raw
+
+    if (message.data[0] === 1) {
+      this.updateStatus({
+        leftSeat: value
+      })
+    } else if (message.data[0] === 2) {
+      this.updateStatus({
+        rightSeat: value
+      })
+    }
+  }
 }
 
 export class AudioControl extends FBlock {
@@ -1145,6 +1537,112 @@ export class Amplifier extends FBlock {
 
   0xda0(message) {
     this.createResponseMessage(message, this.status[0xda0], OpType.status)
+  }
+
+  0x200(message: MostRxMessage): void {
+    if (message.opType !== OpType.status || !message.data.length) return
+
+    this.updateStatus({
+      balance: message.data.readInt8(0)
+    })
+  }
+
+  0x201(message: MostRxMessage): void {
+    if (message.opType !== OpType.status || !message.data.length) return
+
+    this.updateStatus({
+      loudness: message.data.readUInt8(0) !== 0
+    })
+  }
+
+  0x202(message: MostRxMessage): void {
+    if (message.opType !== OpType.status || !message.data.length) return
+
+    this.updateStatus({
+      bass: message.data.readInt8(0)
+    })
+  }
+
+  0x203(message: MostRxMessage): void {
+    if (message.opType !== OpType.status || !message.data.length) return
+
+    this.updateStatus({
+      treble: message.data.readInt8(0)
+    })
+  }
+
+  0x204(message: MostRxMessage): void {
+    if (message.opType !== OpType.status || !message.data.length) return
+
+    this.updateStatus({
+      fader: message.data.readInt8(0)
+    })
+  }
+
+  0x400(message: MostRxMessage): void {
+    if (message.opType !== OpType.status || !message.data.length) return
+
+    this.updateStatus({
+      volume: Array.from(message.data)
+    })
+  }
+
+  0x402(message: MostRxMessage): void {
+    if (message.opType !== OpType.status || !message.data.length) return
+
+    this.updateStatus({
+      subwoofer: message.data.readInt8(0)
+    })
+  }
+
+  0x467(message: MostRxMessage): void {
+    if (message.opType !== OpType.status) return
+
+    this.updateStatus({
+      mixerLevel: Array.from(message.data)
+    })
+  }
+
+  0xe09(message: MostRxMessage): void {
+    if (message.opType !== OpType.status || !message.data.length) return
+
+    this.updateStatus({
+      source: message.data.readUInt8(0)
+    })
+  }
+
+  0xe20(message: MostRxMessage): void {
+    if (message.opType !== OpType.status || message.data.length < 2) return
+
+    this.updateStatus({
+      centre: message.data.readInt8(1)
+    })
+  }
+
+  0xe21(message: MostRxMessage): void {
+    if (message.opType !== OpType.status || !message.data.length) return
+
+    this.updateStatus({
+      surround: message.data.readInt8(0)
+    })
+  }
+
+  0xe22(message: MostRxMessage): void {
+    if (message.opType !== OpType.status || !message.data.length) return
+
+    const mode = message.data.readUInt8(0)
+
+    if (mode > 2) {
+      this.logger.warn(
+        `Ignoring invalid amplifier listening mode ${mode}: ` + this.convertMessageToHex(message)
+      )
+      return
+    }
+
+    this.updateStatus({
+      mode,
+      ...(message.data.length > 1 ? { centre: message.data.readInt8(1) } : {})
+    })
   }
 
   allocate(message: MostRxMessage): void {}

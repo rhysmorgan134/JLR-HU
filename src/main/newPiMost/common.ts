@@ -169,7 +169,10 @@ export abstract class FBlock extends EventEmitter {
       )
       this.socketmost.sendControlMessage(this.createResponseMessage(message, [], OpType.status))
       if (this.autoSubscribe) {
-        this.subscribe()
+        setTimeout(() => {
+          this.subscribe()
+        }, 200)
+
       }
     } else if (message.data[0] === 0x02) {
       this.logger.info(

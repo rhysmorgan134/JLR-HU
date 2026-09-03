@@ -8,6 +8,7 @@ import {
   AuxInput,
   CanGateway,
   Carplay,
+  Climate,
   DabTuner,
   Diagnostics,
   HMI,
@@ -38,6 +39,7 @@ export class PimostMain {
   amplifier: Amplifier
   canGateway: CanGateway
   networkMaster: NetworkMaster
+  climate: Climate
   logger: winston.Logger
   socket: Socket
   subscriptionManager: SubscriptionManager
@@ -61,17 +63,18 @@ export class PimostMain {
     this.telephone = new Telephone([], this.socketmost, false, socket, this.subscriptionManager)
     this.tvTuner = new TvTuner([], this.socketmost, false, socket, this.subscriptionManager)
     this.satellite = new Satellite([], this.socketmost, false, socket, this.subscriptionManager)
-    this.dabTuner = new DabTuner([], this.socketmost, false, socket, this.subscriptionManager)
-    this.amFmTuner = new AmFmTuner([], this.socketmost, false, socket, this.subscriptionManager)
+    this.dabTuner = new DabTuner([], this.socketmost, true, socket, this.subscriptionManager)
+    this.amFmTuner = new AmFmTuner([], this.socketmost, true, socket, this.subscriptionManager)
     this.diagnostics = new Diagnostics([], this.socketmost, false, socket, this.subscriptionManager)
+    this.climate = new Climate([], this.socketmost, true, socket, this.subscriptionManager)
     this.audioControl = new AudioControl(
       [],
       this.socketmost,
-      false,
+      true,
       socket,
       this.subscriptionManager
     )
-    this.amplifier = new Amplifier([], this.socketmost, false, socket, this.subscriptionManager)
+    this.amplifier = new Amplifier([], this.socketmost, true, socket, this.subscriptionManager)
     this.canGateway = new CanGateway([], this.socketmost, true, socket, this.subscriptionManager)
     this.networkMaster = new NetworkMaster(
       [],
@@ -149,40 +152,43 @@ export class PimostMain {
         case 0x31:
           if (message.instanceID === 0xa1 || message.instanceID === 0x2) {
             this.audioDiskPlayer.checkMessage(message)
+          } else {
+            this.carplay.checkMessage(message)
           }
-          // else {
-          //   this.carplay.checkMessage(message)
-          // }
           break
-        // case 0x50:
-        //   this.telephone.checkMessage(message)
-        //   break
-        // case 0x42:
-        //   this.tvTuner.checkMessage(message)
-        //   break
-        // case 0x44:
-        //   this.satellite.checkMessage(message)
-        //   break
-        // case 0x43:
-        //   this.dabTuner.checkMessage(message)
-        //   break
-        // case 0x40:
-        //   this.amFmTuner.checkMessage(message)
-        //   break
-        // case 0x06:
-        //   this.diagnostics.checkMessage(message)
-        //   break
-        // case 0xf0:
-        //   this.audioControl.checkMessage(message)
-        //   break
-        // case 0x22:
-        //   this.amplifier.checkMessage(message)
-        //   break
-        // case 0x02:
-        //   this.networkMaster.checkMessage(message)
-        //   break
-        // // case 0xf0:
-        // //   this.canGateway.checkMessage(message)
+        case 0x50:
+          this.telephone.checkMessage(message)
+          break
+        case 0x42:
+          this.tvTuner.checkMessage(message)
+          break
+        case 0x44:
+          this.satellite.checkMessage(message)
+          break
+        case 0x43:
+          this.dabTuner.checkMessage(message)
+          break
+        case 0x40:
+          this.amFmTuner.checkMessage(message)
+          break
+        case 0x06:
+          this.diagnostics.checkMessage(message)
+          break
+        case 0xf0:
+          this.audioControl.checkMessage(message)
+          break
+        case 0x22:
+          this.amplifier.checkMessage(message)
+          break
+        case 0x02:
+          this.networkMaster.checkMessage(message)
+          break
+        case 0xf0:
+          this.canGateway.checkMessage(message)
+          break
+        case 0x71:
+          this.climate.checkMessage(message)
+          break
         default:
           this.logger.error('unhandled fblock: ' + this.convertMessageToHex(message))
       }
