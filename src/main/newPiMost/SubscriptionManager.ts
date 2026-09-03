@@ -31,17 +31,32 @@ export class SubscriptionManager extends EventEmitter {
           message.fktID === 0x2 &&
           message.opType === OpType.status
         ) {
-          this.logger.error('Successfull Notification' + this.inProgSubscription!)
+          this.logger.error(
+            `Successfull Notification ${this.convertMessageToHex(this.inProgSubscription!)}`
+          )
           clearInterval(this.notificationCheckTimer!)
           this.subscriptionInProg = false
           this.activeSubscriptions.push(this.inProgSubscription!)
           this.inProgSubscription = null
+          this.subscriptionInProg = false
+          this.inProgSubscription = null
+          this.checkForNextSub()
+          this.attempts = 0
         }
       }
+    })
+
+    this.socketmost.on(Os8104Events.Unlocked, () => {
+      this.queuedSubscriptions = []
+      this.activeSubscriptions = []
+      this.failedSubscriptions = []
+      this.attempts = 0
+      clearInterval(this.notificationCheckTimer)
     })
   }
 
   createSubscription(details: SubscriptionRecord) {
+    this.logger.warn(`Adding subscription to queue ${this.convertMessageToHex(details)} `)
     if (
       !this.queuedSubscriptions.includes(details) &&
       !this.activeSubscriptions.includes(details)
@@ -49,14 +64,18 @@ export class SubscriptionManager extends EventEmitter {
       this.queuedSubscriptions.push(details)
       this.checkForNextSub()
     } else {
-      this.logger.info(details + ' Already queued/active')
+      this.logger.warn(`${this.convertMessageToHex(details)} Already queued/active`)
     }
   }
 
   checkForNextSub() {
     if (!this.subscriptionInProg && this.queuedSubscriptions.length > 0) {
       this.inProgSubscription = this.queuedSubscriptions.shift()!
+      this.logger.info(JSON.stringify(this.inProgSubscription))
       this.subscriptionInProg = true
+      this.logger.warn(
+        `beginning subscription for: ${this.convertMessageToHex(this.inProgSubscription)}`
+      )
       this.sendSubscriptionMessage()
     }
   }
@@ -79,20 +98,25 @@ export class SubscriptionManager extends EventEmitter {
     this.notificationCheckTimer = setInterval(() => {
       if (this.attempts == 3) {
         this.failedSubscriptions.push(this.inProgSubscription!)
-        this.logger.error('FAILED SUBSCRIPTION' + this.inProgSubscription!)
+        this.logger.error(
+          `FAILED SUBSCRIPTION: ${this.convertMessageToHex(this.inProgSubscription!)}`
+        )
         this.inProgSubscription = null
         this.subscriptionInProg = false
         clearInterval(this.notificationCheckTimer!)
+        this.attempts = 0
         this.checkForNextSub()
       } else {
         this.requestNotificationCheck()
         this.attempts += 1
       }
-    }, 200)
+    }, 500)
   }
 
   requestNotificationCheck() {
-    this.logger.error('Sending notification check' + this.inProgSubscription!)
+    this.logger.warn(
+      `Sending notification check ${this.convertMessageToHex(this.inProgSubscription!)}`
+    )
     this.socketmost.sendControlMessage({
       data: [this.inProgSubscription!.sourceAddressHigh, this.inProgSubscription!.sourceAddressLow],
       fBlockID: this.inProgSubscription!.fBlockID,
@@ -102,5 +126,15 @@ export class SubscriptionManager extends EventEmitter {
       targetAddressHigh: this.inProgSubscription!.targetAddressHigh,
       targetAddressLow: this.inProgSubscription!.targetAddressLow
     })
+  }
+
+  convertMessageToHex(message) {
+    let out = {}
+    for (const [key, value] of Object.entries(message)) {
+      if (typeof value === 'number') {
+        out[key] = '0x' + value.toString(16)
+      }
+    }
+    return JSON.stringify(out)
   }
 }

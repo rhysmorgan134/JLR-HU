@@ -71,6 +71,8 @@ winston.loggers.add('pimost', {
 
   format: winston.format.combine(
     winston.format.timestamp(),
+    winston.format.splat(),
+    winston.format.simple(),
     winston.format.errors({ stack: true }),
     winston.format.printf((info) => {
       const stack = info.stack || info.message

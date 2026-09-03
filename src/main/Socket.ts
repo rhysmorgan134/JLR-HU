@@ -92,7 +92,11 @@ export class Socket extends EventEmitter {
   }
 
   sendStatusUpdate(type: string, data: object) {
-    console.log('emitting', type, data)
+    if (type === 'NetworkMaster') {
+      //console.log(`emitting ${type}\n${JSON.stringify(data, null, 2)}`)
+    } else {
+      console.log('emitting', type, data)
+    }
     this.io.emit(type, data)
   }
 

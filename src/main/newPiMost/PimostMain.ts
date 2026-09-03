@@ -49,6 +49,13 @@ export class PimostMain {
     this.logger.debug('pimost starting')
     this.socketmost = new SocketMostUsb()
     this.subscriptionManager = new SubscriptionManager(this.socketmost)
+    this.networkMaster = new NetworkMaster(
+      [],
+      this.socketmost,
+      false,
+      socket,
+      this.subscriptionManager
+    )
     this.netblock = new NetBlock([], this.socketmost, false, socket, this.subscriptionManager)
     this.hmi = new HMI([], this.socketmost, false, socket, this.subscriptionManager)
     this.auxInput = new AuxInput([], this.socketmost, false, socket, this.subscriptionManager)
@@ -75,13 +82,13 @@ export class PimostMain {
       this.subscriptionManager
     )
     this.amplifier = new Amplifier([], this.socketmost, true, socket, this.subscriptionManager)
-    this.canGateway = new CanGateway([], this.socketmost, true, socket, this.subscriptionManager)
-    this.networkMaster = new NetworkMaster(
+    this.canGateway = new CanGateway(
       [],
       this.socketmost,
-      false,
+      true,
       socket,
-      this.subscriptionManager
+      this.subscriptionManager,
+      this.networkMaster
     )
 
     this.socket.on('newConnection', () => {
@@ -137,7 +144,7 @@ export class PimostMain {
     // })
 
     this.socketmost.on(Os8104Events.SocketMostMessageRxEvent, (message) => {
-      this.logger.info(`message received ${this.convertMessageToHex(message)}`)
+      //this.logger.info(`message received ${this.convertMessageToHex(message)}`)
       switch (message.fBlockID) {
         case 0x01:
           this.logger.info('sending fblock')
@@ -183,7 +190,7 @@ export class PimostMain {
         case 0x02:
           this.networkMaster.checkMessage(message)
           break
-        case 0xf0:
+        case 0xf5:
           this.canGateway.checkMessage(message)
           break
         case 0x71:

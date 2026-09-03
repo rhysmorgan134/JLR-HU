@@ -149,10 +149,24 @@ const climate: Device = {
   instanceID: 0xa1
 }
 
+const networkMaster: Device = {
+  addressHigh: 0x01,
+  addressLow: 0x61,
+  fBlockID: 0x02,
+  instanceID: 0x01
+}
+
 const audioControl: Device = {
   addressHigh: 0x01,
   addressLow: 0x61,
   fBlockID: 0xf0,
+  instanceID: 0x01
+}
+
+const canGateway: Device = {
+  addressHigh: 0x01,
+  addressLow: 0x61,
+  fBlockID: 0xf5,
   instanceID: 0x01
 }
 //interesting stuff, 0x180 subscribes to 303 in master. 0x186 subscribes 303 in master. 0x189 subscribes 0x303 master,
@@ -313,17 +327,23 @@ export class CanGateway extends FBlock {
   mostCcf302Captured: boolean
   mostCcf303Captured: boolean
   mostCcfProperties: Record<string, number>
+  networkMaster: NetworkMaster
   constructor(
     subscriptions: number[],
     socketmost: SocketMostUsb,
     autoSubscribe: boolean,
     socket: Socket,
-    subscriptionManager: SubscriptionManager
+    subscriptionManager: SubscriptionManager,
+    networkMaster: NetworkMaster
   ) {
-    super(subscriptions, null, null, socketmost, autoSubscribe, socket, subscriptionManager)
+    super(subscriptions, canGateway, null, socketmost, autoSubscribe, socket, subscriptionManager)
     this.mostCcf302Captured = false
     this.mostCcf303Captured = false
     this.mostCcfProperties = {}
+    this.networkMaster = networkMaster
+    this.networkMaster.on('CanGatewayAvailable', () => {
+      this.subscribe()
+    })
   }
 
   allocate(message: MostRxMessage): void {}
@@ -1660,6 +1680,8 @@ export class Amplifier extends FBlock {
 
 export class NetworkMaster extends FBlock {
   status: Object
+  private registryRequestTimeout: ReturnType<typeof setTimeout> | null = null
+
   constructor(
     subscriptions: number[],
     socketmost: SocketMostUsb,
@@ -1669,8 +1691,8 @@ export class NetworkMaster extends FBlock {
   ) {
     super(
       subscriptions,
-      amplifier,
-      amplifierShadow,
+      networkMaster,
+      null,
       socketmost,
       autoSubscribe,
       socket,
@@ -1678,31 +1700,204 @@ export class NetworkMaster extends FBlock {
     )
     this.status = {
       networkMap: {},
-      networkStatus: NetworkStatus.notOk
+      networkStatus: NetworkStatus.notOk,
+      configurationState: NetworkStatus[NetworkStatus.notOk],
+      centralRegistry: []
     }
+
+    //this.socketmost.sendCheckForLock()
+
+    this.socketmost.on(Os8104Events.Locked, () => {
+      if (this.registryRequestTimeout) clearTimeout(this.registryRequestTimeout)
+      this.registryRequestTimeout = setTimeout(() => {
+        this.registryRequestTimeout = null
+        this.getCentralRegistry()
+      }, 50)
+    })
+
+    this.socketmost.on(Os8104Events.Unlocked, () => {
+      if (this.registryRequestTimeout) {
+        clearTimeout(this.registryRequestTimeout)
+        this.registryRequestTimeout = null
+      }
+
+      this.updateStatus({
+        networkMap: {},
+        networkStatus: NetworkStatus.notOk,
+        configurationState: NetworkStatus[NetworkStatus.notOk],
+        centralRegistry: []
+      })
+      this.logger.warn('NetworkMaster unlocked; cleared central registry')
+    })
   }
 
-  0xa00(message) {
-    switch (message.opType) {
-      case OpType.status:
-        for (let i = 1; i < message.telLen; i += 2) {
-          let readable = FBlockMap[message.data[i]]
-          if (readable in this.status['networkMap']) {
-            if (!(message.data[i + 1] in this.status['networkMap'][readable]['devices'])) {
-              this.status['networkMap'][readable]['devices'].push(
-                '0x' + message.data[i + 1].toString(16)
-              )
-            }
-          } else {
-            this.status['networkMap'][readable] = {
-              fBlockID: message.data[i],
-              devices: ['0x' + message.data[i + 1].toString(16)]
-            }
-          }
-        }
-        break
+  getCentralRegistry(): void {
+    this.logger.info('Requesting complete NetworkMaster central registry')
+    this.socketmost.sendControlMessage(this.physicalMessage(OpType.get, 0xa01, []))
+  }
+
+  0xa00(message: MostRxMessage): void {
+    if (message.opType !== OpType.status || message.data.length === 0) return
+
+    const networkStatus = message.data.readUInt8(0)
+    if (networkStatus > NetworkStatus.new) {
+      this.logger.info(
+        `Ignoring invalid NetworkMaster configuration state 0x${networkStatus.toString(16)}`
+      )
+      return
     }
-    this.logger.debug(`Network updated ${JSON.stringify(this.status['networkMap'])}`)
+
+    const configurationState = NetworkStatus[networkStatus]
+    const previousNetworkMap = this.status['networkMap'] as Record<
+      string,
+      { fBlockID: number; devices: number[]; configurationState?: string }
+    >
+    const networkMap = Object.fromEntries(
+      Object.entries(previousNetworkMap).map(([name, entry]) => [
+        name,
+        { ...entry, configurationState }
+      ])
+    ) as Record<string, { fBlockID: number; devices: number[]; configurationState: string }>
+
+    for (let i = 1; i + 1 < message.data.length; i += 2) {
+      const fBlockID = message.data.readUInt8(i)
+      const instanceID = message.data.readUInt8(i + 1)
+
+      // Control-message buffers are padded; zero is not a valid FBlockID here.
+      if (fBlockID === 0x00) break
+
+      const readable = FBlockMap[fBlockID] ?? `0x${fBlockID.toString(16).padStart(2, '0')}`
+      const existing = networkMap[readable]
+
+      networkMap[readable] = {
+        fBlockID,
+        devices:
+          existing && existing.devices.includes(instanceID)
+            ? existing.devices
+            : [...(existing?.devices ?? []), instanceID],
+        configurationState
+      }
+    }
+
+    const changed =
+      networkStatus !== this.status['networkStatus'] ||
+      JSON.stringify(networkMap) !== JSON.stringify(this.status['networkMap'])
+
+    if (!changed) return
+
+    this.updateStatus({ networkStatus, configurationState, networkMap })
+
+    const formattedDevices = Object.entries(networkMap)
+      .map(([name, entry]) => {
+        const fBlockID = `0x${entry.fBlockID.toString(16).padStart(2, '0')}`
+        const instances = entry.devices
+          .map((instanceID) => `0x${instanceID.toString(16).padStart(2, '0')}`)
+          .join(', ')
+        return `  ${name} (${fBlockID}): ${instances} - ${entry.configurationState}`
+      })
+      .join('\n')
+
+    this.logger.info(`NetworkMaster configuration: ${configurationState}\n${formattedDevices}`)
+
+    this.getCentralRegistry()
+  }
+
+  0xa01(message: MostRxMessage): void {
+    if (message.opType !== OpType.status || message.data.length < 4) return
+
+    const configurationState = this.status['configurationState'] as string
+    const networkMap = {
+      ...(this.status['networkMap'] as Record<
+        string,
+        {
+          fBlockID: number
+          devices: number[]
+          configurationState: string
+        }
+      >)
+    }
+    const centralRegistry = [
+      ...(this.status['centralRegistry'] as Array<{
+        rxTxLog: number
+        fBlockID: number
+        instanceID: number
+      }>)
+    ]
+
+    for (let i = 0; i + 3 < message.data.length; i += 4) {
+      const rxTxLog = message.data.readUInt16BE(i)
+      const fBlockID = message.data.readUInt8(i + 2)
+      const instanceID = message.data.readUInt8(i + 3)
+
+      // Multipart control-message buffers may contain trailing padding.
+      if (rxTxLog === 0x0000 || fBlockID === 0x00) break
+
+      const readable = FBlockMap[fBlockID] ?? `0x${fBlockID.toString(16).padStart(2, '0')}`
+      const existingDevice = networkMap[readable]
+
+      networkMap[readable] = {
+        fBlockID,
+        devices:
+          existingDevice && existingDevice.devices.includes(instanceID)
+            ? existingDevice.devices
+            : [...(existingDevice?.devices ?? []), instanceID],
+        configurationState
+      }
+
+      const existingRegistryIndex = centralRegistry.findIndex(
+        (entry) => entry.fBlockID === fBlockID && entry.instanceID === instanceID
+      )
+      const registryEntry = { rxTxLog, fBlockID, instanceID }
+
+      if (existingRegistryIndex === -1) {
+        centralRegistry.push(registryEntry)
+        this.emitRegistryDeviceAvailable(registryEntry)
+      } else if (centralRegistry[existingRegistryIndex].rxTxLog !== rxTxLog) {
+        centralRegistry[existingRegistryIndex] = registryEntry
+      }
+    }
+
+    const changed =
+      JSON.stringify(networkMap) !== JSON.stringify(this.status['networkMap']) ||
+      JSON.stringify(centralRegistry) !== JSON.stringify(this.status['centralRegistry'])
+
+    if (!changed) return
+
+    this.updateStatus({ networkMap, centralRegistry })
+
+    const formattedRegistry = centralRegistry
+      .map((entry) => {
+        const name = FBlockMap[entry.fBlockID] ?? 'Unknown'
+        const rxTxLog = `0x${entry.rxTxLog.toString(16).padStart(4, '0')}`
+        const fBlockID = `0x${entry.fBlockID.toString(16).padStart(2, '0')}`
+        const instanceID = `0x${entry.instanceID.toString(16).padStart(2, '0')}`
+        return `  ${name} (${fBlockID}/${instanceID}) at ${rxTxLog}`
+      })
+      .join('\n')
+
+    this.logger.info(`NetworkMaster central registry:\n${formattedRegistry}`)
+  }
+
+  private emitRegistryDeviceAvailable(entry: {
+    rxTxLog: number
+    fBlockID: number
+    instanceID: number
+  }): void {
+    const eventNames: Partial<Record<number, string>> = {
+      0x71: 'ClimateAvailable',
+      0xf5: 'CanGatewayAvailable',
+      0xf0: 'AudioControlAvailable'
+    }
+    const eventName = eventNames[entry.fBlockID]
+
+    if (!eventName) return
+
+    this.logger.info(
+      `${eventName}: instance 0x${entry.instanceID
+        .toString(16)
+        .padStart(2, '0')} at 0x${entry.rxTxLog.toString(16).padStart(4, '0')}`
+    )
+    this.emit(eventName, entry)
   }
 
   allocate(message: MostRxMessage): void {}

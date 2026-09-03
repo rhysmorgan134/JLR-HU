@@ -165,23 +165,28 @@ export abstract class FBlock extends EventEmitter {
     // set fblock status
     if (message.data[0] === 0x00) {
       this.logger.info(
-        `shadow ${message.fBlockID.toString(16)} instID ${message.instanceID.toString(16)} active`
+        `${this.constructor.name} shadow ${message.fBlockID.toString(
+          16
+        )} instID ${message.instanceID.toString(16)} active`
       )
       this.socketmost.sendControlMessage(this.createResponseMessage(message, [], OpType.status))
       if (this.autoSubscribe) {
         setTimeout(() => {
           this.subscribe()
         }, 200)
-
       }
     } else if (message.data[0] === 0x02) {
       this.logger.info(
-        `shadow ${message.fBlockID.toString(16)} instID ${message.instanceID.toString(16)} standby`
+        `${this.constructor.name} shadow ${message.fBlockID.toString(
+          16
+        )} instID ${message.instanceID.toString(16)} standby`
       )
       this.socketmost.sendControlMessage(this.createResponseMessage(message, [], OpType.status))
     } else if (message.data[0] === 0x03) {
-      this.logger.info(
-        `shadow ${message.fBlockID.toString(16)} instID ${message.instanceID.toString(16)} disabled`
+      this.logger.warn(
+        `${this.constructor.name} shadow ${message.fBlockID.toString(
+          16
+        )} instID ${message.instanceID.toString(16)} disabled`
       )
       this.socketmost.sendControlMessage(this.createResponseMessage(message, [], OpType.status))
     }
