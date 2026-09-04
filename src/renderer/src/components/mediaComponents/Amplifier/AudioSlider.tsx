@@ -1,20 +1,28 @@
 import { Slider } from '@mui/material'
-import { Buffer } from 'buffer'
 import Box from '@mui/material/Box'
-import { AddCircle, PlusOne, RemoveCircle } from '@mui/icons-material'
+import { AddCircle, RemoveCircle } from '@mui/icons-material'
 import Grid from '@mui/material/Unstable_Grid2'
 import Typography from '@mui/material/Typography'
 
+type AudioSliderProps = {
+  min: number
+  max: number
+  name: string
+  setValue: (value: number) => void
+  value: number
+  disabled?: boolean
+}
+
 //const marks = [{value: -3, label: '-3'}];
 
-export default function AudioSlider({ min, max, name, setValue, value, disabled = false }) {
+export default function AudioSlider({ min, max, name, setValue, value, disabled = false }: AudioSliderProps) {
   // useEffect(() => {
   //     console.log("Sending", "set" + name.charAt(0).toUpperCase() + name.slice(1))
   //   sendMessage("get" + name.charAt(0).toUpperCase() + name.slice(1), 'Amplifier')
   // }, [])
 
   const getMax = () => {
-    const marks = []
+    const marks: Array<{ value: number; label: string }> = []
     console.log(max - min)
     if (max - min > 12) {
       for (let i = min; i <= max; i += 2) {
@@ -28,15 +36,8 @@ export default function AudioSlider({ min, max, name, setValue, value, disabled 
     return marks
   }
 
-  const onChange = (e, value) => {
-    console.log(
-      'sending',
-      'set' + name.charAt(0).toUpperCase() + name.slice(1),
-      'Amplifier',
-      Buffer.from([value])
-    )
-    console.log(setValue)
-    setValue(value + 1)
+  const onChange = (_event: Event, nextValue: number | number[]) => {
+    if (typeof nextValue === 'number') setValue(nextValue)
   }
 
   const increment = () => {
@@ -51,7 +52,7 @@ export default function AudioSlider({ min, max, name, setValue, value, disabled 
     }
   }
 
-  function valuetext(value) {
+  function valuetext(value: number) {
     return `${value}°C`
   }
 
@@ -68,7 +69,6 @@ export default function AudioSlider({ min, max, name, setValue, value, disabled 
         />
         <Slider
           aria-label="Custom marks"
-          defaultValue={0}
           step={1}
           min={min}
           max={max}

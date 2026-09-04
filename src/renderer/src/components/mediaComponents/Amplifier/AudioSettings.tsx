@@ -3,7 +3,6 @@ import AudioSlider from './AudioSlider'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import ToggleButton from '@mui/material/ToggleButton'
 import { useAmplifierStore } from '../../../store/store'
-import { SurroundType } from '../../../../../main/PiMostFunctions/Amplifier/AmplifierTypes'
 
 export default function AudioSettings() {
   const [
@@ -19,6 +18,8 @@ export default function AudioSettings() {
     setCentre,
     mode,
     setMode,
+    surround,
+    setSurround,
     fader,
     setFader
   ] = useAmplifierStore((state) => [
@@ -34,6 +35,8 @@ export default function AudioSettings() {
     state.setCentre,
     state.mode,
     state.setMode,
+    state.surround,
+    state.setSurround,
     state.fader,
     state.setFader
   ])
@@ -73,16 +76,16 @@ export default function AudioSettings() {
       <Grid xs={6}>
         <AudioSlider min={-10} max={10} setValue={setBalance} value={balance} name={'balance'} />
       </Grid>
-      {mode !== 'stereo' ? (
+      {mode !== 0 ? (
         <Grid xs={6}>
           <AudioSlider min={-6} max={6} setValue={setCentre} value={centre} name={'centre'} />
         </Grid>
       ) : (
         <Grid xs={6}></Grid>
       )}
-      {mode === 'dolbyProLogic' ? (
+      {mode === 2 ? (
         <Grid xs={6}>
-          <AudioSlider min={-6} max={6} setValue={setMode} value={mode} name={'surround'} />
+          <AudioSlider min={-6} max={6} setValue={setSurround} value={surround} name={'surround'} />
         </Grid>
       ) : (
         <Grid xs={6}></Grid>

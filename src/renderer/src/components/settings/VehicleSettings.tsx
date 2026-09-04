@@ -1,5 +1,5 @@
 import {
-  FormControlLabel,
+  Button,
   styled,
   SwitchProps,
   ToggleButton,
@@ -10,6 +10,7 @@ import Box from '@mui/material/Box'
 import Switch from '@mui/material/Switch'
 import Grid from '@mui/material/Unstable_Grid2'
 import { useCanGatewayStore } from '../../store/store' // Grid version 2
+import { useNavigate } from 'react-router-dom'
 
 const IOSSwitch = styled((props: SwitchProps) => (
   <Switch focusVisibleClassName=".Mui-focusVisible" disableRipple {...props} />
@@ -61,6 +62,7 @@ const IOSSwitch = styled((props: SwitchProps) => (
 }))
 
 export function VehicleSettings() {
+  const navigate = useNavigate()
   const [
     autoLock,
     driveAwayLocking,
@@ -77,7 +79,7 @@ export function VehicleSettings() {
     setGlobalWindowsOpen,
     setMirrorFoldBack,
     setPassiveArming,
-    setTwoStageUnlocking,
+    setTwoStageLocking,
     setAlarmSensors,
     setMirrorDip
   ] = useCanGatewayStore((state) => [
@@ -96,7 +98,7 @@ export function VehicleSettings() {
     state.setGlobalWindowsOpen,
     state.setMirrorFoldBack,
     state.setPassiveArming,
-    state.setTwoStageUnlocking,
+    state.setTwoStageLocking,
     state.setAlarmSensors,
     state.setMirrorDip
   ])
@@ -116,7 +118,7 @@ export function VehicleSettings() {
     </ToggleButton>
   ]
 
-  const handleChange = (event: React.MouseEvent<HTMLElement>, newAlignment: number) => {
+  const handleChange = (_event: React.MouseEvent<HTMLElement>, newAlignment: number) => {
     setDriveAway(newAlignment)
   }
 
@@ -175,7 +177,7 @@ export function VehicleSettings() {
           <Typography sx={{ flexGrow: 1 }}>Two Stage Locking</Typography>
           <IOSSwitch
             checked={twoStageLocking}
-            onChange={() => setTwoStageUnlocking(!twoStageLocking)}
+            onChange={() => setTwoStageLocking(!twoStageLocking)}
           />
         </Box>
       </Grid>
@@ -197,6 +199,9 @@ export function VehicleSettings() {
           <Typography sx={{ flexGrow: 1 }}>Drive Away Locking</Typography>
           <ToggleButtonGroup {...control}>{driveAway}</ToggleButtonGroup>
         </Box>
+      </Grid>
+      <Grid xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>
+        <Button size="small" variant="outlined" onClick={() => navigate('/settings/car/ccf')}>View MOST CCF</Button>
       </Grid>
     </Grid>
   )

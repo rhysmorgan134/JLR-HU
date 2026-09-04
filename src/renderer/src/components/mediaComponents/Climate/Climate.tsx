@@ -13,7 +13,9 @@ import { useClimateStore } from '../../../store/store'
 import Button from '@mui/material/Button'
 import ArrowLeftIcon from '@mui/icons-material/ArrowLeft'
 import ArrowRightIcon from '@mui/icons-material/ArrowRight'
-import { useRef } from 'react'
+
+type SeatSetting = -3 | -2 | -1 | 0 | 1 | 2 | 3
+const seatStep = (value: number): SeatSetting => Math.max(-3, Math.min(3, value)) as SeatSetting
 
 function Climate() {
   const [
@@ -59,8 +61,8 @@ function Climate() {
     state.setLeftSeat,
     state.setRightSeat
   ])
-  const leftSeatRef = useRef()
-  const rightSeatRef = useRef()
+  void recirc
+  void maxDefrost
 
   //
   // const useStyles = makeStyles((theme) => ({
@@ -298,7 +300,7 @@ function Climate() {
                   visibility: leftSeat > -3 ? 'visible' : 'hidden'
                 }}
                 onClick={() => {
-                  setLeftSeat(leftSeat - 1)
+                  setLeftSeat(seatStep(leftSeat - 1))
                 }}
               />
               <Box>
@@ -353,7 +355,7 @@ function Climate() {
                   maxHeight: 0.5,
                   visibility: leftSeat < 3 ? 'visible' : 'hidden'
                 }}
-                onClick={() => setLeftSeat(leftSeat + 1)}
+                onClick={() => setLeftSeat(seatStep(leftSeat + 1))}
               />
             </Box>
           </Grid>
@@ -406,7 +408,7 @@ function Climate() {
                   visibility: rightSeat > -3 ? 'visible' : 'hidden'
                 }}
                 onClick={() => {
-                  setRightSeat(rightSeat - 1)
+                  setRightSeat(seatStep(rightSeat - 1))
                 }}
               />
               <Box>
@@ -461,7 +463,7 @@ function Climate() {
                   maxHeight: 0.5,
                   visibility: leftSeat < 3 ? 'visible' : 'hidden'
                 }}
-                onClick={() => setRightSeat(rightSeat + 1)}
+                onClick={() => setRightSeat(seatStep(rightSeat + 1))}
               />
             </Box>
           </Grid>

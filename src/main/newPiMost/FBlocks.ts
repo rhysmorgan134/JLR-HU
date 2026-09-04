@@ -1463,8 +1463,10 @@ export class AudioControl extends FBlock {
       await this.currentSource.stopSource()
       this.logger.info('stopped source')
       await this.sendMethod(this.physicalMessage(OpType.startResultAck, 0x406, data406))
+      await this.sleep(50)
       this.logger.info('406 complete')
       await this.sendMethod(this.physicalMessage(OpType.startResultAck, 0x408, data408))
+      await this.sleep(50)
       this.logger.info('408 complete')
     }
 
@@ -1495,8 +1497,10 @@ export class AudioControl extends FBlock {
       )}`
     )
     let result = await this.sendMethod(this.physicalMessage(OpType.startResultAck, 0x405, data405))
+    await this.sleep(50)
     this.logger.info(`405 result ${result}`)
     result = await this.sendMethod(this.physicalMessage(OpType.startResultAck, 0x407, data407))
+    await this.sleep(50)
 
     this.logger.info(`407 result ${result}`)
     this.currentSource = device
@@ -1540,6 +1544,10 @@ export class AudioControl extends FBlock {
       // console.log('408 complete')
     }
     // this.currentSource = null
+  }
+
+  sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms))
   }
 }
 

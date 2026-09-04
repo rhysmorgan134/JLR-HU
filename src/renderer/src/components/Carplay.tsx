@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { RotatingLines } from 'react-loader-spinner'
 import { findDevice, requestDevice, CommandMapping } from 'node-carplay/web'
-import { CarPlayWorker } from './worker/types'
+import { CarPlayWorker, KeyCommand } from './worker/types'
 import useCarplayAudio from './useCarplayAudio'
 import { useCarplayTouch } from './useCarplayTouch'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -21,7 +21,7 @@ interface CarplayProps {
   receivingVideo: boolean
   setReceivingVideo: (receivingVideo: boolean) => void
   settings: ExtraConfig
-  command: string
+  command: KeyCommand | ''
   commandCounter: number
 }
 
@@ -41,10 +41,10 @@ function Carplay({
   const [canvasElement, setCanvasElement] = useState<HTMLCanvasElement | null>(null)
   const mainElem = useRef<HTMLDivElement>(null)
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const [stream, playing, setPlaying, setFocus, setStorePlugged, setMedia, clearMedia] = useCarplayStore((state) => [
+  void receivingVideo
+  const [stream, playing, setFocus, setStorePlugged, setMedia, clearMedia] = useCarplayStore((state) => [
     state.stream,
     state.playing,
-    state.setPlaying,
     state.setFocus,
     state.setPlugged,
     state.setMedia,
@@ -203,7 +203,7 @@ function Carplay({
   }, [pathname, playing])
 
   useEffect(() => {
-    carplayWorker.postMessage({ type: 'keyCommand', command: command })
+    if (command) carplayWorker.postMessage({ type: 'keyCommand', command })
   }, [commandCounter])
 
   const checkDevice = useCallback(
