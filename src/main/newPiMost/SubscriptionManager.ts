@@ -28,13 +28,13 @@ export class SubscriptionManager extends EventEmitter {
       if (this.subscriptionInProg) {
         if (
           message.fBlockID === this.inProgSubscription!.fBlockID &&
-          message.fktID === 0x2 &&
+          message.fktID != 0xc81 &&
           message.opType === OpType.status
         ) {
           this.logger.error(
             `Successfull Notification ${this.convertMessageToHex(this.inProgSubscription!)}`
           )
-          clearInterval(this.notificationCheckTimer!)
+          clearTimeout(this.notificationCheckTimer!)
           this.subscriptionInProg = false
           this.activeSubscriptions.push(this.inProgSubscription!)
           this.inProgSubscription = null
@@ -51,7 +51,7 @@ export class SubscriptionManager extends EventEmitter {
       this.activeSubscriptions = []
       this.failedSubscriptions = []
       this.attempts = 0
-      clearInterval(this.notificationCheckTimer)
+      clearTimeout(this.notificationCheckTimer!)
     })
   }
 
@@ -95,22 +95,17 @@ export class SubscriptionManager extends EventEmitter {
       targetAddressLow: this.inProgSubscription!.targetAddressLow
     })
 
-    this.notificationCheckTimer = setInterval(() => {
-      if (this.attempts == 3) {
-        this.failedSubscriptions.push(this.inProgSubscription!)
-        this.logger.error(
-          `FAILED SUBSCRIPTION: ${this.convertMessageToHex(this.inProgSubscription!)}`
-        )
-        this.inProgSubscription = null
-        this.subscriptionInProg = false
-        clearInterval(this.notificationCheckTimer!)
-        this.attempts = 0
-        this.checkForNextSub()
-      } else {
-        this.requestNotificationCheck()
-        this.attempts += 1
-      }
-    }, 500)
+    this.notificationCheckTimer = setTimeout(() => {
+      this.failedSubscriptions.push(this.inProgSubscription!)
+      this.logger.error(
+        `FAILED SUBSCRIPTION: ${this.convertMessageToHex(this.inProgSubscription!)}`
+      )
+      this.inProgSubscription = null
+      this.subscriptionInProg = false
+      clearInterval(this.notificationCheckTimer!)
+      this.attempts = 0
+      this.checkForNextSub()
+    }, 1000)
   }
 
   requestNotificationCheck() {
