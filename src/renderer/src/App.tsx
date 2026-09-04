@@ -1,99 +1,48 @@
-import { useMemo, createContext } from 'react'
-import CssBaseline from '@mui/material/CssBaseline'
-import { createTheme, ThemeProvider } from '@mui/material'
+import { createContext, useMemo, useState } from 'react'
+import { CssBaseline, ThemeProvider, createTheme } from '@mui/material'
+import { HashRouter as Router, Route, Routes, useLocation } from 'react-router-dom'
 import AudioDiskPlayerPage from './components/mediaComponents/AudioDiskPlayer/AudioDiskPlayerPage'
-import { HashRouter as Router, Route, Routes } from 'react-router-dom'
-import { cyan } from '@mui/material/colors'
-
-import './App.css'
 import ScreenSaver from './components/mediaComponents/ScreenSaver'
 import Header from './components/dataDisplays/Header'
 import Base from './Base'
 import AmFmTunerPage from './components/mediaComponents/AmFm/AmFmTunerPage'
 import VolumeModal from './components/VolumeModal'
+import Carplay from './components/Carplay'
+import { useCarplayStore } from './store/store'
+import './App.css'
 
-const ColorModeContext = createContext({ toggleColorMode: () => {} })
+export const ColorModeContext = createContext({ toggleColorMode: () => {} })
 
-// rm -rf node_modules/.vite; npm run dev
-
-const style = {
-  position: 'absolute',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  height: '95%',
-  minHeight: '95%',
-  width: '95%',
-  boxShadow: 24,
-  display: 'flex'
+function AppRoutes() {
+  const { pathname } = useLocation()
+  const screensaver = pathname === '/'
+  return <>
+    {pathname !== '/carplay' && <Header />}
+    <VolumeModal />
+    <main className={`App${screensaver ? ' is-screensaver' : ''}`}>
+      <Routes>
+        <Route path="/" element={<ScreenSaver />} />
+        <Route path="/home" element={<Base />} />
+        <Route path="/AudioDiskPlayer" element={<AudioDiskPlayerPage />} />
+        <Route path="/AmFmTuner" element={<AmFmTunerPage />} />
+        <Route path="/carplay" element={null} />
+      </Routes>
+    </main>
+  </>
 }
 
-const settingsStyle = {
-  position: 'absolute',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: '70%',
-  bgcolor: 'background.paper',
-  border: '2px solid #000',
-  boxShadow: 24,
-  p: 4
+export default function App() {
+  const [receivingVideo, setReceivingVideo] = useState(false)
+  const settings = useCarplayStore((state) => state.settings)
+  const theme = useMemo(() => createTheme({
+    palette: { mode: 'dark', primary: { main: '#67d8ff' }, secondary: { main: '#8b9cff' }, background: { default: '#080d14', paper: '#151e2a' }, text: { primary: '#f4f8ff', secondary: '#8e9aaa' } },
+    shape: { borderRadius: 16 },
+    typography: { fontFamily: 'Roboto, system-ui, sans-serif' },
+    components: {
+      MuiButtonBase: { defaultProps: { disableRipple: true } },
+      MuiPaper: { styleOverrides: { root: { backgroundImage: 'none' } } },
+      MuiDialog: { styleOverrides: { paper: { backgroundImage: 'linear-gradient(145deg,#1b2634,#101721)', border: '1px solid rgba(189,221,255,.14)' } } }
+    }
+  }), [])
+  return <ColorModeContext.Provider value={{ toggleColorMode: () => {} }}><ThemeProvider theme={theme}><CssBaseline /><Router>{settings && <Carplay receivingVideo={receivingVideo} setReceivingVideo={setReceivingVideo} settings={settings} command="" commandCounter={0} />}<AppRoutes /></Router></ThemeProvider></ColorModeContext.Provider>
 }
-
-function App() {
-  const theme = useMemo(
-    () =>
-      createTheme({
-        palette: {
-          mode: 'dark',
-          primary: {
-            main: '#303030'
-          },
-          background: {
-            default: '#09101c',
-            paper: '#303030'
-          },
-          text: {
-            primary: '#FFFFFF'
-          },
-          secondary: cyan
-        },
-        components: {
-          // MuiCssBaseline: {
-          //     styleOverrides: (themeParam) => `
-          //         body {
-          //             overflow: hidden;
-          //         }
-          //     `
-          // }
-        }
-      }),
-    []
-  )
-
-  return (
-    <ColorModeContext.Provider value={'dark'}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <Router>
-          <Header />
-          <VolumeModal />
-          <div
-            style={{ height: '100%', touchAction: 'none', overflow: 'hidden' }}
-            // id={'main'}
-            className="App"
-          >
-            <Routes>
-              <Route path={''} element={<ScreenSaver />} />
-              <Route path={'/home'} element={<Base />} />
-              <Route path={'/AudioDiskPlayer'} element={<AudioDiskPlayerPage />} />
-              <Route path={'/AmFmTuner'} element={<AmFmTunerPage />} />
-            </Routes>
-          </div>
-        </Router>
-      </ThemeProvider>
-    </ColorModeContext.Provider>
-  )
-}
-
-export default App

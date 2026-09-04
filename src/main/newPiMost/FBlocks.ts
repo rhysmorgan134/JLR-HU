@@ -30,7 +30,7 @@ const cdPlayerShadow: Device = {
   instanceID: 0xa1
 }
 const cdPlayerShadowFunctions = [0x00, 0xc80, 0xc81, 0xe00]
-const carplay: Device = { addressHigh: 0x1, addressLow: 0x89, fBlockID: 0x31, instanceID: 0x5 }
+const carplay: Device = { addressHigh: 0x1, addressLow: 0x6e, fBlockID: 0x31, instanceID: 0x5 }
 const carplayFunctions = [
   0x0, 0x01, 0x90, 0x91, 0x92, 0x101, 0x102, 0x200, 0x201, 0x202, 0x412, 0x413, 0x420, 0x430, 0x431,
   0x450, 0x451, 0x452, 0xc11, 0xc13, 0xc31, 0xc32, 0xc33, 0xc34
@@ -508,7 +508,7 @@ export class NetBlock extends FBlock {
     this.implementedFblocks = [
       0x10, 0xa3, 0x06, 0x6e, 0x40, 0xa1, 0x31, 0xa1, 0x52, 0xd1, 0x60, 0x01, 0x50, 0xa1, 0x05,
       0xd1, 0x24, 0xa1, 0x22, 0xd1, 0x11, 0xd1, 0x44, 0xa1, 0x05, 0xd2, 0x42, 0xa1, 0x31, 0xa2,
-      0x43, 0xa1, 0x31, 0xa2
+      0x43, 0xa1, 0x31, 0xa2, 0x31, 0x05
     ]
     this.registry = {}
   }
@@ -699,7 +699,9 @@ export class AmFmTuner extends FBlock {
 
   selectPreset(data: { bank: keyof typeof TunerTypes; preset: number }): void {
     const presetGroup = TunerTypes[data.bank]
-    if (typeof presetGroup !== 'number' || data.preset < 1 || data.preset > 9) return
+    if (typeof presetGroup !== 'number' || data.preset < 1 || data.preset > 10) {
+      return
+    }
 
     this.socketmost.sendControlMessage(
       this.physicalMessage(OpType.setGet, 0xd11, [presetGroup, data.preset])
@@ -708,7 +710,9 @@ export class AmFmTuner extends FBlock {
 
   savePreset(data: { bank: keyof typeof TunerTypes; preset: number }): void {
     const presetGroup = TunerTypes[data.bank]
-    if (typeof presetGroup !== 'number' || data.preset < 1 || data.preset > 9) return
+    if (typeof presetGroup !== 'number' || data.preset < 1 || data.preset > 10) {
+      return
+    }
 
     this.socketmost.sendControlMessage(
       this.physicalMessage(OpType.setGet, 0xd10, [presetGroup, data.preset])
@@ -961,6 +965,15 @@ export class AudioDiskPlayer extends FBlock {
     })
   }
 
+  activeDisk({ disk }: { disk: number }) {
+    if (!Number.isInteger(disk) || disk < 1 || disk > 6) {
+      this.logger.warn(`invalid CD changer disk: ${disk}`)
+      return
+    }
+
+    this.socketmost.sendControlMessage(this.physicalMessage(OpType.set, 0x412, [disk]))
+  }
+
   nextTrack() {
     this.socketmost.sendControlMessage(this.physicalMessage(OpType.increment, 0x202, [0x01]))
   }
@@ -977,8 +990,12 @@ export class AudioDiskPlayer extends FBlock {
     this.socketmost.sendControlMessage(this.physicalMessage(OpType.set, 0x200, [0x02]))
   }
 
-  random({ random: Random }) {
-    this.socketmost.sendControlMessage(this.physicalMessage(OpType.set, 0x450, [0x00]))
+  random({ randomType }: { randomType: Random }) {
+    this.socketmost.sendControlMessage(this.physicalMessage(OpType.set, 0x450, [randomType]))
+  }
+
+  repeat({ repeatType }: { repeatType: Repeat }) {
+    this.socketmost.sendControlMessage(this.physicalMessage(OpType.set, 0x452, [repeatType]))
   }
 }
 
@@ -1005,6 +1022,7 @@ export class Carplay extends FBlock {
 
   allocate(message: MostRxMessage): void {
     if (message.opType !== OpType.startResult) {
+      this.logger.warn(`incorrect op type for allocate ${this.convertMessageToHex(message)}`)
       this.socketmost.sendControlMessage(
         this.createErrorMessage(message, ErrorTypes.OpTypeNotAvailable)
       )
@@ -1051,9 +1069,8 @@ export class Carplay extends FBlock {
         OpType.result
       )
 
-      this.logger.info(
-        `sending CarPlay allocate response with node position ` +
-          `${nodePosition}: ${this.convertMessageToHex(response)}`
+      this.logger.warn(
+        `sending CarPlay allocate respons ` + `${this.convertMessageToHex(response)}`
       )
 
       this.socketmost.sendControlMessage(response)
@@ -1071,6 +1088,10 @@ export class Carplay extends FBlock {
 
   0x102(message: MostRxMessage): void {
     this.deallocate(message)
+  }
+
+  0x101(message: MostRxMessage): void {
+    this.allocate(message)
   }
 
   parseMessage(message: MostRxMessage): void {}

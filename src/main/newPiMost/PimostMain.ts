@@ -132,6 +132,13 @@ export class PimostMain {
             this.logger.info('AMFmTuner not connected')
           }
           break
+        case 'carplay':
+          if (!(this.audioControl.currentSource instanceof Carplay)) {
+            this.audioControl.switchSource(this.carplay)
+          } else {
+            this.logger.info('CarPlay is already the current source')
+          }
+          break
       }
     })
 

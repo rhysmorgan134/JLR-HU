@@ -28,6 +28,26 @@ export interface MostSettings {
 interface CarplayStore {
   settings: null | ExtraConfig
   saveSettings: (settings: ExtraConfig) => void
+  plugged: boolean
+  setPlugged: (plugged: boolean) => void
+  mediaSongName: string | null
+  mediaAlbumName: string | null
+  mediaArtistName: string | null
+  mediaAppName: string | null
+  mediaAlbumCover: string | null
+  setMedia: (
+    media: Partial<
+      Pick<
+        CarplayStore,
+        | 'mediaSongName'
+        | 'mediaAlbumName'
+        | 'mediaArtistName'
+        | 'mediaAppName'
+        | 'mediaAlbumCover'
+      >
+    >
+  ) => void
+  clearMedia: () => void
   playing: boolean
   getSettings: () => void
   stream: (stream: messages.Stream) => void
@@ -85,7 +105,7 @@ interface AudioDiskPlayer {
 }
 
 type AudioControlStore = {
-  currentSource: string
+  currentSource: string | null
   setSource: (source) => void
 }
 
@@ -136,6 +156,11 @@ interface Volume {
 
 interface HMIStore {
   screensaver: boolean
+}
+
+interface NetworkMasterStore {
+  networkStatus: number | null
+  configurationState: string
 }
 
 interface persistentStore {
@@ -189,6 +214,11 @@ export const useHMIStore = create<HMIStore>()(() => ({
   screensaver: true
 }))
 
+export const useNetworkMasterStore = create<NetworkMasterStore>()(() => ({
+  networkStatus: null,
+  configurationState: 'unknown'
+}))
+
 export const useMostSettings = create<MostSettings>()((set) => ({
   usb: false,
   manualIp: false,
@@ -237,6 +267,22 @@ export const useCarplayStore = create<CarplayStore>()((set) => ({
   getSettings: () => {
     socket.emit('getSettings')
   },
+  plugged: false,
+  setPlugged: (plugged) => set({ plugged }),
+  mediaSongName: null,
+  mediaAlbumName: null,
+  mediaArtistName: null,
+  mediaAppName: null,
+  mediaAlbumCover: null,
+  setMedia: (media) => set(media),
+  clearMedia: () =>
+    set({
+      mediaSongName: null,
+      mediaAlbumName: null,
+      mediaArtistName: null,
+      mediaAppName: null,
+      mediaAlbumCover: null
+    }),
   stream: (stream) => {
     socket.emit('stream', stream)
   },
@@ -382,9 +428,9 @@ export const useAudioDiskPlayer = create<AudioDiskPlayer>()(() => ({
 
 export const usePersistantStore = create<persistentStore>()(
   persist(
-    (set, get) => ({
-      lastAudioSource: 'AudioDiskPlayer',
-      setLastAudioSource: (audioSource) => set({ lastAudioSource: audioSource })
+    (set) => ({
+      currentSource: 'AudioDiskPlayer',
+      setLastAudioSource: (audioSource) => set({ currentSource: audioSource })
     }),
     {
       name: 'persistent-storage'
@@ -464,4 +510,8 @@ socket.on('HMI', (data) => {
       _.merge(draft, data)
     })
   })
+})
+
+socket.on('NetworkMaster', (data) => {
+  useNetworkMasterStore.setState((state) => ({ ...state, ...data }))
 })
