@@ -32,6 +32,7 @@ export class MostDiagnosticsBackend {
   private log: WriteStream | null = null
   private logPath: string | null = null
   private logger = getLogger('MostDiagnosticsBackend')
+  private trafficLogger = getLogger('MostTraffic')
 
   constructor(
     private socketmost: SocketMostUsb,
@@ -49,7 +50,9 @@ export class MostDiagnosticsBackend {
   }
 
   observeRx(message: MostRxMessage): void {
-    this.publish(this.toDiagnosticMessage(message, 'rx'))
+    const diagnosticMessage = this.toDiagnosticMessage(message, 'rx')
+    this.trafficLogger.info(JSON.stringify(this.formatLogMessage(diagnosticMessage)))
+    this.publish(diagnosticMessage)
     this.captureRegistry(message)
     this.captureFunctionList(message)
   }
@@ -119,6 +122,9 @@ export class MostDiagnosticsBackend {
     const original = this.socketmost.sendControlMessage.bind(this.socketmost)
     const tapped = this.socketmost as SocketMostUsb & { sendControlMessage: (message: SocketMostSendMessage, telID?: number) => void }
     tapped.sendControlMessage = (message, telID) => {
+      const diagnosticMessage = this.toDiagnosticMessage(message, 'tx')
+      if (telID !== undefined) diagnosticMessage.telID = telID
+      this.trafficLogger.info(JSON.stringify(this.formatLogMessage(diagnosticMessage)))
       if (telID === undefined) this.publish(this.toDiagnosticMessage(message, 'tx'))
       original(message, telID)
     }

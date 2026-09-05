@@ -3,12 +3,15 @@ import { DongleConfig } from 'node-carplay/node'
 
 export const LOGGER_NAMES = [
   'PimostMain', 'SubscriptionManager', 'MostDiagnosticsBackend', 'PiMostFirmwareBackend',
+  'MostTraffic',
   'NetworkMaster', 'NetBlock', 'HMI', 'AudioControl', 'AudioDiskPlayer', 'AmFmTuner',
   'Carplay', 'Amplifier', 'Climate', 'CanGateway', 'AuxInput', 'Telephone', 'Satellite',
   'DabTuner', 'TvTuner', 'Diagnostics'
 ] as const
 export type LoggerName = (typeof LOGGER_NAMES)[number]
 export type LoggerConfig = Partial<Record<LoggerName, boolean>>
+
+export const loggerEnabledByDefault = (name: LoggerName): boolean => name !== 'MostTraffic'
 
 export type Most = {
   stream?: messages.Stream

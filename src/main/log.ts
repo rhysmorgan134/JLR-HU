@@ -1,6 +1,6 @@
 import winston, { LoggerOptions } from 'winston'
 import 'winston-daily-rotate-file'
-import { LOGGER_NAMES, LoggerConfig, LoggerName } from './Globals'
+import { LOGGER_NAMES, LoggerConfig, LoggerName, loggerEnabledByDefault } from './Globals'
 
 const level = process.env.LOG_LEVEL || 'info'
 const colorizer = winston.format.colorize()
@@ -56,7 +56,9 @@ export function getLogger(name: LoggerName | 'jlrHU' | 'pimost'): winston.Logger
 }
 
 export function configureLogging(config: LoggerConfig = {}): void {
-  for (const name of LOGGER_NAMES) getLogger(name).silent = config[name] === false
+  for (const name of LOGGER_NAMES) {
+    getLogger(name).silent = !(config[name] ?? loggerEnabledByDefault(name))
+  }
 }
 
 // Keep the legacy names available while the old implementation remains in the tree.

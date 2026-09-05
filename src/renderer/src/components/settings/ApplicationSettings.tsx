@@ -2,12 +2,13 @@ import { Box, Switch, Typography } from '@mui/material'
 import BugReportRoundedIcon from '@mui/icons-material/BugReportRounded'
 import { useCarplayStore } from '../../store/store'
 import SettingsPage from './SettingsPage'
-import { LOGGER_NAMES } from '../../../../main/Globals'
+import { LOGGER_NAMES, loggerEnabledByDefault } from '../../../../main/Globals'
 
 const loggerLabels: Partial<Record<(typeof LOGGER_NAMES)[number], string>> = {
   PimostMain: 'PiMOST main',
   SubscriptionManager: 'Subscriptions',
   MostDiagnosticsBackend: 'MOST diagnostics',
+  MostTraffic: 'All MOST traffic',
   PiMostFirmwareBackend: 'PiMOST firmware',
   AudioControl: 'Audio control',
   AudioDiskPlayer: 'CD player',
@@ -35,7 +36,7 @@ export default function ApplicationSettings() {
       <Box sx={{ minHeight: 0 }}>
         <Typography sx={{ mb: .6, fontSize: 10.5, fontWeight: 700, letterSpacing: 1.2, color: 'text.secondary' }}>CLASS LOGGING</Typography>
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: .5 }}>
-          {LOGGER_NAMES.map((name) => <Box key={name} sx={{ minWidth: 0, height: 36, px: .8, borderRadius: 1.4, display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,.035)' }}><Typography noWrap sx={{ flex: 1, fontSize: 11, fontWeight: 500 }}>{loggerLabels[name] || name}</Typography><Switch size="small" checked={loggerConfig[name] !== false} disabled={!settings} onChange={(_, enabled) => setLoggerEnabled(name, enabled)} /></Box>)}
+          {LOGGER_NAMES.map((name) => <Box key={name} sx={{ minWidth: 0, height: 36, px: .8, borderRadius: 1.4, display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,.035)' }}><Typography noWrap sx={{ flex: 1, fontSize: 11, fontWeight: 500 }}>{loggerLabels[name] || name}</Typography><Switch size="small" checked={loggerConfig[name] ?? loggerEnabledByDefault(name)} disabled={!settings} onChange={(_, enabled) => setLoggerEnabled(name, enabled)} /></Box>)}
         </Box>
       </Box>
     </Box>
