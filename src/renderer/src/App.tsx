@@ -8,18 +8,20 @@ import Base from './Base'
 import AmFmTunerPage from './components/mediaComponents/AmFm/AmFmTunerPage'
 import VolumeModal from './components/VolumeModal'
 import Carplay from './components/Carplay'
-import { useCarplayStore, useHMICommandStore } from './store/store'
+import { useAudioControlStore, useCarplayStore, useHMICommandStore } from './store/store'
 import Climate from './components/mediaComponents/Climate/Climate'
 import AudioSettings from './components/mediaComponents/Amplifier/AudioSettings'
 import { VehicleSettings } from './components/settings/VehicleSettings'
 import SettingsHub from './components/settings/SettingsHub'
 import SettingsPage from './components/settings/SettingsPage'
 import MostDiagnostics from './components/settings/MostDiagnostics'
+import MostLogViewer from './components/settings/MostLogViewer'
 import ParkingAssistOverlay from './components/ParkingAssistOverlay'
-import PiMostSettingsPage from './components/settings/PiMostSettingsPage'
+import PiMostUsbSettings from './components/settings/PiMostUsbSettings'
 import ApplicationSettings from './components/settings/ApplicationSettings'
 import MostCcfSettings from './components/settings/MostCcfSettings'
 import SoftwareUpdate from './components/settings/SoftwareUpdate'
+import CarplaySettings from './components/settings/CarplaySettings'
 import './App.css'
 
 export const ColorModeContext = createContext({ toggleColorMode: () => {} })
@@ -28,8 +30,23 @@ function AppRoutes() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const hmiCommand = useHMICommandStore()
+  const currentSource = useAudioControlStore((state) => state.currentSource)
   useEffect(() => {
-    if (hmiCommand.path) navigate(hmiCommand.path)
+    if (hmiCommand.action === 'navigate' && hmiCommand.path) {
+      navigate(hmiCommand.path)
+    } else if (hmiCommand.action === 'homeToggle') {
+      if (pathname !== '/home') {
+        navigate('/home')
+      } else if (currentSource === 'AudioDiskPlayer') {
+        navigate('/AudioDiskPlayer')
+      } else if (currentSource === 'AmFmTuner') {
+        navigate('/AmFmTuner')
+      } else if (currentSource === 'Carplay' || currentSource === 'carplay') {
+        navigate('/carplay')
+      }
+    } else if (hmiCommand.action === 'powerToggle') {
+      navigate(pathname === '/' ? '/home' : '/')
+    }
   }, [hmiCommand.nonce])
   const screensaver = pathname === '/'
   return <>
@@ -45,12 +62,13 @@ function AppRoutes() {
         <Route path="/carplay" element={null} />
         <Route path="/settings" element={<SettingsHub />} />
         <Route path="/settings/audio" element={<SettingsPage title="Audio settings"><AudioSettings /></SettingsPage>} />
-        <Route path="/settings/climate" element={<SettingsPage title="Climate"><Climate /></SettingsPage>} />
         <Route path="/settings/app" element={<ApplicationSettings />} />
+        <Route path="/settings/carplay" element={<CarplaySettings />} />
         <Route path="/settings/car" element={<SettingsPage title="Vehicle settings"><VehicleSettings /></SettingsPage>} />
         <Route path="/settings/car/ccf" element={<MostCcfSettings />} />
         <Route path="/settings/most" element={<MostDiagnostics />} />
-        <Route path="/settings/pimost-usb" element={<PiMostSettingsPage />} />
+        <Route path="/settings/most-logs" element={<MostLogViewer />} />
+        <Route path="/settings/pimost-usb" element={<PiMostUsbSettings />} />
         <Route path="/settings/update" element={<SoftwareUpdate />} />
       </Routes>
     </main>

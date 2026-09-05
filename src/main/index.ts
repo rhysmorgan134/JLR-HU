@@ -6,6 +6,7 @@ import { Socket } from './Socket'
 import * as fs from 'fs'
 // import { PiMost } from './PiMost'
 import { PimostMain } from './newPiMost/PimostMain'
+import { AppUpdater } from './AppUpdater'
 
 import { ExtraConfig, KeyBindings } from './Globals'
 import './log'
@@ -70,6 +71,7 @@ fs.stat(configPath, (err) => {
   }
 
   socket = new Socket(config, saveSettings)
+  new AppUpdater(socket)
   if (config.most) {
     console.log('creating pi most in main')
   }
@@ -92,7 +94,7 @@ function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 800, //config!.width,
     height: 480, //config!.height,
-    kiosk: false, //config!.kiosk,
+    kiosk: !is.dev && config.kiosk,
     show: false,
     frame: false,
     autoHideMenuBar: true,

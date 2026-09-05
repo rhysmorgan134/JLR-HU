@@ -11,6 +11,7 @@ export type ExtraConfig = DongleConfig & {
   microphone: string
   piMost: boolean
   canbus: boolean
+  diagnosticMode?: boolean
   bindings: KeyBindings
   most?: Most
   canConfig?: CanConfig

@@ -53,6 +53,7 @@ export abstract class FBlock extends EventEmitter {
     this.subscriptionRecord =
       this.physicalDevice != null
         ? {
+            owner: this.constructor.name,
             fBlockID: this.physicalDevice.fBlockID,
             instanceID: this.physicalDevice.instanceID,
             sourceAddressHigh: 0x01,
@@ -138,6 +139,55 @@ export abstract class FBlock extends EventEmitter {
         this.logger.error('unhandled function ' + this.convertMessageToHex(message))
         this.logger.error(e)
       }
+    }
+  }
+
+  /**
+   * Handles the source-routed steering-wheel/front-panel commands carried by
+   * Function 0xE00. These arrive on whichever source shadow is active rather
+   * than on the HMI FBlock.
+   */
+  protected handleGenericSourceButton(message: MostRxMessage): boolean {
+    const data = message.data.subarray(0, message.telLen)
+
+    // A normal next/skip press is sent as F0 01. The following 02 11 01
+    // message is the associated key feedback request and must not skip twice.
+    if (data.length === 2 && data[0] === 0xf0 && data[1] === 0x01) {
+      this.logger.info(`${this.constructor.name} skip-forward button pressed`)
+      this.emit('genericButton', { action: 'skipForward', press: 'short' })
+      return true
+    }
+
+    // Long-press frames use 04 <stage> 00 00 00 00 01. We deliberately expose
+    // these without assigning behaviour yet; stages 03/04 are seen in the log.
+    if (data.length === 7 && data[0] === 0x04 && data[6] === 0x01) {
+      this.logger.info(
+        `${this.constructor.name} generic button long press (stage 0x${data[1].toString(16)})`
+      )
+      this.emit('genericButton', {
+        action: 'unassigned',
+        press: 'long',
+        code: data[1]
+      })
+      return true
+    }
+
+    // 02 11 01 accompanies the short command above and is intentionally
+    // consumed so it does not appear as an unhandled source function.
+    if (data.length === 3 && data[0] === 0x02 && data[1] === 0x11 && data[2] === 0x01) {
+      return true
+    }
+
+    return false
+  }
+
+  0xe00(message: MostRxMessage): void {
+    if (!this.handleGenericSourceButton(message)) {
+      this.logger.debug(
+        `${this.constructor.name} unrecognised 0xe00 payload: ${message.data
+          .subarray(0, message.telLen)
+          .toString('hex')}`
+      )
     }
   }
 

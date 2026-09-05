@@ -23,6 +23,7 @@ export default function PiMostSettingsPage() {
     ip: settings.ip,
     usbSettings: settings.usbSettings
   }), [settings.usb, settings.manualIp, settings.ip, settings.usbSettings])
+  useEffect(() => { settings.requestSettings() }, [])
   useEffect(() => {
     const listener = (value: { percent?: number; message: string }) => { setProgress(value.percent ?? null); setFirmwareStatus(value.message) }
     socket.on('piMostFirmware:progress', listener)

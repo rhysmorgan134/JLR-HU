@@ -489,6 +489,46 @@ export class CanGateway extends FBlock {
     })
   }
 
+  private setProperty(fktID: number, data: number[]): void {
+    this.socketmost.sendControlMessage(this.physicalMessage(OpType.set, fktID, data))
+  }
+
+  setAutoLock({ enabled }: { enabled: boolean }): void {
+    this.setProperty(0xe2a, [enabled ? 1 : 0])
+  }
+
+  setDriveAway({ speed }: { speed: number }): void {
+    if (!Number.isInteger(speed) || speed < 0 || speed > 3) return
+    this.setProperty(0xe27, [speed])
+  }
+
+  setPassiveArming({ enabled }: { enabled: boolean }): void {
+    this.setProperty(0xe29, [enabled ? 1 : 0])
+  }
+
+  setTwoStageLocking({ enabled }: { enabled: boolean }): void {
+    this.setProperty(0xe0a, [enabled ? 1 : 0])
+  }
+
+  setAlarmSensors({ enabled }: { enabled: boolean }): void {
+    this.setProperty(0xe09, [enabled ? 0 : 1])
+  }
+
+  setGlobalWindows({ open, close }: { open: boolean; close: boolean }): void {
+    this.setProperty(0xe21, [(open ? 0x10 : 0) | (close ? 0x20 : 0) | 0x03])
+  }
+
+  setMirrors({ foldBack, dip }: { foldBack: boolean; dip: boolean }): void {
+    this.setProperty(0xe17, [foldBack ? 1 : 0, dip ? 1 : 0, 0x00])
+  }
+
+  setTripMode({ mode }: { mode: number }): void {
+    if (!Number.isInteger(mode) || mode < 0x01 || mode > 0x03) return
+    this.logger.info(`setting trip mode ${mode}: F5/E15 SET 00 ${mode.toString(16).padStart(2, '0')}`)
+    this.setProperty(0xe15, [0x00, mode])
+    this.updateStatus({ tripMode: mode })
+  }
+
   // TODO Camera
   // TODO Low Battery
 }
@@ -950,6 +990,8 @@ export class AudioDiskPlayer extends FBlock {
     }
   }
   0xe00(message: MostRxMessage) {
+    if (this.handleGenericSourceButton(message)) return
+
     if (message.opType === OpType.set) {
       if (message.data[0] == 0x10 && message.data[1] === 0x01) {
         this.socketmost.sendControlMessage(this.physicalMessage(OpType.set, 0x200, [0x04]))
@@ -1376,6 +1418,40 @@ export class Climate extends FBlock {
       })
     }
   }
+
+  private action(data: number[]): void {
+    this.socketmost.sendControlMessage(this.physicalMessage(OpType.set, 0xe00, data))
+  }
+
+  setAuto(): void {
+    this.action([0x02, 0x01])
+  }
+
+  setSync(): void {
+    this.action([0x04, 0x01])
+  }
+
+  setAC({ active }: { active: boolean }): void {
+    this.action([0x11, active ? 1 : 0, 0x01])
+  }
+
+  setWindscreen({ active }: { active: boolean }): void {
+    this.action([0x13, active ? 1 : 0, 0x01, 0x01])
+  }
+
+  setFace({ active }: { active: boolean }): void {
+    this.action([0x13, active ? 1 : 0, 0x02, 0x01])
+  }
+
+  setFeet({ active }: { active: boolean }): void {
+    this.action([0x13, active ? 1 : 0, 0x03, 0x01])
+  }
+
+  setSeat({ side, temperature }: { side: 1 | 2; temperature: number }): void {
+    if ((side !== 1 && side !== 2) || !Number.isInteger(temperature) || temperature < -3 || temperature > 3) return
+    const parsed = temperature < 0 ? 16 + Math.abs(temperature) : temperature
+    this.action([0x16, side, parsed, 0x01])
+  }
 }
 
 export class AudioControl extends FBlock {
@@ -1705,6 +1781,53 @@ export class Amplifier extends FBlock {
   startSource(): void {}
 
   stopSource(): void {}
+
+  private setProperty(fktID: number, value: number): void {
+    this.socketmost.sendControlMessage(this.physicalMessage(OpType.set, fktID, [value & 0xff]))
+  }
+
+  setBalance({ value }: { value: number }): void {
+    this.setProperty(0x200, Math.max(-10, Math.min(10, value)))
+  }
+
+  setLoudness({ enabled }: { enabled: boolean }): void {
+    this.setProperty(0x201, enabled ? 1 : 0)
+  }
+
+  setBass({ value }: { value: number }): void {
+    this.setProperty(0x202, Math.max(-6, Math.min(6, value)))
+  }
+
+  setTreble({ value }: { value: number }): void {
+    this.setProperty(0x203, Math.max(-6, Math.min(6, value)))
+  }
+
+  setFader({ value }: { value: number }): void {
+    this.setProperty(0x204, Math.max(-10, Math.min(10, value)))
+  }
+
+  setSubwoofer({ value }: { value: number }): void {
+    this.setProperty(0x402, Math.max(0, Math.min(20, value)))
+  }
+
+  setMode({ value }: { value: number }): void {
+    if (!Number.isInteger(value) || value < 0 || value > 2) {
+      this.logger.warn(`Ignoring invalid amplifier listening mode ${value}`)
+      return
+    }
+    this.setProperty(0xe22, value)
+  }
+
+  setCentre({ mode, value }: { mode: number; value: number }): void {
+    if (!Number.isInteger(mode) || mode < 0 || mode > 2) return
+    this.socketmost.sendControlMessage(
+      this.physicalMessage(OpType.set, 0xe20, [mode, Math.max(-6, Math.min(6, value)) & 0xff])
+    )
+  }
+
+  setSurround({ value }: { value: number }): void {
+    this.setProperty(0xe21, Math.max(-6, Math.min(6, value)))
+  }
 }
 
 export class NetworkMaster extends FBlock {

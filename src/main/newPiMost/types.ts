@@ -188,6 +188,7 @@ export enum TunerTypes {
 }
 
 export type SubscriptionRecord = {
+  owner?: string
   fBlockID: number
   targetAddressHigh: number
   targetAddressLow: number

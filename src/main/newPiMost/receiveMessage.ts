@@ -1,4 +1,4 @@
-import { MostMessage, MostRxMessage } from "socketmost";
+import { MostRxMessage } from 'socketmost'
 
 export abstract class Message {
   data: MostRxMessage
@@ -7,7 +7,7 @@ export abstract class Message {
     this.data = data
   }
 
-  abstract parseMessage(): void |
+  abstract parseMessage(): void
 }
 
 export class AmFmTuner {}

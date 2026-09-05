@@ -21,6 +21,10 @@ import {
 import winston from 'winston'
 import { Socket } from '../Socket'
 import { SubscriptionManager } from './SubscriptionManager'
+import { MostDiagnosticsBackend } from './MostDiagnosticsBackend'
+import { PiMostFirmwareBackend } from './PiMostFirmwareBackend'
+import { ExtraConfig } from '../Globals'
+import { UsbSettings } from 'socketmost'
 
 export class PimostMain {
   socketmost: SocketMostUsb
@@ -43,12 +47,19 @@ export class PimostMain {
   logger: winston.Logger
   socket: Socket
   subscriptionManager: SubscriptionManager
+  mostDiagnostics: MostDiagnosticsBackend
+  piMostFirmware: PiMostFirmwareBackend
+  headUnitMode: boolean
+  sourceCycleQueue: Promise<void> = Promise.resolve()
   constructor(socket: Socket) {
     this.socket = socket
+    this.headUnitMode = !Boolean((socket.config as ExtraConfig & { diagnosticMode?: boolean }).diagnosticMode)
     this.logger = winston.loggers.get('pimost')
     this.logger.debug('pimost starting')
     this.socketmost = new SocketMostUsb()
     this.subscriptionManager = new SubscriptionManager(this.socketmost)
+    this.mostDiagnostics = new MostDiagnosticsBackend(this.socketmost, socket, this.subscriptionManager)
+    this.piMostFirmware = new PiMostFirmwareBackend(this.socketmost, socket)
     this.networkMaster = new NetworkMaster(
       [],
       this.socketmost,
@@ -96,10 +107,30 @@ export class PimostMain {
       this.socket.sendStatusUpdate('AudioDiskPlayer', this.audioDiskPlayer.status)
       this.socket.sendStatusUpdate('AudioControl', this.audioControl.status)
       this.socket.sendStatusUpdate('HMI', this.hmi.status)
+      this.socket.sendStatusUpdate('Climate', this.climate.status)
+      this.socket.sendStatusUpdate('CanGateway', this.canGateway.status)
+      this.socket.sendStatusUpdate('Amplifier', this.amplifier.status)
+      this.sendOperatingMode()
+    })
+
+    this.socket.on('appSettings', (settings: ExtraConfig & { diagnosticMode?: boolean }) => {
+      this.headUnitMode = !Boolean(settings.diagnosticMode)
+      if (!this.headUnitMode) this.audioControl.currentSource = null
+      this.sendOperatingMode()
     })
 
     this.socketmost.on('opened', () => {
       this.logger.info('socket most connected')
+    })
+
+    this.socketmost.on(Os8104Events.Settings, (settings: UsbSettings) => {
+      this.socket.sendMostSettings(settings)
+    })
+
+    this.socket.on('mostUsb:getSettings', () => this.socketmost.getSettings())
+    this.socket.on('mostUsb:saveSettings', (settings: UsbSettings) => {
+      this.socketmost.saveSettings(settings)
+      setTimeout(() => this.socketmost.getSettings(), 350)
     })
 
     this.socketmost.on(Os8104Events.MessageSent, (data) => {
@@ -108,15 +139,23 @@ export class PimostMain {
     })
 
     this.socket.on('button', (data) => {
+      if (!this.headUnitMode) return
       this.logger.info('button received ' + JSON.stringify(data))
+      const device = this[data?.device]
+      const action = device?.[data?.function]
+      if (typeof action !== 'function') {
+        this.logger.error(`unknown button action ${data?.device}.${data?.function}`)
+        return
+      }
       if ('args' in data) {
-        this[data['device']][data['function']](data['args'])
+        action.call(device, data.args)
       } else {
-        this[data['device']][data['function']]()
+        action.call(device)
       }
     })
 
     this.socket.on('setSource', (data) => {
+      if (!this.headUnitMode) return
       console.log('SWITCHING - ' + data)
       switch (data) {
         case 'AudioDiskPlayer':
@@ -146,11 +185,51 @@ export class PimostMain {
       this.audioControl.stopPlayback()
     })
 
+    this.hmi.on('skipForward', () => this.skipCurrentSource(true))
+    this.hmi.on('skipBackward', () => this.skipCurrentSource(false))
+    this.hmi.on('homeButton', () => this.handleStandardButton('home'))
+    this.hmi.on('powerButton', () => this.handleStandardButton('power'))
+
+    for (const source of [this.amFmTuner, this.audioDiskPlayer, this.carplay]) {
+      source.on(
+        'genericButton',
+        (button: {
+          action: 'skipForward' | 'skipBackward' | 'home' | 'power' | 'unassigned'
+          press: 'short' | 'long'
+          code?: number
+        }) => {
+          if (button.press === 'long') {
+            this.logger.info(
+              `${source.constructor.name} long-press handler reserved` +
+                (button.code === undefined ? '' : ` (0x${button.code.toString(16)})`)
+            )
+            return
+          }
+
+          if (button.action === 'skipForward') this.skipCurrentSource(true)
+          else if (button.action === 'skipBackward') this.skipCurrentSource(false)
+          else if (button.action === 'home' || button.action === 'power') {
+            this.handleStandardButton(button.action)
+          }
+        }
+      )
+    }
+    this.hmi.on('cycleSource', () => {
+      this.sourceCycleQueue = this.sourceCycleQueue
+        .then(() => this.cycleSource())
+        .catch((error) => this.logger.error(`Source cycle failed: ${error instanceof Error ? error.message : String(error)}`))
+    })
+    this.hmi.on('musicSettings', () => {
+      this.socket.sendStatusUpdate('HMICommand', { type: 'navigate', path: '/settings/audio' })
+    })
+
     // this.hmi.on('HMIActive', () => {
     //   setTimeout(() => this.audioControl.startVolumeUpdates(), 500)
     // })
 
     this.socketmost.on(Os8104Events.SocketMostMessageRxEvent, (message) => {
+      this.mostDiagnostics.observeRx(message)
+      if (!this.headUnitMode) return
       //this.logger.info(`message received ${this.convertMessageToHex(message)}`)
       switch (message.fBlockID) {
         case 0x01:
@@ -233,6 +312,41 @@ export class PimostMain {
     //   //   this.amFmTuner.autostore()
     //   // }, 5000)
     // }, 10000)
+  }
+
+  sendOperatingMode(): void {
+    this.socket.sendStatusUpdate('mostOperatingMode', {
+      headUnit: this.headUnitMode,
+      known: true,
+      nodeAddress: this.socketmost.settings
+        ? (this.socketmost.settings.nodeAddressHigh << 8) | this.socketmost.settings.nodeAddressLow
+        : null
+    })
+  }
+
+  skipCurrentSource(forward: boolean): void {
+    if (!this.headUnitMode) return
+    if (this.audioControl.currentSource instanceof AudioDiskPlayer) {
+      forward ? this.audioDiskPlayer.nextTrack() : this.audioDiskPlayer.prevTrack()
+    } else if (this.audioControl.currentSource instanceof AmFmTuner) {
+      forward ? this.amFmTuner.seekForward() : this.amFmTuner.seekBack()
+    } else if (this.audioControl.currentSource instanceof Carplay) {
+      this.socket.sendStatusUpdate('HMICommand', { type: 'carplay', command: forward ? 'next' : 'prev' })
+    }
+  }
+
+  handleStandardButton(action: 'home' | 'power'): void {
+    if (!this.headUnitMode) return
+    this.socket.sendStatusUpdate('HMICommand', {
+      type: action === 'home' ? 'homeToggle' : 'powerToggle'
+    })
+  }
+
+  async cycleSource(): Promise<void> {
+    if (!this.headUnitMode) return
+    const sources = [this.amFmTuner, this.audioDiskPlayer, this.carplay]
+    const current = sources.indexOf(this.audioControl.currentSource as AmFmTuner | AudioDiskPlayer | Carplay)
+    await this.audioControl.switchSource(sources[(current + 1) % sources.length])
   }
 
   convertMessageToHex(message) {

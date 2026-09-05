@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AudioCommand, AudioData, WebMicrophone, decodeTypeMap } from 'node-carplay/web'
-import { PcmPlayer } from 'pcm-ringbuf-player'
+import { PcmPlayer } from './audio/PcmPlayer'
 import { AudioPlayerKey, CarPlayWorker } from './worker/types'
 import { createAudioPlayerKey } from './worker/utils'
 
@@ -22,7 +22,7 @@ const useCarplayAudio = (worker: CarPlayWorker, microphonePort: MessagePort) => 
       player = new PcmPlayer(format.frequency, format.channel)
       audioPlayers.set(audioKey, player)
       player.volume(defaultAudioVolume)
-      player.start()
+      void player.start().catch((error) => console.error('Failed to start CarPlay audio', error))
       worker.postMessage({
         type: 'audioPlayer',
         payload: {

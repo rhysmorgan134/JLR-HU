@@ -22,6 +22,8 @@ export interface MostSettings {
   ip: string
   usbSettings: UsbSettings
   saveSettings: (settings: UsbSettings) => void
+  requestSettings: () => void
+  bootToDfu: () => void
 }
 
 interface CarplayStore {
@@ -63,6 +65,7 @@ interface CarplayStore {
 
 interface HMICommandStore {
   path: string | null
+  action: 'navigate' | 'homeToggle' | 'powerToggle' | null
   nonce: number
 }
 
@@ -302,6 +305,7 @@ export type MostDiagnosticMessage = {
 
 export type MostSubscription = MostDiagnosticDevice & {
   owner: string
+  state: 'queued' | 'active' | 'failed' | 'in-progress'
   functions: number[]
   all: boolean
 }
@@ -624,8 +628,10 @@ export const useMostSettings = create<MostSettings>()(() => ({
   },
   saveSettings: (settings: UsbSettings) => {
     console.log('saving settings in store', settings)
-    socket.emit('saveSettings', settings)
-  }
+    socket.emit('mostUsb:saveSettings', settings)
+  },
+  requestSettings: () => socket.emit('mostUsb:getSettings'),
+  bootToDfu: () => socket.emit('piMostFirmware:bootToDfu')
 }))
 
 export const useCarplayStore = create<CarplayStore>()((set) => ({
@@ -676,7 +682,11 @@ export const useCarplayStore = create<CarplayStore>()((set) => ({
   commandCounter: 0
 }))
 
-export const useHMICommandStore = create<HMICommandStore>()(() => ({ path: null, nonce: 0 }))
+export const useHMICommandStore = create<HMICommandStore>()(() => ({
+  path: null,
+  action: null,
+  nonce: 0
+}))
 
 //
 // export const useAmFmStore = create<AmFmTuner>()((_set) => ({
@@ -979,11 +989,25 @@ socket.on('mostDiagnostics:logging', ({ enabled, path }: { enabled: boolean; pat
   useMostDiagnosticsStore.setState({ logging: enabled, logPath: path })
 })
 
-socket.on('HMICommand', (command: { type: 'navigate' | 'carplay'; path?: string; command?: KeyCommand }) => {
+socket.on('HMICommand', (command: {
+  type: 'navigate' | 'carplay' | 'homeToggle' | 'powerToggle'
+  path?: string
+  command?: KeyCommand
+}) => {
   if (command.type === 'navigate' && command.path) {
-    useHMICommandStore.setState((state) => ({ path: command.path!, nonce: state.nonce + 1 }))
+    useHMICommandStore.setState((state) => ({
+      path: command.path!,
+      action: 'navigate',
+      nonce: state.nonce + 1
+    }))
   } else if (command.type === 'carplay' && command.command) {
     useCarplayStore.setState((state) => ({ keyCommand: command.command!, commandCounter: state.commandCounter + 1 }))
+  } else if (command.type === 'homeToggle' || command.type === 'powerToggle') {
+    useHMICommandStore.setState((state) => ({
+      path: null,
+      action: command.type,
+      nonce: state.nonce + 1
+    }))
   }
 })
 
