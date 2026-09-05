@@ -1,6 +1,15 @@
 import { messages } from 'socketmost'
 import { DongleConfig } from 'node-carplay/node'
 
+export const LOGGER_NAMES = [
+  'PimostMain', 'SubscriptionManager', 'MostDiagnosticsBackend', 'PiMostFirmwareBackend',
+  'NetworkMaster', 'NetBlock', 'HMI', 'AudioControl', 'AudioDiskPlayer', 'AmFmTuner',
+  'Carplay', 'Amplifier', 'Climate', 'CanGateway', 'AuxInput', 'Telephone', 'Satellite',
+  'DabTuner', 'TvTuner', 'Diagnostics'
+] as const
+export type LoggerName = (typeof LOGGER_NAMES)[number]
+export type LoggerConfig = Partial<Record<LoggerName, boolean>>
+
 export type Most = {
   stream?: messages.Stream
 }
@@ -15,6 +24,7 @@ export type ExtraConfig = DongleConfig & {
   bindings: KeyBindings
   most?: Most
   canConfig?: CanConfig
+  loggerConfig?: LoggerConfig
 }
 
 export interface KeyBindings {

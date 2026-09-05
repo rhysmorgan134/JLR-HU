@@ -25,6 +25,7 @@ import { MostDiagnosticsBackend } from './MostDiagnosticsBackend'
 import { PiMostFirmwareBackend } from './PiMostFirmwareBackend'
 import { ExtraConfig } from '../Globals'
 import { UsbSettings } from 'socketmost'
+import { getLogger } from '../log'
 
 export class PimostMain {
   socketmost: SocketMostUsb
@@ -54,7 +55,7 @@ export class PimostMain {
   constructor(socket: Socket) {
     this.socket = socket
     this.headUnitMode = !Boolean((socket.config as ExtraConfig & { diagnosticMode?: boolean }).diagnosticMode)
-    this.logger = winston.loggers.get('pimost')
+    this.logger = getLogger('PimostMain')
     this.logger.debug('pimost starting')
     this.socketmost = new SocketMostUsb()
     this.subscriptionManager = new SubscriptionManager(this.socketmost)

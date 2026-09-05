@@ -1,85 +1,65 @@
 import winston, { LoggerOptions } from 'winston'
 import 'winston-daily-rotate-file'
+import { LOGGER_NAMES, LoggerConfig, LoggerName } from './Globals'
 
-winston.addColors({ jlrHU: 'bold deep pink', pimost: 'bold deep pink', socket: 'yellow' })
+const level = process.env.LOG_LEVEL || 'info'
 const colorizer = winston.format.colorize()
 
-winston.loggers.add('jlrHU', {
-  level: process.env.LOG_LEVEL || 'info',
-
-  defaultMeta: {
-    service: 'jlrHU'
-  },
-
-  format: winston.format.combine(
-    winston.format.cli(),
-    winston.format.errors({ stack: true }),
-    winston.format.timestamp(),
-
-    winston.format.printf((info) => {
-      return `${colorizer.colorize('socket', info.service)}${info.level}:${info.message} `
-    })
-  ),
-
-  transports: [new winston.transports.Console()]
-})
-interface TransportOptions {
-  [index: string]: LoggerOptions
-}
+interface TransportOptions { [index: string]: LoggerOptions }
 const options: TransportOptions = {
   console: {
-    level: process.env.LOG_LEVEL || 'info',
+    level,
     format: winston.format.combine(
       winston.format.cli(),
       winston.format.metadata(),
       winston.format.errors({ stack: true }),
       winston.format.timestamp(),
-      winston.format.printf((info) => {
-        const out = `${colorizer.colorize('socket', info.metadata.service)}${info.level}:${
-          info.message
-        } `
-        return out
-      })
+      winston.format.printf((info) =>
+        `${colorizer.colorize('info', String(info.metadata.service))} ${info.level}: ${info.message}`
+      )
     )
   }
 }
 
-const fileRotateTransport = new winston.transports.DailyRotateFile({
+const consoleTransport = new winston.transports.Console(options.console)
+const fileTransport = new winston.transports.DailyRotateFile({
   filename: 'combined-%DATE%.log',
   datePattern: 'YYYY-MM-DD',
   maxFiles: '7d',
   maxSize: '2m',
-  level: process.env.LOG_LEVEL || 'info',
+  level,
   format: winston.format.combine(
-    winston.format.metadata(),
     winston.format.timestamp(),
     winston.format.uncolorize(),
     winston.format.errors({ stack: true }),
-    winston.format.printf((info) => {
-      const out = `pimost-${info.level}:${info.message}`
-      return out
-    })
+    winston.format.printf((info) =>
+      `${info.timestamp} ${info.service} ${info.level}: ${info.stack || info.message}`
+    )
   )
 })
 
-winston.loggers.add('pimost', {
-  level: process.env.LOG_LEVEL || 'info',
-
-  defaultMeta: {
-    service: 'pimost'
-  },
-
+const loggerOptions = (name: string): winston.LoggerOptions => ({
+  level,
+  defaultMeta: { service: name },
   format: winston.format.combine(
     winston.format.timestamp(),
     winston.format.splat(),
-    winston.format.simple(),
     winston.format.errors({ stack: true }),
-    winston.format.printf((info) => {
-      const stack = info.stack || info.message
-
-      return `${colorizer.colorize('socket', info.service)}${info.level}: ${stack}`
-    })
+    winston.format.simple()
   ),
-
-  transports: [new winston.transports.Console(options['console']), fileRotateTransport]
+  transports: [consoleTransport, fileTransport]
 })
+
+export function getLogger(name: LoggerName | 'jlrHU' | 'pimost'): winston.Logger {
+  if (!winston.loggers.has(name)) winston.loggers.add(name, loggerOptions(name))
+  return winston.loggers.get(name)
+}
+
+export function configureLogging(config: LoggerConfig = {}): void {
+  for (const name of LOGGER_NAMES) getLogger(name).silent = config[name] === false
+}
+
+// Keep the legacy names available while the old implementation remains in the tree.
+getLogger('jlrHU')
+getLogger('pimost')
+configureLogging()

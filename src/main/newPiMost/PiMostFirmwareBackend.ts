@@ -4,10 +4,11 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { SocketMostUsb } from 'socketmost'
 import winston from 'winston'
+import { getLogger } from '../log'
 import { Socket } from '../Socket'
 
 export class PiMostFirmwareBackend {
-  private logger = winston.loggers.get('pimost')
+  private logger = getLogger('PiMostFirmwareBackend')
 
   constructor(private socketmost: SocketMostUsb, private socket: Socket) {
     socket.on('piMostFirmware:bootToDfu', () => this.bootToDfu())

@@ -5,6 +5,8 @@ import winston from 'winston'
 import { EventEmitter } from 'events'
 import { Socket } from '../Socket'
 import { SubscriptionManager } from './SubscriptionManager'
+import { getLogger } from '../log'
+import { LoggerName } from '../Globals'
 
 export abstract class FBlock extends EventEmitter {
   subscriptions: number[]
@@ -35,7 +37,7 @@ export abstract class FBlock extends EventEmitter {
     super()
     this.status = {}
     this.inProgressMultipart = {}
-    this.logger = winston.loggers.get('pimost')
+    this.logger = getLogger(this.constructor.name as LoggerName)
     this.subscriptions = subscriptions
     this.subscriptionManager = subscriptionManager
     this.physicalDevice = physicalDevice

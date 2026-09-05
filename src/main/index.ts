@@ -9,7 +9,7 @@ import { PimostMain } from './newPiMost/PimostMain'
 import { AppUpdater } from './AppUpdater'
 
 import { ExtraConfig, KeyBindings } from './Globals'
-import './log'
+import { configureLogging } from './log'
 // import CarplayNode, {DEFAULT_CONFIG, CarplayMessage} from "node-carplay/node";
 
 let mainWindow: BrowserWindow
@@ -40,7 +40,8 @@ const EXTRA_CONFIG: ExtraConfig = {
   canbus: false,
   bindings: DEFAULT_BINDINGS,
   most: {},
-  canConfig: {}
+  canConfig: {},
+  loggerConfig: {}
 }
 
 let config: ExtraConfig = EXTRA_CONFIG
@@ -70,6 +71,7 @@ fs.stat(configPath, (err) => {
     console.log('config created and read')
   }
 
+  configureLogging(config.loggerConfig)
   socket = new Socket(config, saveSettings)
   new AppUpdater(socket)
   if (config.most) {
@@ -218,6 +220,7 @@ app.whenReady().then(() => {
 
 const saveSettings = (settings: ExtraConfig): void => {
   console.log('saving settings', settings)
+  configureLogging(settings.loggerConfig)
   fs.writeFileSync(configPath, JSON.stringify(settings))
 }
 

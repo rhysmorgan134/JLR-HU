@@ -6,6 +6,7 @@ import winston from 'winston'
 import { Socket } from '../Socket'
 import { SubscriptionManager } from './SubscriptionManager'
 import { SubscriptionRecord } from './types'
+import { getLogger } from '../log'
 
 type DiagnosticDevice = { address: number; fBlockID: number; instanceID: number }
 type DiagnosticMessage = {
@@ -30,7 +31,7 @@ export class MostDiagnosticsBackend {
   private functionDevice: DiagnosticDevice | null = null
   private log: WriteStream | null = null
   private logPath: string | null = null
-  private logger = winston.loggers.get('pimost')
+  private logger = getLogger('MostDiagnosticsBackend')
 
   constructor(
     private socketmost: SocketMostUsb,

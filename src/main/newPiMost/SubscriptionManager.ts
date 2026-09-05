@@ -2,6 +2,7 @@ import { EventEmitter } from 'events'
 import { MostRxMessage, Os8104Events, SocketMostUsb } from 'socketmost'
 import { OpType, SubscriptionRecord, SubscriptionRecordList } from './types'
 import winston from 'winston'
+import { getLogger } from '../log'
 
 export class SubscriptionManager extends EventEmitter {
   queuedSubscriptions: SubscriptionRecordList
@@ -22,7 +23,7 @@ export class SubscriptionManager extends EventEmitter {
     this.inProgSubscription = null
     this.socketmost = socketmost
     this.notificationCheckTimer = null
-    this.logger = winston.loggers.get('pimost')
+    this.logger = getLogger('SubscriptionManager')
     this.attempts = 0
     this.socketmost.on(Os8104Events.SocketMostMessageRxEvent, (message: MostRxMessage) => {
       if (this.subscriptionInProg) {
