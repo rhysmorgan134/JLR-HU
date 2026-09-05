@@ -300,6 +300,7 @@ export type MostDiagnosticMessage = {
   fktID: number
   opType: number
   telID?: number
+  telLen?: number
   data: number[]
 }
 

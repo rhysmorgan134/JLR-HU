@@ -1,4 +1,4 @@
-import { Box, Button, Checkbox, Chip, Dialog, DialogContent, MenuItem, TextField, Typography } from '@mui/material'
+import { Box, Button, Checkbox, Chip, Dialog, DialogContent, IconButton, MenuItem, TextField, Typography } from '@mui/material'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
@@ -18,6 +18,48 @@ const fBlockNames: Record<number, string> = { 0x01: 'NetBlock', 0x02: 'NetworkMa
 const hex = (value: number | undefined, width = 2) => value == null ? '—' : `0x${value.toString(16).toUpperCase().padStart(width, '0')}`
 const keyFor = (device: MostDiagnosticDevice) => `${device.address}:${device.fBlockID}:${device.instanceID}`
 const parseNumber = (value: string) => Number.parseInt(value.trim(), value.trim().toLowerCase().startsWith('0x') ? 16 : 10)
+const opTypes = [
+  [0x00, 'SET / START'],
+  [0x01, 'GET / ABORT'],
+  [0x02, 'SETGET / STARTRESULT'],
+  [0x03, 'INCREMENT'],
+  [0x04, 'DECREMENT'],
+  [0x05, 'GETINTERFACE'],
+  [0x06, 'STARTRESULTACK'],
+  [0x07, 'ABORTACK'],
+  [0x08, 'STARTACK'],
+  [0x09, 'ERRORACK'],
+  [0x0a, 'PROCESSINGACK'],
+  [0x0b, 'PROCESSING'],
+  [0x0c, 'STATUS / RESULT'],
+  [0x0d, 'RESULTACK'],
+  [0x0e, 'INTERFACE'],
+  [0x0f, 'ERROR']
+] as const
+
+const mostErrorNames: Record<number, string> = {
+  0x01: 'FBlock ID not available',
+  0x02: 'Instance ID not available',
+  0x03: 'Function ID not available',
+  0x04: 'Operation type not available',
+  0x05: 'Invalid payload length',
+  0x06: 'Parameter wrong or out of range',
+  0x07: 'Parameter currently unavailable',
+  0x0a: 'Secondary node',
+  0x0b: 'Device malfunction',
+  0x0c: 'Segmentation error',
+  0x20: 'Function-specific error',
+  0x40: 'Device busy',
+  0x41: 'Function currently unavailable',
+  0x42: 'Processing error',
+  0x43: 'Method aborted'
+}
+
+const describeMostError = (data: number[]) => {
+  const code = data[0]
+  if (code === undefined) return 'Error response without an error code'
+  return `${hex(code)} · ${mostErrorNames[code] ?? 'Unknown MOST error'}`
+}
 
 export default function MostDiagnostics() {
   const navigate = useNavigate()
@@ -29,6 +71,8 @@ export default function MostDiagnostics() {
   const [fBlockOpen, setFBlockOpen] = useState(false)
   const [selectedFunctions, setSelectedFunctions] = useState<number[]>([])
   const [sendError, setSendError] = useState('')
+  const [responseSince, setResponseSince] = useState<number | null>(null)
+  const [messageSent, setMessageSent] = useState(false)
   const [form, setForm] = useState({ address: '0x0400', fBlockID: '0x02', instanceID: '0x00', fktID: '0x000', opType: '0x01', data: '' })
   const filteredMessages = useMemo(() => state.messages.filter((message) => {
     const address = message.sourceAddress ?? message.targetAddress
@@ -37,10 +81,35 @@ export default function MostDiagnostics() {
     return matchesDevice && (parsedFBlock == null || Number.isNaN(parsedFBlock) || message.fBlockID === parsedFBlock)
   }), [state.messages, deviceFilter, fBlockFilter])
   const visibleMessages = useMemo(() => filteredMessages.slice(-300).reverse(), [filteredMessages])
-  const openSender = () => {
+  const matchingResponses = useMemo(() => {
+    if (responseSince === null) return []
+    const address = parseNumber(form.address)
+    const fBlockID = parseNumber(form.fBlockID)
+    const instanceID = parseNumber(form.instanceID)
+    const fktID = parseNumber(form.fktID)
+    if ([address, fBlockID, instanceID, fktID].some(Number.isNaN)) return []
+    return state.messages.filter((message) =>
+      message.direction === 'rx' &&
+      message.timestamp >= responseSince &&
+      message.sourceAddress === address &&
+      message.fBlockID === fBlockID &&
+      message.instanceID === instanceID &&
+      message.fktID === fktID
+    ).slice(-30).reverse()
+  }, [state.messages, responseSince, form.address, form.fBlockID, form.instanceID, form.fktID])
+  const openSender = (fktID?: number) => {
     const device = state.selectedDevice
-    if (device) setForm((current) => ({ ...current, address: hex(device.address, 4), fBlockID: hex(device.fBlockID), instanceID: hex(device.instanceID) }))
+    if (device) setForm((current) => ({
+      ...current,
+      address: hex(device.address, 4),
+      fBlockID: hex(device.fBlockID),
+      instanceID: hex(device.instanceID),
+      ...(fktID === undefined ? {} : { fktID: hex(fktID, 3) })
+    }))
     setSendError('')
+    setResponseSince(null)
+    setMessageSent(false)
+    if (fktID !== undefined) setFBlockOpen(false)
     setSendOpen(true)
   }
   const openFBlock = (device: MostDiagnosticDevice) => {
@@ -62,8 +131,10 @@ export default function MostDiagnostics() {
       setSendError('Check the address, IDs, operation type and hex data bytes.')
       return
     }
+    setSendError('')
+    setResponseSince(Date.now())
+    setMessageSent(true)
     state.sendMessage({ targetAddress: address, fBlockID, instanceID, fktID, opType, data })
-    setSendOpen(false)
   }
   return <Box sx={{ height: '100%', p: 1, display: 'grid', gridTemplateRows: '46px minmax(0,1fr)', gap: 1 }}>
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -73,7 +144,7 @@ export default function MostDiagnostics() {
       <Button size="small" color="inherit" startIcon={<FolderOpenRoundedIcon />} onClick={() => navigate('/settings/most-logs')}>Logs</Button>
       <Button size="small" color="inherit" startIcon={<UsbRoundedIcon />} onClick={() => navigate('/settings/pimost-usb')}>PiMOST USB</Button>
       <Button size="small" color={state.logging ? 'error' : 'inherit'} startIcon={<FiberManualRecordRoundedIcon />} onClick={() => state.setLogging(!state.logging)}>{state.logging ? 'Stop log' : 'Log'}</Button>
-      <Button size="small" variant="outlined" startIcon={<SendRoundedIcon />} onClick={openSender}>Send</Button>
+      <Button size="small" variant="outlined" startIcon={<SendRoundedIcon />} onClick={() => openSender()}>Send</Button>
       <Button size="small" variant="outlined" startIcon={<RefreshRoundedIcon />} onClick={state.requestRegistry}>Registry</Button>
     </Box>
     <Box sx={{ minHeight: 0, display: 'grid', gridTemplateColumns: '230px minmax(0,1fr)', gap: 1 }}>
@@ -117,12 +188,11 @@ export default function MostDiagnostics() {
             <>
               <Box sx={{ maxHeight: 230, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: .5 }}>
                 {state.functions.map((fktID) => {
-                  const supported = fktID <= 0xff
                   const checked = selectedFunctions.includes(fktID)
-                  return <Box key={fktID} onClick={() => supported && toggleFunction(fktID)} sx={{ px: .5, display: 'flex', alignItems: 'center', borderRadius: 1, cursor: supported ? 'pointer' : 'not-allowed', opacity: supported ? 1 : .4, background: checked ? 'var(--accent-soft)' : 'rgba(255,255,255,.03)' }}><Checkbox size="small" disabled={!supported} checked={checked} /><Typography sx={{ fontFamily: 'monospace', fontSize: 11 }}>{hex(fktID, 3)}</Typography></Box>
+                  return <Box key={fktID} onClick={() => toggleFunction(fktID)} sx={{ pl: .4, pr: .15, display: 'flex', alignItems: 'center', borderRadius: 1, cursor: 'pointer', background: checked ? 'var(--accent-soft)' : 'rgba(255,255,255,.03)' }}><Checkbox size="small" checked={checked} /><Typography sx={{ flex: 1, fontFamily: 'monospace', fontSize: 11 }}>{hex(fktID, 3)}</Typography><IconButton size="small" title={`Send ${hex(fktID, 3)}`} onClick={(event) => { event.stopPropagation(); openSender(fktID) }}><SendRoundedIcon sx={{ fontSize: 15 }} /></IconButton></Box>
                 })}
               </Box>
-              <Typography sx={{ mt: .7, fontSize: 10, color: 'text.secondary' }}>The current notification protocol accepts one-byte function IDs; wider IDs remain visible but cannot be selected.</Typography>
+              <Typography sx={{ mt: .7, fontSize: 10, color: 'text.secondary' }}>Function IDs are sent as two-byte 12-bit values, with up to four functions per notification request.</Typography>
             </>}
           <Box sx={{ mt: 1.5, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
             <Button color="inherit" onClick={() => setFBlockOpen(false)}>Close</Button>
@@ -131,7 +201,7 @@ export default function MostDiagnostics() {
         </>}
       </DialogContent>
     </Dialog>
-    <Dialog open={sendOpen} onClose={() => setSendOpen(false)} fullWidth maxWidth="sm"><DialogContent sx={{ p: 2.2 }}><Typography sx={{ fontSize: 20, fontWeight: 600, mb: 1.5 }}>Send MOST message</Typography><Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 1 }}>{Object.entries({ address: 'Target address', fBlockID: 'FBlock ID', instanceID: 'Instance ID', fktID: 'Function ID', opType: 'OpType' }).map(([field, label]) => <TextField key={field} size="small" label={label} value={form[field]} onChange={(event) => setForm({ ...form, [field]: event.target.value })} />)}<TextField size="small" label="Data bytes" placeholder="00 FF 1A" value={form.data} onChange={(event) => setForm({ ...form, data: event.target.value })} /></Box>{sendError && <Typography sx={{ mt: 1, color: 'error.main', fontSize: 12 }}>{sendError}</Typography>}<Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}><Button color="inherit" onClick={() => setSendOpen(false)}>Cancel</Button><Button variant="contained" startIcon={<SendRoundedIcon />} onClick={sendManualMessage}>Send</Button></Box></DialogContent></Dialog>
+    <Dialog open={sendOpen} onClose={() => setSendOpen(false)} fullWidth maxWidth="sm"><DialogContent sx={{ p: 2.2 }}><Typography sx={{ fontSize: 20, fontWeight: 600 }}>Send MOST message</Typography><Typography sx={{ mb: 1.2, fontSize: 11, color: 'text.secondary' }}>Choose a function and operation, then enter payload bytes as hexadecimal.</Typography><Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 1 }}><TextField size="small" label="Target address" value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} /><TextField size="small" label="FBlock ID" value={form.fBlockID} onChange={(event) => setForm({ ...form, fBlockID: event.target.value })} /><TextField size="small" label="Instance ID" value={form.instanceID} onChange={(event) => setForm({ ...form, instanceID: event.target.value })} />{state.functions.length > 0 ? <TextField select size="small" label="Function ID" value={form.fktID} onChange={(event) => setForm({ ...form, fktID: event.target.value })}>{state.functions.map((fktID) => <MenuItem key={fktID} value={hex(fktID, 3)}>{hex(fktID, 3)}</MenuItem>)}</TextField> : <TextField size="small" label="Function ID" value={form.fktID} onChange={(event) => setForm({ ...form, fktID: event.target.value })} />}<TextField select size="small" label="Operation type" value={form.opType} onChange={(event) => setForm({ ...form, opType: event.target.value })}>{opTypes.map(([value, label]) => <MenuItem key={value} value={hex(value)}>{hex(value)} · {label}</MenuItem>)}</TextField><TextField size="small" label="Data bytes" placeholder="00 FF 1A" value={form.data} onChange={(event) => setForm({ ...form, data: event.target.value })} /></Box>{sendError && <Typography sx={{ mt: 1, color: 'error.main', fontSize: 12 }}>{sendError}</Typography>}<Box sx={{ mt: 1.2, borderRadius: 1.5, overflow: 'hidden', background: 'rgba(0,0,0,.2)', border: '1px solid var(--stroke)' }}><Box sx={{ height: 30, px: 1, display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--stroke)' }}><Typography sx={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 1, color: 'text.secondary' }}>MATCHING RESPONSES</Typography><Typography sx={{ ml: 'auto', fontSize: 10, color: messageSent ? '#65e2a8' : 'text.secondary' }}>{messageSent ? `${matchingResponses.length} received` : 'Send to begin'}</Typography></Box><Box sx={{ height: 112, overflowY: 'auto', fontFamily: 'monospace' }}>{!messageSent ? <Typography sx={{ p: 1.2, fontSize: 11, color: 'text.secondary' }}>Responses from the selected node and FktID will appear here.</Typography> : matchingResponses.length === 0 ? <Typography sx={{ p: 1.2, fontSize: 11, color: 'text.secondary' }}>Waiting for a matching response…</Typography> : matchingResponses.map((message, index) => <Box key={`${message.timestamp}:${index}`} sx={{ px: 1, py: .55, display: 'grid', gridTemplateColumns: '64px 48px 46px minmax(0,1fr)', gap: .7, borderBottom: '1px solid rgba(255,255,255,.05)' }}><Typography sx={{ fontFamily: 'inherit', fontSize: 10.5, color: '#65e2a8' }}>{new Date(message.timestamp).toLocaleTimeString([], { hour12: false })}</Typography><Typography sx={{ fontFamily: 'inherit', fontSize: 10.5, fontWeight: message.opType === 0x0f ? 700 : 400, color: message.opType === 0x0f ? '#ff6b7a' : 'text.primary' }}>{message.opType === 0x0f ? 'ERROR' : `OP ${hex(message.opType)}`}</Typography><Typography sx={{ fontFamily: 'inherit', fontSize: 10.5, color: 'text.secondary' }}>T {hex(message.telID)} / {hex(message.telLen)}</Typography><Box sx={{ minWidth: 0 }}><Typography noWrap sx={{ fontFamily: 'inherit', fontSize: 10.5, color: message.opType === 0x0f ? '#ff9aa5' : 'text.primary' }}>{message.opType === 0x0f ? describeMostError(message.data) : ''}{message.opType === 0x0f ? ' · data: ' : ''}{message.data.slice(0, message.telLen ?? message.data.length).map((byte) => byte.toString(16).toUpperCase().padStart(2, '0')).join(' ') || '—'}</Typography></Box></Box>)}</Box></Box><Box sx={{ mt: 1.2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}><Button color="inherit" onClick={() => setSendOpen(false)}>Close</Button><Button variant="contained" startIcon={<SendRoundedIcon />} onClick={sendManualMessage}>Send message</Button></Box></DialogContent></Dialog>
     <Dialog open={subscriptionsOpen} onClose={() => setSubscriptionsOpen(false)} fullWidth maxWidth="sm"><DialogContent sx={{ p: 2.2 }}><Typography sx={{ fontSize: 20, fontWeight: 600 }}>Subscriptions</Typography><Typography sx={{ mb: 1.5, fontSize: 11, color: 'text.secondary' }}>Live state from the shared subscription manager</Typography><Box sx={{ maxHeight: 260, overflowY: 'auto' }}>{state.subscriptions.length === 0 ? <Typography sx={{ color: 'text.secondary' }}>No subscriptions recorded.</Typography> : state.subscriptions.map((subscription, index) => { const color = subscription.state === 'active' ? '#65e2a8' : subscription.state === 'failed' ? '#ff6b7a' : '#f5c76b'; return <Box key={`${keyFor(subscription)}:${subscription.state}:${index}`} sx={{ mb: .7, p: 1.1, borderRadius: 1.5, background: 'rgba(255,255,255,.04)', display: 'flex', alignItems: 'center', gap: 1 }}><NotificationsActiveRoundedIcon sx={{ color, fontSize: 18 }} /><Box sx={{ flex: 1 }}><Typography sx={{ fontSize: 13, fontWeight: 600 }}>{subscription.owner}</Typography><Typography sx={{ fontFamily: 'monospace', fontSize: 10.5, color: 'text.secondary' }}>{hex(subscription.address, 4)} · FB {hex(subscription.fBlockID)} · inst {hex(subscription.instanceID)}</Typography></Box><Chip size="small" sx={{ color }} label={subscription.state.toUpperCase()} /><Chip size="small" label={subscription.all ? 'ALL' : subscription.functions.map((value) => hex(value, 3)).join(' ')} /></Box> })}</Box>{state.logPath && <Typography sx={{ mt: 1.5, fontSize: 10.5, color: 'text.secondary' }}>Latest log: {state.logPath}</Typography>}<Box sx={{ mt: 1.5, textAlign: 'right' }}><Button onClick={() => setSubscriptionsOpen(false)}>Close</Button></Box></DialogContent></Dialog>
   </Box>
 }

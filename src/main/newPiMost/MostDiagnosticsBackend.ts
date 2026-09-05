@@ -199,12 +199,22 @@ export class MostDiagnosticsBackend {
     if (!device || message.fktID !== 0 || message.fBlockID !== device.fBlockID || message.instanceID !== device.instanceID || sourceAddress !== device.address) return
     const complete = this.collectFunctions(message)
     if (!complete) return
-    const boundaries: number[] = []
-    for (let index = 0; index + 1 < complete.length; index += 3) {
-      boundaries.push(((complete[index] << 4) | (complete[index + 1] >> 4)) & 0xfff)
-      if (index + 2 < complete.length) boundaries.push((((complete[index + 1] & 0x0f) << 8) | complete[index + 2]) & 0xfff)
+    const boundaries = this.decodeFunctionBoundaries(complete)
+    if (boundaries.length === 0) {
+      this.logger.warn(
+        `Unable to decode FktIDs response for FBlock 0x${device.fBlockID.toString(16)}: ` +
+          Buffer.from(complete).toString('hex')
+      )
+      this.socket.sendDiagnosticsFunctions(device, [], 'Empty or invalid FktIDs response')
+      this.functionDevice = null
+      return
     }
     if (boundaries[boundaries.length - 1] === 0) boundaries.pop()
+    if (boundaries.length === 0) {
+      this.socket.sendDiagnosticsFunctions(device, [], 'FktIDs response contained no boundaries')
+      this.functionDevice = null
+      return
+    }
     const functions: number[] = []
     let enabled = true
     for (let id = 0; id < 0x1000; id += 1) {
@@ -213,6 +223,38 @@ export class MostDiagnosticsBackend {
     }
     this.socket.sendDiagnosticsFunctions(device, functions)
     this.functionDevice = null
+  }
+
+  private decodeFunctionBoundaries(data: number[]): number[] {
+    // Some Jaguar nodes return each 12-bit boundary as a normal MOST unsigned
+    // word (00 00, 00 03, 0D 00...), while others use two packed 12-bit values
+    // per three bytes. An unpacked stream has a clear zero upper nibble on every
+    // word and an even byte count.
+    const isUnpackedWords =
+      data.length >= 2 &&
+      data.length % 2 === 0 &&
+      data.every((byte, index) => index % 2 !== 0 || (byte & 0xf0) === 0)
+
+    const boundaries: number[] = []
+    if (isUnpackedWords) {
+      for (let index = 0; index + 1 < data.length; index += 2) {
+        boundaries.push(((data[index] << 8) | data[index + 1]) & 0xfff)
+      }
+    } else {
+      for (let index = 0; index + 1 < data.length; index += 3) {
+        boundaries.push(((data[index] << 4) | (data[index + 1] >> 4)) & 0xfff)
+        if (index + 2 < data.length) {
+          boundaries.push((((data[index + 1] & 0x0f) << 8) | data[index + 2]) & 0xfff)
+        }
+      }
+    }
+
+    // RLE transition boundaries must be ordered. Treat malformed data as an
+    // invalid response instead of expanding it into 0x000 through 0xFFF.
+    if (boundaries.some((value, index) => index > 0 && value < boundaries[index - 1])) {
+      return []
+    }
+    return boundaries
   }
 
   private collectRegistry(message: MostRxMessage): number[] | null {
