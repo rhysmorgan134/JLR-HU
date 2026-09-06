@@ -54,7 +54,7 @@ const amFmTunerShadow: Device = {
   instanceID: 0xa1
 }
 const amFmTunerShadowFunctions = [0x00, 0x01, 0x02, 0xc80, 0xc81, 0xd19, 0xe00]
-const amplifier: Device = { addressHigh: 0x01, addressLow: 0x86, fBlockID: 0x22, instanceID: 0x05 }
+const amplifier: Device = { addressHigh: 0x01, addressLow: 0x61, fBlockID: 0x22, instanceID: 0xa1 }
 const amplifierFunctions = [
   0x00, 0x01, 0x02, 0x111, 0x112, 0x113, 0x202, 0x203, 0x427, 0x430, 0x431, 0x441, 0x461, 0x466,
   0x46d, 0xe04, 0xe05, 0xe07, 0xe08
@@ -366,10 +366,10 @@ export class CanGateway extends FBlock {
   0xa04(message: MostRxMessage): void {
     if (message.data.length < 2) return
 
-    this.updateStatus({
-      hours: message.data.readUInt8(0),
-      minutes: message.data.readUInt8(1)
-    })
+    const hours = message.data.readUInt8(0)
+    const minutes = message.data.readUInt8(1)
+    this.updateStatus({ hours, minutes })
+    if (message.opType === OpType.status) this.emit('clockStatus', { hours, minutes })
   }
   0xe05(message: MostRxMessage): void {
     if (message.data.length < 4) return
@@ -406,9 +406,10 @@ export class CanGateway extends FBlock {
 
   0xe15(message: MostRxMessage): void {
     if (
-      message.opType === OpType.set &&
-      message.telLen >= 2 &&
-      message.data.readUInt8(0) === 0x00
+      message.opType === OpType.status &&
+      message.telLen >= 3 &&
+      message.data.readUInt8(0) === 0x00 &&
+      message.data.readUInt8(2) === 0x00
     ) {
       const tripMode = message.data.readUInt8(1)
 
@@ -416,6 +417,19 @@ export class CanGateway extends FBlock {
         this.updateStatus({ tripMode })
       }
 
+      return
+    }
+
+    if (
+      message.opType === OpType.status &&
+      message.telLen >= 3 &&
+      (message.data.readUInt8(0) === 0x01 || message.data.readUInt8(0) === 0x02) &&
+      message.data.readUInt8(1) === 0x00 &&
+      message.data.readUInt8(2) === 0x00
+    ) {
+      this.updateStatus({
+        distanceUnit: message.data.readUInt8(0) === 0x01 ? 'miles' : 'kilometres'
+      })
       return
     }
 
@@ -427,6 +441,33 @@ export class CanGateway extends FBlock {
       distance: message.data.readUInt16BE(11) / 10.0,
       range: message.data.readUInt16BE(13)
     })
+  }
+
+  0x302(message: MostRxMessage): void {
+    if (message.opType !== OpType.status || message.telLen < 3) return
+
+    const update: {
+      distanceUnit?: 'miles' | 'kilometres'
+      temperatureUnit?: 'fahrenheit' | 'celsius'
+      uses24HourClock?: boolean
+    } = {}
+    const length = Math.min(message.telLen, message.data.length)
+
+    for (let offset = 0; offset + 2 < length; offset += 3) {
+      if (message.data.readUInt8(offset) !== 0x01) continue
+      const setting = message.data.readUInt8(offset + 1)
+      const value = message.data.readUInt8(offset + 2)
+
+      if (setting === 0x01 && (value === 0x01 || value === 0x02)) {
+        update.distanceUnit = value === 0x01 ? 'miles' : 'kilometres'
+      } else if (setting === 0x02 && (value === 0x01 || value === 0x02)) {
+        update.temperatureUnit = value === 0x01 ? 'fahrenheit' : 'celsius'
+      } else if (setting === 0x81 && (value === 0x01 || value === 0x02)) {
+        update.uses24HourClock = value === 0x01
+      }
+    }
+
+    if (Object.keys(update).length > 0) this.updateStatus(update)
   }
 
   0xe17(message: MostRxMessage): void {
@@ -548,8 +589,37 @@ export class CanGateway extends FBlock {
     this.logger.info(
       `setting trip mode ${mode}: F5/E15 SET 00 ${mode.toString(16).padStart(2, '0')}`
     )
-    this.setProperty(0xe15, [0x00, mode])
-    this.updateStatus({ tripMode: mode })
+    this.setProperty(0xe15, [0x00, mode, 0x00])
+  }
+
+  addTrip(): void {
+    this.setProperty(0xe15, [0x00, 0x00, 0x03])
+  }
+
+  setDistanceUnit({ unit }: { unit: 'miles' | 'kilometres' }): void {
+    const value = unit === 'miles' ? 0x01 : 0x02
+    this.setProperty(0x302, [0x01, 0x01, value])
+    this.setProperty(0xe15, [value, 0x00, 0x00])
+  }
+
+  setTemperatureUnit({ unit }: { unit: 'fahrenheit' | 'celsius' }): void {
+    this.setProperty(0x302, [0x01, 0x02, unit === 'fahrenheit' ? 0x01 : 0x02])
+  }
+
+  setClockFromSystem(date: Date, uses24HourClock: boolean, updateTime = true): void {
+    if (updateTime) this.setProperty(0xa04, [date.getHours(), date.getMinutes(), 0x00])
+    this.setProperty(0x302, [0x01, 0x81, uses24HourClock ? 0x01 : 0x02])
+  }
+
+  setManualClock({ hours, minutes, uses24HourClock }: {
+    hours: number
+    minutes: number
+    uses24HourClock: boolean
+  }): void {
+    if (!Number.isInteger(hours) || hours < 0 || hours > 23) return
+    if (!Number.isInteger(minutes) || minutes < 0 || minutes > 59) return
+    this.setProperty(0xa04, [hours, minutes, 0x00])
+    this.setProperty(0x302, [0x01, 0x81, uses24HourClock ? 0x01 : 0x02])
   }
 
   // TODO Camera
@@ -1848,7 +1918,7 @@ export class Climate extends FBlock {
     socket: Socket,
     subscriptionManager: SubscriptionManager
   ) {
-    super(subscriptions, null, null, socketmost, autoSubscribe, socket, subscriptionManager)
+    super(subscriptions, climate, null, socketmost, autoSubscribe, socket, subscriptionManager)
     this.status = {}
   }
   allocate(message): void {}
@@ -1990,6 +2060,7 @@ export class AudioControl extends FBlock {
       audioVolume: null,
       parkingVolumeFront: null,
       parkingVolumeRear: null,
+      voiceVolume: null,
       navigationVolume: null,
       phoneVolume: null
     }
@@ -2007,23 +2078,57 @@ export class AudioControl extends FBlock {
   0x409(message: MostRxMessage): void {
     this.logger.info(`AudioControl 0x409 received: ${this.convertMessageToHex(message)}`)
 
-    if (message.data.length < 11) {
+    if (message.data.length < 12) {
       this.logger.warn(`invalid AudioControl volume payload: ${this.convertMessageToHex(message)}`)
       return
     }
 
+    // 0x409 contains two record types. Type 0 is the composite volume
+    // record used by the HMI; type 1 mirrors the currently adjusted value
+    // and does not identify which channel it belongs to.
+    if (message.data.readUInt8(0) !== 0x00) return
+
+    const decodeLevel = (offset: number): number =>
+      Math.max(0, message.data.readUInt8(offset) - 0x05)
+
     this.updateStatus({
-      audioVolume: message.data.readUInt8(2),
-      phoneVolume: message.data.readUInt8(6),
-      navigationVolume: message.data.readUInt8(8),
-      parkingVolumeFront: message.data.readUInt8(10),
-      parkingVolumeRear: message.data.readUInt8(10)
+      phoneVolume: decodeLevel(7),
+      navigationVolume: decodeLevel(9),
+      voiceVolume: decodeLevel(10),
+      parkingVolumeFront: decodeLevel(11),
+      parkingVolumeRear: decodeLevel(11)
     })
   }
 
   getVolumes(): void {
     this.logger.info('requesting AudioControl volume status')
     this.socketmost.sendControlMessage(this.physicalMessage(OpType.get, 0x409, []))
+  }
+
+  private setVolumeChannels(channels: number[], level: number): void {
+    if (!Number.isInteger(level) || level < 0 || level > 25) return
+    const encodedLevel = level + 0x05
+    channels.forEach((channel) => {
+      this.socketmost.sendControlMessage(
+        this.physicalMessage(OpType.set, 0x409, [channel, 0x00, encodedLevel])
+      )
+    })
+  }
+
+  setParkingVolume({ value }: { value: number }): void {
+    this.setVolumeChannels([0x09, 0x0a], value)
+  }
+
+  setVoiceVolume({ value }: { value: number }): void {
+    this.setVolumeChannels([0x08], value)
+  }
+
+  setNavigationVolume({ value }: { value: number }): void {
+    this.setVolumeChannels([0x07], value)
+  }
+
+  setPhoneVolume({ value }: { value: number }): void {
+    this.setVolumeChannels([0x06, 0x05], value)
   }
 
   startVolumeUpdates(): void {
@@ -2109,6 +2214,15 @@ export class AudioControl extends FBlock {
     this.logger.info(`407 result ${result}`)
     this.currentSource = device
     this.updateStatus({ currentSource: device.constructor.name })
+    const sourceName = device.constructor.name === 'Carplay' ? 'carplay' : device.constructor.name
+    if (
+      sourceName === 'AudioDiskPlayer' ||
+      sourceName === 'AmFmTuner' ||
+      sourceName === 'DabTuner' ||
+      sourceName === 'carplay'
+    ) {
+      this.socket.saveLastSource(sourceName)
+    }
     device.startSource()
   }
 
@@ -2119,6 +2233,7 @@ export class AudioControl extends FBlock {
   async stopPlayback() {
     console.log('stopping playback')
     if (this.currentSource) {
+      const source = this.currentSource
       const data406 = [
         0x00,
         0x03,
@@ -2139,13 +2254,13 @@ export class AudioControl extends FBlock {
         0x01,
         0x11
       ]
-      this.currentSource.stopSource()
+      await this.sendMethod(this.physicalMessage(OpType.startResultAck, 0x408, data408))
+      await this.sleep(50)
+      await source.stopSource()
+      await this.sendMethod(this.physicalMessage(OpType.startResultAck, 0x406, data406))
+      await this.sleep(50)
       this.currentSource = null
-      // console.log('starting 406')
-      // await this.sendMethod(this.physicalMessage(OpType.startResultAck, 0x406, data406))
-      // console.log('406 complete')
-      // await this.sendMethod(this.physicalMessage(OpType.startResultAck, 0x408, data408))
-      // console.log('408 complete')
+      this.updateStatus({ currentSource: null })
     }
     // this.currentSource = null
   }
@@ -2296,6 +2411,23 @@ export class Amplifier extends FBlock {
       mode,
       ...(message.data.length > 1 ? { centre: message.data.readInt8(1) } : {})
     })
+  }
+
+  0xe24(message: MostRxMessage): void {
+    if (message.opType !== OpType.status || !message.data.length) return
+
+    const avc = message.data.readUInt8(0)
+    if (avc > 2) {
+      this.logger.warn(`Ignoring invalid AVC level ${avc}: ${this.convertMessageToHex(message)}`)
+      return
+    }
+
+    this.updateStatus({ avc })
+  }
+
+  setAvc({ value }: { value: number }): void {
+    if (!Number.isInteger(value) || value < 0 || value > 2) return
+    this.socketmost.sendControlMessage(this.physicalMessage(OpType.set, 0xe24, [value]))
   }
 
   allocate(message: MostRxMessage): void {}
@@ -2564,6 +2696,7 @@ export class NetworkMaster extends FBlock {
     instanceID: number
   }): void {
     const eventNames: Partial<Record<number, string>> = {
+      0x22: 'AmplifierAvailable',
       0x71: 'ClimateAvailable',
       0xf5: 'CanGatewayAvailable',
       0xf0: 'AudioControlAvailable'

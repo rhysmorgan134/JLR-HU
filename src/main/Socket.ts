@@ -36,7 +36,10 @@ export class Socket extends EventEmitter {
       })
 
       socket.on(MessageNames.SaveSettings, (settings: ExtraConfig) => {
-        this.config = settings
+        this.config = {
+          ...settings,
+          lastSource: settings.lastSource ?? this.config.lastSource
+        }
         this.saveSettings(settings)
         this.emit('appSettings', settings)
         this.sendSettings()
@@ -91,6 +94,7 @@ export class Socket extends EventEmitter {
       socket.on('update:list', (callback) => this.emit('update:list', callback))
       socket.on('update:install', (data, callback) => this.emit('update:install', { data, callback }))
       socket.on('system:reboot', () => this.emit('system:reboot'))
+      socket.on('systemInfo:get', () => this.emit('systemInfo:get'))
     })
 
     this.io.listen(4000)
@@ -98,6 +102,16 @@ export class Socket extends EventEmitter {
 
   sendSettings() {
     this.io.emit('settings', this.config)
+  }
+
+  sendSystemInfo(data: object) {
+    this.io.emit('systemInfo', data)
+  }
+
+  saveLastSource(source: ExtraConfig['lastSource']) {
+    if (this.config.lastSource === source) return
+    this.config = { ...this.config, lastSource: source }
+    this.saveSettings(this.config)
   }
 
   sendReverse(reverse: boolean) {

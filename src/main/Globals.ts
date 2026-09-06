@@ -24,6 +24,8 @@ export type ExtraConfig = DongleConfig & {
   piMost: boolean
   canbus: boolean
   diagnosticMode?: boolean
+  autoTimeSync?: boolean
+  lastSource?: 'AudioDiskPlayer' | 'AmFmTuner' | 'DabTuner' | 'carplay'
   bindings: KeyBindings
   most?: Most
   canConfig?: CanConfig

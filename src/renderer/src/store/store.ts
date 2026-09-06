@@ -200,8 +200,13 @@ interface Volume {
   audioVolume: number | null
   parkingVolumeFront: number | null
   parkingVolumeRear: number | null
+  voiceVolume: number | null
   navigationVolume: number | null
   phoneVolume: number | null
+  setParkingVolume: (value: number) => void
+  setVoiceVolume: (value: number) => void
+  setNavigationVolume: (value: number) => void
+  setPhoneVolume: (value: number) => void
 }
 
 interface HMIStore {
@@ -218,6 +223,7 @@ interface AmplifierStore {
   centre: number
   mode: number
   surround: number
+  avc: number
   source: number | null
   mixerLevel: number[]
   setBalance: (value: number) => void
@@ -229,6 +235,7 @@ interface AmplifierStore {
   setCentre: (value: number) => void
   setMode: (value: number) => void
   setSurround: (value: number) => void
+  setAvc: (value: number) => void
 }
 
 interface CanGatewayStore {
@@ -252,6 +259,8 @@ interface CanGatewayStore {
   avgSpeed: number | null
   currentSpeed: number | null
   tripMode: 1 | 2 | 3 | null
+  distanceUnit: 'miles' | 'kilometres' | null
+  temperatureUnit: 'fahrenheit' | 'celsius' | null
   mostCcf: {
     captured: boolean
     profile: string
@@ -280,6 +289,9 @@ interface CanGatewayStore {
   setMirrorFoldBack: (enabled: boolean) => void
   setMirrorDip: (enabled: boolean) => void
   setTripMode: (mode: 1 | 2 | 3) => void
+  addTrip: () => void
+  setDistanceUnit: (unit: 'miles' | 'kilometres') => void
+  setTemperatureUnit: (unit: 'fahrenheit' | 'celsius') => void
 }
 
 interface ParkingAssistStore {
@@ -318,6 +330,28 @@ interface ClimateStore {
 interface NetworkMasterStore {
   networkStatus: number | null
   configurationState: string
+}
+
+export interface SystemInfoState {
+  platformName: string
+  release: string
+  architecture: string
+  hostname: string
+  locale: string
+  timeZone: string
+  uses24HourClock: boolean
+  networkConnected: boolean
+  internetConnected: boolean
+  ipAddresses: string[]
+  uptimeSeconds: number
+  totalMemory: number
+  freeMemory: number
+  cpuModel: string
+  cpuCount: number
+  cpuTemperature: number | null
+  appVersion: string
+  checkedAt: string | null
+  refresh: () => void
 }
 
 interface persistentStore {
@@ -423,6 +457,28 @@ export const useNetworkMasterStore = create<NetworkMasterStore>()(() => ({
   configurationState: 'unknown'
 }))
 
+export const useSystemInfoStore = create<SystemInfoState>()(() => ({
+  platformName: 'Unknown',
+  release: '',
+  architecture: '',
+  hostname: '',
+  locale: '',
+  timeZone: '',
+  uses24HourClock: true,
+  networkConnected: false,
+  internetConnected: false,
+  ipAddresses: [],
+  uptimeSeconds: 0,
+  totalMemory: 0,
+  freeMemory: 0,
+  cpuModel: '',
+  cpuCount: 0,
+  cpuTemperature: null,
+  appVersion: '',
+  checkedAt: null,
+  refresh: () => socket.emit('systemInfo:get')
+}))
+
 export const useParkingAssistStore = create<ParkingAssistStore>()((set) => ({
   parkingSensors: {
     frontLeft: 0,
@@ -449,6 +505,7 @@ export const useAmplifierStore = create<AmplifierStore>()((set, get) => ({
   centre: 0,
   mode: 0,
   surround: 0,
+  avc: 1,
   source: null,
   mixerLevel: [],
   setBalance: (value) => {
@@ -490,6 +547,9 @@ export const useAmplifierStore = create<AmplifierStore>()((set, get) => ({
   setSurround: (value) => {
     set({ surround: value })
     socket.emit('button', { device: 'amplifier', function: 'setSurround', args: { value } })
+  },
+  setAvc: (value) => {
+    socket.emit('button', { device: 'amplifier', function: 'setAvc', args: { value } })
   }
 }))
 
@@ -514,6 +574,8 @@ export const useCanGatewayStore = create<CanGatewayStore>()((set, get) => ({
   avgSpeed: null,
   currentSpeed: null,
   tripMode: null,
+  distanceUnit: null,
+  temperatureUnit: null,
   mostCcf: {
     captured: false,
     profile: 'Waiting for CCF',
@@ -585,9 +647,13 @@ export const useCanGatewayStore = create<CanGatewayStore>()((set, get) => ({
     })
   },
   setTripMode: (mode) => {
-    set({ tripMode: mode })
     socket.emit('button', { device: 'canGateway', function: 'setTripMode', args: { mode } })
-  }
+  },
+  addTrip: () => socket.emit('button', { device: 'canGateway', function: 'addTrip' }),
+  setDistanceUnit: (unit) =>
+    socket.emit('button', { device: 'canGateway', function: 'setDistanceUnit', args: { unit } }),
+  setTemperatureUnit: (unit) =>
+    socket.emit('button', { device: 'canGateway', function: 'setTemperatureUnit', args: { unit } })
 }))
 
 export const useClimateStore = create<ClimateStore>()(() => ({
@@ -767,8 +833,17 @@ export const useVolumeStore = create<Volume>()(() => ({
   audioVolume: null,
   parkingVolumeFront: null,
   parkingVolumeRear: null,
+  voiceVolume: null,
   navigationVolume: null,
-  phoneVolume: null
+  phoneVolume: null,
+  setParkingVolume: (value) =>
+    socket.emit('button', { device: 'audioControl', function: 'setParkingVolume', args: { value } }),
+  setVoiceVolume: (value) =>
+    socket.emit('button', { device: 'audioControl', function: 'setVoiceVolume', args: { value } }),
+  setNavigationVolume: (value) =>
+    socket.emit('button', { device: 'audioControl', function: 'setNavigationVolume', args: { value } }),
+  setPhoneVolume: (value) =>
+    socket.emit('button', { device: 'audioControl', function: 'setPhoneVolume', args: { value } })
 }))
 
 export const socketActions = create(() => {
@@ -972,11 +1047,7 @@ socket.on('AudioControl', (data) => {
     })
   })
   if ('currentSource' in data) {
-    usePersistantStore.setState((state) => {
-      return produce(state, (draft) => {
-        _.merge(draft, data)
-      })
-    })
+    usePersistantStore.getState().setLastAudioSource(data.currentSource)
   }
   if ('audioVolume' in data) {
     useVolumeStore.setState((state) => {
@@ -1007,6 +1078,10 @@ socket.on('HMI', (data) => {
       _.merge(draft, data)
     })
   })
+})
+
+socket.on('systemInfo', (data) => {
+  useSystemInfoStore.setState((state) => ({ ...state, ...data }))
 })
 
 let parkingSensorTimeout: ReturnType<typeof setTimeout> | undefined

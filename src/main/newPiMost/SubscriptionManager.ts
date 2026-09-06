@@ -28,18 +28,32 @@ export class SubscriptionManager extends EventEmitter {
     this.socketmost.on(Os8104Events.SocketMostMessageRxEvent, (message: MostRxMessage) => {
       if (this.subscriptionInProg) {
         if (
-          message.fBlockID === this.inProgSubscription!.fBlockID &&
+          this.inProgSubscription &&
+          message.fBlockID === this.inProgSubscription.fBlockID &&
           message.fktID != 0xc81 &&
           message.opType === OpType.status
         ) {
           this.logger.error(
             `Successfull Notification ${this.convertMessageToHex(this.inProgSubscription!)}`
           )
-          clearTimeout(this.notificationCheckTimer!)
+          if (this.inProgSubscription?.fBlockID === 0xf5) {
+            this.socketmost.sendControlMessage({
+              data: [0x03, 0x01, 0x6e, 0xe, 0x19],
+              eventType: undefined,
+              fBlockID: 0xf5,
+              fktID: 0x01,
+              instanceID: 0x01,
+              opType: OpType.set,
+              targetAddressHigh: 0x01,
+              targetAddressLow: 0x61
+            })
+          }
+          if (this.notificationCheckTimer) {
+            clearTimeout(this.notificationCheckTimer)
+            this.notificationCheckTimer = null
+          }
           this.subscriptionInProg = false
-          this.activeSubscriptions.push(this.inProgSubscription!)
-          this.inProgSubscription = null
-          this.subscriptionInProg = false
+          this.activeSubscriptions.push(this.inProgSubscription)
           this.inProgSubscription = null
           this.checkForNextSub()
           this.attempts = 0
@@ -53,7 +67,10 @@ export class SubscriptionManager extends EventEmitter {
       this.activeSubscriptions = []
       this.failedSubscriptions = []
       this.attempts = 0
-      clearTimeout(this.notificationCheckTimer!)
+      if (this.notificationCheckTimer) clearTimeout(this.notificationCheckTimer)
+      this.notificationCheckTimer = null
+      this.inProgSubscription = null
+      this.subscriptionInProg = false
       this.emit('changed')
     })
   }
@@ -99,38 +116,42 @@ export class SubscriptionManager extends EventEmitter {
   }
 
   sendSubscriptionMessage() {
-    const functions = this.inProgSubscription!.subscriptionList
-    const data = functions.length === 0
-      ? [
-          0x00,
-          this.inProgSubscription!.sourceAddressHigh,
-          this.inProgSubscription!.sourceAddressLow
-        ]
-      : [
-          0x01,
-          this.inProgSubscription!.sourceAddressHigh,
-          this.inProgSubscription!.sourceAddressLow,
-          ...functions.flatMap((fktID) => [(fktID >> 8) & 0xff, fktID & 0xff])
-        ]
+    const subscription = this.inProgSubscription
+    if (!subscription) return
+    const functions = subscription.subscriptionList
+    const data =
+      functions.length === 0
+        ? [
+            0x00,
+            subscription.sourceAddressHigh,
+            subscription.sourceAddressLow
+          ]
+        : [
+            0x01,
+            subscription.sourceAddressHigh,
+            subscription.sourceAddressLow,
+            ...functions.flatMap((fktID) => [(fktID >> 8) & 0xff, fktID & 0xff])
+          ]
 
     this.socketmost.sendControlMessage({
       data,
-      fBlockID: this.inProgSubscription!.fBlockID,
+      fBlockID: subscription.fBlockID,
       fktID: 0x01,
-      instanceID: this.inProgSubscription!.instanceID,
+      instanceID: subscription.instanceID,
       opType: OpType.set,
-      targetAddressHigh: this.inProgSubscription!.targetAddressHigh,
-      targetAddressLow: this.inProgSubscription!.targetAddressLow
+      targetAddressHigh: subscription.targetAddressHigh,
+      targetAddressLow: subscription.targetAddressLow
     })
 
     this.notificationCheckTimer = setTimeout(() => {
-      this.failedSubscriptions.push(this.inProgSubscription!)
-      this.logger.error(
-        `FAILED SUBSCRIPTION: ${this.convertMessageToHex(this.inProgSubscription!)}`
-      )
+      // Ignore a stale timeout after this subscription succeeded or the
+      // network was unlocked and the manager was reset.
+      if (this.inProgSubscription !== subscription) return
+      this.failedSubscriptions.push(subscription)
+      this.logger.error(`FAILED SUBSCRIPTION: ${this.convertMessageToHex(subscription)}`)
       this.inProgSubscription = null
       this.subscriptionInProg = false
-      clearInterval(this.notificationCheckTimer!)
+      this.notificationCheckTimer = null
       this.attempts = 0
       this.emit('changed')
       this.checkForNextSub()
@@ -138,8 +159,9 @@ export class SubscriptionManager extends EventEmitter {
   }
 
   requestNotificationCheck() {
+    if (!this.inProgSubscription) return
     this.logger.warn(
-      `Sending notification check ${this.convertMessageToHex(this.inProgSubscription!)}`
+      `Sending notification check ${this.convertMessageToHex(this.inProgSubscription)}`
     )
     this.socketmost.sendControlMessage({
       data: [this.inProgSubscription!.sourceAddressHigh, this.inProgSubscription!.sourceAddressLow],

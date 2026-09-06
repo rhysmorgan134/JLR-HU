@@ -10,6 +10,7 @@ import { AppUpdater } from './AppUpdater'
 
 import { ExtraConfig, KeyBindings } from './Globals'
 import { configureLogging } from './log'
+import { SystemInfo } from './SystemInfo'
 // import CarplayNode, {DEFAULT_CONFIG, CarplayMessage} from "node-carplay/node";
 
 let mainWindow: BrowserWindow
@@ -38,6 +39,7 @@ const EXTRA_CONFIG: ExtraConfig = {
   microphone: '',
   piMost: false,
   canbus: false,
+  autoTimeSync: true,
   bindings: DEFAULT_BINDINGS,
   most: {},
   canConfig: {},
@@ -73,12 +75,14 @@ fs.stat(configPath, (err) => {
 
   configureLogging(config.loggerConfig)
   socket = new Socket(config, saveSettings)
+  socket.on('quitApplication', quit)
+  const systemInfo = new SystemInfo(socket, app.getVersion())
   new AppUpdater(socket)
   if (config.most) {
     console.log('creating pi most in main')
   }
   // piMost = new PiMost(socket)
-  piMost = new PimostMain(socket)
+  piMost = new PimostMain(socket, systemInfo)
   if (config.canbus) {
   }
 })

@@ -5,18 +5,17 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import { useCarplayStore, useParkingAssistStore } from '../store/store'
 
 const frontPaths = [
-  ['M 78 77 Q 42 65 26 39', 'M 82 65 Q 51 54 38 33', 'M 88 53 Q 62 45 53 26'],
-  ['M 82 77 Q 92 51 117 39', 'M 88 66 Q 98 48 119 40', 'M 96 55 Q 105 44 120 42'],
-  ['M 123 39 Q 148 51 158 77', 'M 121 40 Q 142 48 152 66', 'M 120 42 Q 135 44 144 55'],
-  ['M 162 77 Q 198 65 214 39', 'M 158 65 Q 189 54 202 33', 'M 152 53 Q 178 45 187 26']
+  ['M 82 104 Q 45 99 20 72', 'M 78 91 Q 39 83 14 49', 'M 73 78 Q 35 65 12 25'],
+  ['M 84 96 Q 91 62 117 48', 'M 81 82 Q 91 43 117 28', 'M 78 68 Q 88 25 117 9'],
+  ['M 123 48 Q 149 62 156 96', 'M 123 28 Q 149 43 159 82', 'M 123 9 Q 152 25 162 68'],
+  ['M 158 104 Q 195 99 220 72', 'M 162 91 Q 201 83 226 49', 'M 167 78 Q 205 65 228 25']
 ]
-const rearPaths = frontPaths.map((sensor) => sensor.map((path) => {
-  let coordinateIndex = 0
-  return path.replace(/\d+/g, (match) => {
-    const isYCoordinate = coordinateIndex++ % 2 === 1
-    return isYCoordinate ? String(360 - Number(match)) : match
-  })
-}))
+const rearPaths = [
+  ['M 82 256 Q 45 261 20 288', 'M 78 269 Q 39 277 14 311', 'M 73 282 Q 35 295 12 335'],
+  ['M 84 264 Q 91 298 117 312', 'M 81 278 Q 91 317 117 332', 'M 78 292 Q 88 335 117 351'],
+  ['M 123 312 Q 149 298 156 264', 'M 123 332 Q 149 317 159 278', 'M 123 351 Q 152 335 162 292'],
+  ['M 158 256 Q 195 261 220 288', 'M 162 269 Q 201 277 226 311', 'M 167 282 Q 205 295 228 335']
+]
 
 function RadarSensor({ value, paths }: { value: number; paths: string[] }) {
   const levels = [value >= 24, value >= 14, value > 0]
@@ -37,12 +36,14 @@ function ParkingRadar({ front, rear }: { front: number[]; rear: number[] }) {
       {front.map((value, index) => <RadarSensor key={`front-${index}`} value={value} paths={frontPaths[index]} />)}
       {rear.map((value, index) => <RadarSensor key={`rear-${index}`} value={value} paths={rearPaths[index]} />)}
       <g>
-        <path d="M87 91 Q120 75 153 91 L163 119 L163 246 Q157 275 120 282 Q83 275 77 246 L77 119 Z" fill="url(#car-body)" stroke="rgba(214,232,248,.55)" strokeWidth="2" />
-        <path d="M91 112 Q120 98 149 112 L145 159 L95 159 Z" fill="rgba(4,9,15,.82)" stroke="rgba(189,221,255,.2)" />
-        <path d="M94 207 L146 207 L150 251 Q120 264 90 251 Z" fill="rgba(4,9,15,.75)" stroke="rgba(189,221,255,.16)" />
-        <path d="M94 169 L146 169 L146 197 L94 197 Z" fill="rgba(103,216,255,.055)" stroke="rgba(189,221,255,.1)" />
-        <path d="M78 129 L70 137 L70 175 L78 178 M162 129 L170 137 L170 175 L162 178 M78 218 L70 222 L70 252 L80 256 M162 218 L170 222 L170 252 L160 256" fill="none" stroke="rgba(196,219,239,.4)" strokeWidth="5" strokeLinecap="round" />
-        <line x1="102" y1="87" x2="138" y2="87" stroke="#67d8ff" strokeWidth="2" opacity=".8" />
+        <path d="M87 99 Q91 78 120 72 Q149 78 153 99 L161 126 Q166 156 164 210 L159 253 Q151 281 120 287 Q89 281 81 253 L76 210 Q74 156 79 126 Z" fill="url(#car-body)" stroke="rgba(214,232,248,.62)" strokeWidth="2" />
+        <path d="M91 111 Q120 91 149 111 L145 157 Q120 164 95 157 Z" fill="rgba(3,8,14,.9)" stroke="rgba(189,221,255,.24)" />
+        <path d="M95 202 Q120 196 145 202 L150 249 Q120 267 90 249 Z" fill="rgba(3,8,14,.84)" stroke="rgba(189,221,255,.2)" />
+        <path d="M94 166 Q120 171 146 166 L145 194 Q120 189 95 194 Z" fill="rgba(103,216,255,.07)" stroke="rgba(189,221,255,.12)" />
+        <path d="M79 129 L69 138 L68 174 L76 180 M161 129 L171 138 L172 174 L164 180 M78 218 L69 224 L70 254 L82 260 M162 218 L171 224 L170 254 L158 260" fill="none" stroke="rgba(196,219,239,.48)" strokeWidth="5" strokeLinecap="round" />
+        <path d="M99 87 Q120 79 141 87" fill="none" stroke="#67d8ff" strokeWidth="2.5" opacity=".9" />
+        <path d="M101 274 Q120 280 139 274" fill="none" stroke="#d73948" strokeWidth="2" opacity=".75" />
+        <text x="120" y="184" textAnchor="middle" fill="rgba(225,238,249,.68)" fontSize="9" fontWeight="700" letterSpacing="2">XF</text>
       </g>
       <text x="120" y="350" textAnchor="middle" fill="rgba(189,221,255,.45)" fontSize="9" letterSpacing="2">REAR</text>
     </svg>

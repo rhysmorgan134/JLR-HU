@@ -23,6 +23,8 @@ import ApplicationSettings from './components/settings/ApplicationSettings'
 import MostCcfSettings from './components/settings/MostCcfSettings'
 import SoftwareUpdate from './components/settings/SoftwareUpdate'
 import CarplaySettings from './components/settings/CarplaySettings'
+import SystemInformation from './components/settings/SystemInformation'
+import TimeSettings from './components/settings/TimeSettings'
 import './App.css'
 
 export const ColorModeContext = createContext({ toggleColorMode: () => {} })
@@ -74,6 +76,8 @@ function AppRoutes() {
         <Route path="/settings/most-logs" element={<MostLogViewer />} />
         <Route path="/settings/pimost-usb" element={<PiMostUsbSettings />} />
         <Route path="/settings/update" element={<SoftwareUpdate />} />
+        <Route path="/settings/system" element={<SystemInformation />} />
+        <Route path="/settings/time" element={<TimeSettings />} />
       </Routes>
     </main>
   </>

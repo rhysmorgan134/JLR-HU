@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Box, Dialog, DialogContent, IconButton, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
+import { useState } from 'react'
+import { Box, Button, Dialog, DialogContent, IconButton, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import AppsRoundedIcon from '@mui/icons-material/AppsRounded'
 import MusicNoteRoundedIcon from '@mui/icons-material/MusicNoteRounded'
@@ -13,20 +13,15 @@ import AmFmOverview from './components/mediaComponents/AmFm/AmFmOverview'
 import CarplayOverview from './components/mediaComponents/CarplayOverview'
 import DabOverview from './components/mediaComponents/DAB/DabOverview'
 import SourceSelection from './components/SourceSelection'
-import { useAudioControlStore, useCanGatewayStore, useClimateStore, useParkingAssistStore, usePersistantStore } from './store/store'
+import { useAudioControlStore, useCanGatewayStore, useClimateStore, useParkingAssistStore } from './store/store'
 
 function Base() {
   const [sourcesOpen, setSourcesOpen] = useState(false)
   const [setSource, currentSource] = useAudioControlStore((state) => [state.setSource, state.currentSource])
-  const currentAudioSource = usePersistantStore((state) => state.currentSource)
   const navigate = useNavigate()
   const climate = useClimateStore()
   const trip = useCanGatewayStore()
   const openParkingAssist = useParkingAssistStore((state) => state.setManualOpen)
-
-  useEffect(() => {
-    if (currentSource === null && currentAudioSource !== null) setSource(currentAudioSource)
-  }, [])
 
   const openCurrentSource = () => {
     if (currentSource === 'AudioDiskPlayer') navigate('/AudioDiskPlayer')
@@ -45,12 +40,13 @@ function Base() {
         ? <CarplayOverview />
         : <Box sx={{ height: '100%', display: 'grid', placeItems: 'center', color: 'text.secondary' }}><Typography>Select an audio source</Typography></Box>
 
+  const imperial = trip.distanceUnit !== 'kilometres'
   const tripValues = [
     ['Average', trip.avgMpg, 'mpg'],
-    ['Range', trip.range, 'mi'],
-    ['Distance', trip.distance, 'mi'],
-    ['Avg speed', trip.avgSpeed, 'mph'],
-    ['Current speed', trip.currentSpeed, 'mph']
+    ['Range', trip.range, imperial ? 'mi' : 'km'],
+    ['Distance', trip.distance, imperial ? 'mi' : 'km'],
+    ['Avg speed', trip.avgSpeed, imperial ? 'mph' : 'km/h'],
+    ['Current speed', trip.currentSpeed, imperial ? 'mph' : 'km/h']
   ] as const
 
   return <Box sx={{ height: '100%', p: 1.5, display: 'grid', gridTemplateColumns: '58px minmax(0,1fr)', gap: 1.5, overflow: 'hidden' }}>
@@ -69,7 +65,7 @@ function Base() {
         <Box sx={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 76% 52%,rgba(53,183,255,.18),transparent 30%)', pointerEvents: 'none' }} />
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}>
           <Box><Typography sx={{ color: 'primary.main', fontSize: 12, fontWeight: 700, letterSpacing: 2 }}>TRIP COMPUTER</Typography><Typography sx={{ mt: .4, fontSize: 30, fontWeight: 300, letterSpacing: -.6 }}>Journey at a glance.</Typography></Box>
-          <ToggleButtonGroup exclusive size="small" value={trip.tripMode} onChange={(_, mode) => mode !== null && trip.setTripMode(mode)} sx={{ '& .MuiToggleButton-root': { minWidth: 54, px: 1.4, py: .65, color: 'text.secondary', borderColor: 'rgba(255,255,255,.12)', fontSize: 11, fontWeight: 700 }, '& .Mui-selected': { color: 'primary.main !important', background: 'var(--accent-soft) !important' } }}><ToggleButton value={1}>Trip A</ToggleButton><ToggleButton value={2}>Trip B</ToggleButton><ToggleButton value={3}>Auto</ToggleButton></ToggleButtonGroup>
+          <Box sx={{ display: 'flex', gap: .7 }}><ToggleButtonGroup exclusive size="small" value={trip.tripMode} onChange={(_, mode) => mode !== null && trip.setTripMode(mode)} sx={{ '& .MuiToggleButton-root': { minWidth: 54, px: 1.4, py: .65, color: 'text.secondary', borderColor: 'rgba(255,255,255,.12)', fontSize: 11, fontWeight: 700 }, '& .Mui-selected': { color: 'primary.main !important', background: 'var(--accent-soft) !important' } }}><ToggleButton value={1}>Trip A</ToggleButton><ToggleButton value={2}>Trip B</ToggleButton><ToggleButton value={3}>Auto</ToggleButton></ToggleButtonGroup><Button size="small" variant="outlined" onClick={trip.addTrip} sx={{ minWidth: 58, fontSize: 10 }}>Add trip</Button></Box>
         </Box>
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(5,minmax(0,1fr))', gap: 1 }}>
           {tripValues.map(([label, value, unit]) => <Box key={label} sx={{ minWidth: 0, borderLeft: '2px solid rgba(103,216,255,.35)', pl: 1 }}><Typography noWrap sx={{ fontSize: 10.5, color: 'text.secondary' }}>{label}</Typography><Typography noWrap sx={{ mt: .2, fontSize: 21, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{value == null ? '—' : Number(value).toFixed(unit === 'mi' ? 0 : 1)} <Typography component="span" sx={{ fontSize: 10.5, color: 'text.secondary' }}>{unit}</Typography></Typography></Box>)}

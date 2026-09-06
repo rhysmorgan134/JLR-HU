@@ -26,6 +26,7 @@ import { PiMostFirmwareBackend } from './PiMostFirmwareBackend'
 import { ExtraConfig } from '../Globals'
 import { UsbSettings } from 'socketmost'
 import { getLogger } from '../log'
+import { SystemInfo, SystemInfoSnapshot } from '../SystemInfo'
 
 export class PimostMain {
   socketmost: SocketMostUsb
@@ -52,7 +53,11 @@ export class PimostMain {
   piMostFirmware: PiMostFirmwareBackend
   headUnitMode: boolean
   sourceCycleQueue: Promise<void> = Promise.resolve()
-  constructor(socket: Socket) {
+  lastStandardButton: { action: 'home' | 'power'; timestamp: number } | null = null
+  private systemStatus: SystemInfoSnapshot | null = null
+  private mostTime: { hours: number; minutes: number } | null = null
+  private lastClockSync = 0
+  constructor(socket: Socket, systemInfo?: SystemInfo) {
     this.socket = socket
     this.headUnitMode = !Boolean(
       (socket.config as ExtraConfig & { diagnosticMode?: boolean }).diagnosticMode
@@ -108,6 +113,17 @@ export class PimostMain {
       this.subscriptionManager,
       this.networkMaster
     )
+
+    systemInfo?.on('status', (status: SystemInfoSnapshot) => {
+      this.systemStatus = status
+      this.synchroniseMostClock()
+    })
+    this.canGateway.on('clockStatus', (time: { hours: number; minutes: number }) => {
+      this.mostTime = time
+      this.synchroniseMostClock()
+    })
+    this.networkMaster.on('ClimateAvailable', () => this.climate.subscribe())
+    this.networkMaster.on('AmplifierAvailable', () => this.amplifier.subscribe())
 
     this.socket.on('newConnection', () => {
       this.socket.sendStatusUpdate('AmFmTuner', this.amFmTuner.status)
@@ -165,38 +181,7 @@ export class PimostMain {
     this.socket.on('setSource', async (data) => {
       if (!this.headUnitMode) return
       console.log('SWITCHING - ' + data)
-      switch (data) {
-        case 'AudioDiskPlayer':
-          if (!(this.audioControl.currentSource instanceof AudioDiskPlayer)) {
-            this.audioControl.switchSource(this.audioDiskPlayer)
-            this.audioDiskPlayer.subscribe()
-          }
-          break
-        case 'AmFmTuner':
-          this.logger.info(typeof this.audioControl.currentSource)
-          if (!(this.audioControl.currentSource instanceof AmFmTuner)) {
-            await this.audioControl.switchSource(this.amFmTuner)
-            this.amFmTuner.subscribe()
-          } else {
-            this.logger.info('AMFmTuner not connected')
-          }
-          break
-        case 'DabTuner':
-          if (!(this.audioControl.currentSource instanceof DabTuner)) {
-            await this.audioControl.switchSource(this.dabTuner)
-            this.dabTuner.subscribe()
-          } else {
-            this.logger.info('DAB tuner is already the current source')
-          }
-          break
-        case 'carplay':
-          if (!(this.audioControl.currentSource instanceof Carplay)) {
-            this.audioControl.switchSource(this.carplay)
-          } else {
-            this.logger.info('CarPlay is already the current source')
-          }
-          break
-      }
+      await this.activateSource(data)
     })
 
     this.hmi.on('HMIShutdown', () => {
@@ -217,6 +202,19 @@ export class PimostMain {
           code?: number
         }) => {
           if (button.press === 'long') {
+            const recentButton = this.lastStandardButton
+            const isRecentPowerPress =
+              recentButton?.action === 'power' && Date.now() - recentButton.timestamp < 2000
+
+            // A held button reports progressive stages (0x03, then 0x04).
+            // Quit only on the final stage and only when it follows Power.
+            if (isRecentPowerPress && button.code === 0x04) {
+              this.logger.info('HMI power button long pressed; closing application')
+              this.lastStandardButton = null
+              this.socket.emit('quitApplication')
+              return
+            }
+
             this.logger.info(
               `${source.constructor.name} long-press handler reserved` +
                 (button.code === undefined ? '' : ` (0x${button.code.toString(16)})`)
@@ -247,6 +245,19 @@ export class PimostMain {
 
     this.hmi.on('HMIActive', () => {
       setTimeout(() => this.audioControl.subscribe(), 500)
+      setTimeout(() => {
+        const lastSource = this.socket.config.lastSource
+        if (lastSource && !this.audioControl.currentSource) {
+          this.logger.info(`restoring last source ${lastSource}`)
+          this.sourceCycleQueue = this.sourceCycleQueue
+            .then(() => this.activateSource(lastSource))
+            .catch((error) => {
+              this.logger.error(
+                `Last source restore failed: ${error instanceof Error ? error.message : String(error)}`
+              )
+            })
+        }
+      }, 700)
     })
 
     this.socketmost.on(Os8104Events.SocketMostMessageRxEvent, (message) => {
@@ -362,9 +373,59 @@ export class PimostMain {
 
   handleStandardButton(action: 'home' | 'power'): void {
     if (!this.headUnitMode) return
+    this.lastStandardButton = { action, timestamp: Date.now() }
     this.socket.sendStatusUpdate('HMICommand', {
       type: action === 'home' ? 'homeToggle' : 'powerToggle'
     })
+  }
+
+  private async activateSource(source: unknown): Promise<void> {
+    const sourceName = source === 'Carplay' ? 'carplay' : source
+    let device: AudioDiskPlayer | AmFmTuner | DabTuner | Carplay | null = null
+
+    if (sourceName === 'AudioDiskPlayer') device = this.audioDiskPlayer
+    else if (sourceName === 'AmFmTuner') device = this.amFmTuner
+    else if (sourceName === 'DabTuner') device = this.dabTuner
+    else if (sourceName === 'carplay') device = this.carplay
+
+    if (!device) {
+      this.logger.warn(`Ignoring unknown source ${String(source)}`)
+      return
+    }
+
+    if (this.audioControl.currentSource !== device) {
+      await this.audioControl.switchSource(device)
+      if (!(device instanceof Carplay)) device.subscribe()
+    }
+
+  }
+
+  private synchroniseMostClock(): void {
+    if (this.socket.config.autoTimeSync === false) return
+    if (!this.systemStatus?.internetConnected || !this.mostTime) return
+
+    const now = new Date()
+    const systemMinutes = now.getHours() * 60 + now.getMinutes()
+    const mostMinutes = this.mostTime.hours * 60 + this.mostTime.minutes
+    const directDifference = Math.abs(systemMinutes - mostMinutes)
+    const difference = Math.min(directDifference, 24 * 60 - directDifference)
+    const desired24Hour = this.systemStatus.uses24HourClock
+    const formatDiffers =
+      (this.canGateway.status as Record<string, unknown>).uses24HourClock !== desired24Hour
+
+    if (difference <= 1 && !formatDiffers) return
+    if (Date.now() - this.lastClockSync < 60_000) return
+
+    this.lastClockSync = Date.now()
+    this.logger.info(
+      `synchronising MOST clock ${this.mostTime.hours.toString().padStart(2, '0')}:${this.mostTime.minutes
+        .toString()
+        .padStart(2, '0')} -> ${now.getHours().toString().padStart(2, '0')}:${now
+        .getMinutes()
+        .toString()
+        .padStart(2, '0')} (${desired24Hour ? '24-hour' : '12-hour'}, ${this.systemStatus.locale})`
+    )
+    this.canGateway.setClockFromSystem(now, desired24Hour, difference > 1)
   }
 
   async cycleSource(): Promise<void> {

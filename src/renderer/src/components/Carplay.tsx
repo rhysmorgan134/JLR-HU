@@ -8,6 +8,8 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { ExtraConfig } from '../../../main/Globals'
 import { useCarplayStore } from '../store/store'
 import { InitEvent } from './worker/render/RenderEvents'
+import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
+import { Box, Button, IconButton, Typography } from '@mui/material'
 
 const width = window.innerWidth
 const height = window.innerHeight
@@ -34,6 +36,7 @@ function Carplay({
 }: CarplayProps) {
   const [isPlugged, setPlugged] = useState(false)
   const [deviceFound, setDeviceFound] = useState(false)
+  const [connectionTimedOut, setConnectionTimedOut] = useState(false)
   const navigate = useNavigate()
   const { pathname } = useLocation()
 
@@ -106,6 +109,7 @@ function Carplay({
       const { type } = ev.data
       switch (type) {
         case 'plugged':
+          setConnectionTimedOut(false)
           setPlugged(true)
           setStorePlugged(true)
           if (settings.piMost && settings?.most?.stream) {
@@ -117,6 +121,7 @@ function Carplay({
           setPlugged(false)
           setStorePlugged(false)
           clearMedia()
+          setConnectionTimedOut(false)
           break
         case 'requestBuffer':
           clearRetryTimeout()
@@ -239,9 +244,24 @@ function Carplay({
     checkDevice()
   }, [carplayWorker, checkDevice])
 
+  useEffect(() => {
+    if (!deviceFound || isPlugged) {
+      setConnectionTimedOut(false)
+      return
+    }
+    const timeout = setTimeout(() => setConnectionTimedOut(true), 10000)
+    return () => clearTimeout(timeout)
+  }, [deviceFound, isPlugged])
+
   const onClick = useCallback(() => {
     checkDevice(true)
   }, [checkDevice])
+
+  const retryConnection = useCallback(() => {
+    setConnectionTimedOut(false)
+    carplayWorker.postMessage({ type: 'stop' })
+    setTimeout(() => checkDevice(), 250)
+  }, [carplayWorker, checkDevice])
 
   const sendTouchEvent = useCarplayTouch(carplayWorker, width, height)
 
@@ -261,20 +281,20 @@ function Carplay({
             height: '100%',
             display: 'flex',
             justifyContent: 'center',
-            alignItems: 'center'
+            alignItems: 'center',
+            background: 'radial-gradient(circle at center, #172433 0%, #070c13 72%)',
+            zIndex: 4
           }}
         >
+          <IconButton aria-label="Return home" onClick={() => navigate('/home')} sx={{ position: 'absolute', top: 16, left: 16, color: 'white', background: 'rgba(255,255,255,.08)' }}><ArrowBackRoundedIcon /></IconButton>
           {deviceFound === false && (
-            <button rel="noopener noreferrer" onClick={onClick}>Plug-In Carplay Dongle and Press</button>
+            <Box sx={{ textAlign: 'center' }}><Typography sx={{ mb: 2, color: 'text.secondary' }}>CarPlay dongle not detected</Typography><Button variant="contained" onClick={onClick}>Connect CarPlay</Button></Box>
           )}
-          {deviceFound && (
-            <RotatingLines
-              strokeColor="grey"
-              strokeWidth="5"
-              animationDuration="0.75"
-              width="96"
-              visible={true}
-            />
+          {deviceFound && !connectionTimedOut && (
+            <Box sx={{ textAlign: 'center' }}><RotatingLines strokeColor="#67d8ff" strokeWidth="4" animationDuration="0.75" width="72" visible /><Typography sx={{ mt: 2, color: 'text.secondary' }}>Connecting to CarPlay…</Typography><Button sx={{ mt: 1 }} onClick={() => navigate('/home')}>Return home</Button></Box>
+          )}
+          {deviceFound && connectionTimedOut && (
+            <Box sx={{ textAlign: 'center', maxWidth: 330 }}><Typography sx={{ fontSize: 22, fontWeight: 600 }}>CarPlay is taking longer than expected</Typography><Typography sx={{ mt: 1, color: 'text.secondary' }}>The dongle is connected, but the phone has not rejoined.</Typography><Box sx={{ mt: 2, display: 'flex', justifyContent: 'center', gap: 1 }}><Button variant="contained" onClick={retryConnection}>Try again</Button><Button variant="outlined" onClick={() => navigate('/home')}>Home</Button></Box></Box>
           )}
         </div>
       )}
