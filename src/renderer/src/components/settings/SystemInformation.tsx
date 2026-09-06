@@ -18,7 +18,9 @@ const uptime = (seconds: number) => {
 export default function SystemInformation() {
   const navigate = useNavigate()
   const info = useSystemInfoStore()
-  useEffect(() => info.refresh(), [])
+  useEffect(() => {
+    info.refresh()
+  }, [])
 
   const cards = [
     { icon: ComputerRoundedIcon, title: 'Operating system', rows: [['Platform', `${info.platformName} ${info.release}`], ['Architecture', info.architecture], ['Host name', info.hostname], ['App version', info.appVersion]] },

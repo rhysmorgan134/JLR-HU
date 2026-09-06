@@ -5,47 +5,38 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import { useCarplayStore, useParkingAssistStore } from '../store/store'
 
 const frontPaths = [
-  ['M 82 104 Q 45 99 20 72', 'M 78 91 Q 39 83 14 49', 'M 73 78 Q 35 65 12 25'],
-  ['M 84 96 Q 91 62 117 48', 'M 81 82 Q 91 43 117 28', 'M 78 68 Q 88 25 117 9'],
-  ['M 123 48 Q 149 62 156 96', 'M 123 28 Q 149 43 159 82', 'M 123 9 Q 152 25 162 68'],
-  ['M 158 104 Q 195 99 220 72', 'M 162 91 Q 201 83 226 49', 'M 167 78 Q 205 65 228 25']
+  ['M 108 101 L 91 98 Q 82 93 76 85 L 99 73 Q 104 82 112 86 Z', 'M 91 98 Q 82 93 76 85 L 58 68 Q 73 55 91 48 L 99 73 Q 86 78 76 85 Z', 'M 58 68 Q 73 55 91 48 L 83 23 Q 55 33 33 53 Z'],
+  ['M 112 86 Q 128 77 150 76 L 150 51 Q 121 52 99 73 Z', 'M 99 73 Q 121 52 150 51 L 150 27 Q 113 28 91 48 Z', 'M 91 48 Q 113 28 150 27 L 150 7 Q 108 7 83 23 Z'],
+  ['M 150 76 Q 172 77 188 86 L 201 73 Q 179 52 150 51 Z', 'M 150 51 Q 179 52 201 73 L 209 48 Q 187 28 150 27 Z', 'M 150 27 Q 187 28 209 48 L 217 23 Q 192 7 150 7 Z'],
+  ['M 188 86 Q 196 82 201 73 L 224 85 Q 218 93 209 98 L 192 101 Z', 'M 201 73 Q 214 78 224 85 L 242 68 Q 227 55 209 48 Z', 'M 209 48 Q 227 55 242 68 L 267 53 Q 245 33 217 23 Z']
 ]
 const rearPaths = [
-  ['M 82 256 Q 45 261 20 288', 'M 78 269 Q 39 277 14 311', 'M 73 282 Q 35 295 12 335'],
-  ['M 84 264 Q 91 298 117 312', 'M 81 278 Q 91 317 117 332', 'M 78 292 Q 88 335 117 351'],
-  ['M 123 312 Q 149 298 156 264', 'M 123 332 Q 149 317 159 278', 'M 123 351 Q 152 335 162 292'],
-  ['M 158 256 Q 195 261 220 288', 'M 162 269 Q 201 277 226 311', 'M 167 282 Q 205 295 228 335']
+  ['M 108 339 L 91 342 Q 82 347 76 355 L 99 367 Q 104 358 112 354 Z', 'M 91 342 Q 82 347 76 355 L 58 372 Q 73 385 91 392 L 99 367 Q 86 362 76 355 Z', 'M 58 372 Q 73 385 91 392 L 83 417 Q 55 407 33 387 Z'],
+  ['M 112 354 Q 128 363 150 364 L 150 389 Q 121 388 99 367 Z', 'M 99 367 Q 121 388 150 389 L 150 413 Q 113 412 91 392 Z', 'M 91 392 Q 113 412 150 413 L 150 433 Q 108 433 83 417 Z'],
+  ['M 150 364 Q 172 363 188 354 L 201 367 Q 179 388 150 389 Z', 'M 150 389 Q 179 388 201 367 L 209 392 Q 187 412 150 413 Z', 'M 150 413 Q 187 412 209 392 L 217 417 Q 192 433 150 433 Z'],
+  ['M 188 354 Q 196 358 201 367 L 224 355 Q 218 347 209 342 L 192 339 Z', 'M 201 367 Q 214 362 224 355 L 242 372 Q 227 385 209 392 Z', 'M 209 392 Q 227 385 242 372 L 267 387 Q 245 407 217 417 Z']
 ]
 
 function RadarSensor({ value, paths }: { value: number; paths: string[] }) {
   const levels = [value >= 24, value >= 14, value > 0]
   const colours = ['#ff4d55', '#ffb547', '#63e2a7']
-  return <>{paths.map((path, index) => <path key={path} d={path} fill="none" stroke={levels[index] ? colours[index] : 'rgba(190,216,235,.12)'} strokeWidth={levels[index] ? 7 : 3} strokeLinecap="round" opacity={levels[index] ? .98 : .7} filter={levels[index] ? `url(#glow-${index})` : undefined} />)}</>
+  return <>{paths.map((path, index) => <path key={path} d={path} fill={levels[index] ? colours[index] : 'rgba(91,119,145,.11)'} stroke={levels[index] ? colours[index] : 'rgba(175,205,230,.2)'} strokeWidth="1.25" strokeLinejoin="round" opacity={levels[index] ? .82 : .82} filter={levels[index] ? `url(#glow-${index})` : undefined} />)}</>
 }
 
 function ParkingRadar({ front, rear }: { front: number[]; rear: number[] }) {
   return <Box sx={{ width: '100%', height: '100%', minHeight: 245, display: 'grid', placeItems: 'center' }}>
-    <svg viewBox="0 0 240 360" width="100%" height="100%" aria-label="Parking sensor radar">
+    <svg viewBox="0 0 300 440" width="100%" height="100%" aria-label="Parking sensor radar">
       <defs>
         <filter id="glow-0" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="3" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
         <filter id="glow-1" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="4" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
         <filter id="glow-2" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="5" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
-        <linearGradient id="car-body" x1="0" x2="1"><stop stopColor="#172330" /><stop offset=".48" stopColor="#4a6177" /><stop offset="1" stopColor="#172330" /></linearGradient>
+        <filter id="car-shadow" x="-50%" y="-30%" width="200%" height="160%"><feDropShadow dx="0" dy="7" stdDeviation="8" floodColor="#000" floodOpacity=".72" /></filter>
       </defs>
-      <text x="120" y="15" textAnchor="middle" fill="rgba(189,221,255,.45)" fontSize="9" letterSpacing="2">FRONT</text>
+      <text x="150" y="16" textAnchor="middle" fill="rgba(189,221,255,.45)" fontSize="9" letterSpacing="2">FRONT</text>
       {front.map((value, index) => <RadarSensor key={`front-${index}`} value={value} paths={frontPaths[index]} />)}
       {rear.map((value, index) => <RadarSensor key={`rear-${index}`} value={value} paths={rearPaths[index]} />)}
-      <g>
-        <path d="M87 99 Q91 78 120 72 Q149 78 153 99 L161 126 Q166 156 164 210 L159 253 Q151 281 120 287 Q89 281 81 253 L76 210 Q74 156 79 126 Z" fill="url(#car-body)" stroke="rgba(214,232,248,.62)" strokeWidth="2" />
-        <path d="M91 111 Q120 91 149 111 L145 157 Q120 164 95 157 Z" fill="rgba(3,8,14,.9)" stroke="rgba(189,221,255,.24)" />
-        <path d="M95 202 Q120 196 145 202 L150 249 Q120 267 90 249 Z" fill="rgba(3,8,14,.84)" stroke="rgba(189,221,255,.2)" />
-        <path d="M94 166 Q120 171 146 166 L145 194 Q120 189 95 194 Z" fill="rgba(103,216,255,.07)" stroke="rgba(189,221,255,.12)" />
-        <path d="M79 129 L69 138 L68 174 L76 180 M161 129 L171 138 L172 174 L164 180 M78 218 L69 224 L70 254 L82 260 M162 218 L171 224 L170 254 L158 260" fill="none" stroke="rgba(196,219,239,.48)" strokeWidth="5" strokeLinecap="round" />
-        <path d="M99 87 Q120 79 141 87" fill="none" stroke="#67d8ff" strokeWidth="2.5" opacity=".9" />
-        <path d="M101 274 Q120 280 139 274" fill="none" stroke="#d73948" strokeWidth="2" opacity=".75" />
-        <text x="120" y="184" textAnchor="middle" fill="rgba(225,238,249,.68)" fontSize="9" fontWeight="700" letterSpacing="2">XF</text>
-      </g>
-      <text x="120" y="350" textAnchor="middle" fill="rgba(189,221,255,.45)" fontSize="9" letterSpacing="2">REAR</text>
+      <image href="/svgs/jaguar-xf-top.svg" x="55" y="80" width="190" height="280" preserveAspectRatio="xMidYMid meet" filter="url(#car-shadow)" />
+      <text x="150" y="435" textAnchor="middle" fill="rgba(189,221,255,.45)" fontSize="9" letterSpacing="2">REAR</text>
     </svg>
   </Box>
 }
