@@ -1,8 +1,8 @@
 import { Box, Typography } from '@mui/material'
 import RadioRoundedIcon from '@mui/icons-material/RadioRounded'
 import AlbumRoundedIcon from '@mui/icons-material/AlbumRounded'
-import UsbRoundedIcon from '@mui/icons-material/UsbRounded'
 import PhoneIphoneRoundedIcon from '@mui/icons-material/PhoneIphoneRounded'
+import GraphicEqRoundedIcon from '@mui/icons-material/GraphicEqRounded'
 import { useAudioControlStore, useCarplayStore } from '../store/store'
 import { useNavigate } from 'react-router-dom'
 
@@ -28,20 +28,20 @@ export default function SourceSelection({ onSelect = () => {} }: { onSelect?: ()
       active: true
     },
     {
+      name: 'DAB Radio',
+      detail: 'Digital radio',
+      icon: <GraphicEqRoundedIcon />,
+      source: 'DabTuner',
+      route: '/DabTuner',
+      active: true
+    },
+    {
       name: 'CarPlay',
       detail: carplayPlugged ? 'Phone connected' : 'Not connected',
       icon: <PhoneIphoneRoundedIcon />,
       source: 'carplay',
       route: '/carplay',
       active: carplayPlugged
-    },
-    {
-      name: 'USB Audio',
-      detail: 'Not connected',
-      icon: <UsbRoundedIcon />,
-      source: '',
-      route: undefined,
-      active: false
     }
   ]
   return (

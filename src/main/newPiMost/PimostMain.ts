@@ -54,12 +54,18 @@ export class PimostMain {
   sourceCycleQueue: Promise<void> = Promise.resolve()
   constructor(socket: Socket) {
     this.socket = socket
-    this.headUnitMode = !Boolean((socket.config as ExtraConfig & { diagnosticMode?: boolean }).diagnosticMode)
+    this.headUnitMode = !Boolean(
+      (socket.config as ExtraConfig & { diagnosticMode?: boolean }).diagnosticMode
+    )
     this.logger = getLogger('PimostMain')
     this.logger.debug('pimost starting')
     this.socketmost = new SocketMostUsb()
     this.subscriptionManager = new SubscriptionManager(this.socketmost)
-    this.mostDiagnostics = new MostDiagnosticsBackend(this.socketmost, socket, this.subscriptionManager)
+    this.mostDiagnostics = new MostDiagnosticsBackend(
+      this.socketmost,
+      socket,
+      this.subscriptionManager
+    )
     this.piMostFirmware = new PiMostFirmwareBackend(this.socketmost, socket)
     this.networkMaster = new NetworkMaster(
       [],
@@ -74,7 +80,7 @@ export class PimostMain {
     this.audioDiskPlayer = new AudioDiskPlayer(
       [],
       this.socketmost,
-      true,
+      false,
       socket,
       this.subscriptionManager
     )
@@ -82,8 +88,8 @@ export class PimostMain {
     this.telephone = new Telephone([], this.socketmost, false, socket, this.subscriptionManager)
     this.tvTuner = new TvTuner([], this.socketmost, false, socket, this.subscriptionManager)
     this.satellite = new Satellite([], this.socketmost, false, socket, this.subscriptionManager)
-    this.dabTuner = new DabTuner([], this.socketmost, true, socket, this.subscriptionManager)
-    this.amFmTuner = new AmFmTuner([], this.socketmost, true, socket, this.subscriptionManager)
+    this.dabTuner = new DabTuner([], this.socketmost, false, socket, this.subscriptionManager)
+    this.amFmTuner = new AmFmTuner([], this.socketmost, false, socket, this.subscriptionManager)
     this.diagnostics = new Diagnostics([], this.socketmost, false, socket, this.subscriptionManager)
     this.climate = new Climate([], this.socketmost, true, socket, this.subscriptionManager)
     this.audioControl = new AudioControl(
@@ -105,6 +111,7 @@ export class PimostMain {
 
     this.socket.on('newConnection', () => {
       this.socket.sendStatusUpdate('AmFmTuner', this.amFmTuner.status)
+      this.socket.sendStatusUpdate('DabTuner', this.dabTuner.status)
       this.socket.sendStatusUpdate('AudioDiskPlayer', this.audioDiskPlayer.status)
       this.socket.sendStatusUpdate('AudioControl', this.audioControl.status)
       this.socket.sendStatusUpdate('HMI', this.hmi.status)
@@ -155,21 +162,31 @@ export class PimostMain {
       }
     })
 
-    this.socket.on('setSource', (data) => {
+    this.socket.on('setSource', async (data) => {
       if (!this.headUnitMode) return
       console.log('SWITCHING - ' + data)
       switch (data) {
         case 'AudioDiskPlayer':
           if (!(this.audioControl.currentSource instanceof AudioDiskPlayer)) {
             this.audioControl.switchSource(this.audioDiskPlayer)
+            this.audioDiskPlayer.subscribe()
           }
           break
         case 'AmFmTuner':
           this.logger.info(typeof this.audioControl.currentSource)
           if (!(this.audioControl.currentSource instanceof AmFmTuner)) {
-            this.audioControl.switchSource(this.amFmTuner)
+            await this.audioControl.switchSource(this.amFmTuner)
+            this.amFmTuner.subscribe()
           } else {
             this.logger.info('AMFmTuner not connected')
+          }
+          break
+        case 'DabTuner':
+          if (!(this.audioControl.currentSource instanceof DabTuner)) {
+            await this.audioControl.switchSource(this.dabTuner)
+            this.dabTuner.subscribe()
+          } else {
+            this.logger.info('DAB tuner is already the current source')
           }
           break
         case 'carplay':
@@ -191,7 +208,7 @@ export class PimostMain {
     this.hmi.on('homeButton', () => this.handleStandardButton('home'))
     this.hmi.on('powerButton', () => this.handleStandardButton('power'))
 
-    for (const source of [this.amFmTuner, this.audioDiskPlayer, this.carplay]) {
+    for (const source of [this.amFmTuner, this.dabTuner, this.audioDiskPlayer, this.carplay]) {
       source.on(
         'genericButton',
         (button: {
@@ -218,15 +235,19 @@ export class PimostMain {
     this.hmi.on('cycleSource', () => {
       this.sourceCycleQueue = this.sourceCycleQueue
         .then(() => this.cycleSource())
-        .catch((error) => this.logger.error(`Source cycle failed: ${error instanceof Error ? error.message : String(error)}`))
+        .catch((error) =>
+          this.logger.error(
+            `Source cycle failed: ${error instanceof Error ? error.message : String(error)}`
+          )
+        )
     })
     this.hmi.on('musicSettings', () => {
       this.socket.sendStatusUpdate('HMICommand', { type: 'navigate', path: '/settings/audio' })
     })
 
-    // this.hmi.on('HMIActive', () => {
-    //   setTimeout(() => this.audioControl.startVolumeUpdates(), 500)
-    // })
+    this.hmi.on('HMIActive', () => {
+      setTimeout(() => this.audioControl.subscribe(), 500)
+    })
 
     this.socketmost.on(Os8104Events.SocketMostMessageRxEvent, (message) => {
       this.mostDiagnostics.observeRx(message)
@@ -332,7 +353,10 @@ export class PimostMain {
     } else if (this.audioControl.currentSource instanceof AmFmTuner) {
       forward ? this.amFmTuner.seekForward() : this.amFmTuner.seekBack()
     } else if (this.audioControl.currentSource instanceof Carplay) {
-      this.socket.sendStatusUpdate('HMICommand', { type: 'carplay', command: forward ? 'next' : 'prev' })
+      this.socket.sendStatusUpdate('HMICommand', {
+        type: 'carplay',
+        command: forward ? 'next' : 'prev'
+      })
     }
   }
 
@@ -345,8 +369,10 @@ export class PimostMain {
 
   async cycleSource(): Promise<void> {
     if (!this.headUnitMode) return
-    const sources = [this.amFmTuner, this.audioDiskPlayer, this.carplay]
-    const current = sources.indexOf(this.audioControl.currentSource as AmFmTuner | AudioDiskPlayer | Carplay)
+    const sources = [this.amFmTuner, this.dabTuner, this.audioDiskPlayer, this.carplay]
+    const current = sources.indexOf(
+      this.audioControl.currentSource as AmFmTuner | DabTuner | AudioDiskPlayer | Carplay
+    )
     await this.audioControl.switchSource(sources[(current + 1) % sources.length])
   }
 

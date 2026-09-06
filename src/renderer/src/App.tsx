@@ -6,6 +6,7 @@ import ScreenSaver from './components/mediaComponents/ScreenSaver'
 import Header from './components/dataDisplays/Header'
 import Base from './Base'
 import AmFmTunerPage from './components/mediaComponents/AmFm/AmFmTunerPage'
+import DabTunerPage from './components/mediaComponents/DAB/DabTunerPage'
 import VolumeModal from './components/VolumeModal'
 import Carplay from './components/Carplay'
 import { useAudioControlStore, useCarplayStore, useHMICommandStore } from './store/store'
@@ -41,6 +42,8 @@ function AppRoutes() {
         navigate('/AudioDiskPlayer')
       } else if (currentSource === 'AmFmTuner') {
         navigate('/AmFmTuner')
+      } else if (currentSource === 'DabTuner') {
+        navigate('/DabTuner')
       } else if (currentSource === 'Carplay' || currentSource === 'carplay') {
         navigate('/carplay')
       }
@@ -58,6 +61,7 @@ function AppRoutes() {
         <Route path="/home" element={<Base />} />
         <Route path="/AudioDiskPlayer" element={<AudioDiskPlayerPage />} />
         <Route path="/AmFmTuner" element={<AmFmTunerPage />} />
+        <Route path="/DabTuner" element={<DabTunerPage />} />
         <Route path="/climate" element={<Climate />} />
         <Route path="/carplay" element={null} />
         <Route path="/settings" element={<SettingsHub />} />

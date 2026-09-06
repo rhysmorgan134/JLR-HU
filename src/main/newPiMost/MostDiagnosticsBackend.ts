@@ -29,6 +29,7 @@ export class MostDiagnosticsBackend {
   private functionData: number[] = []
   private functionSequence = -1
   private functionDevice: DiagnosticDevice | null = null
+  private functionMapClosesAtLastBoundary = false
   private log: WriteStream | null = null
   private logPath: string | null = null
   private logger = getLogger('MostDiagnosticsBackend')
@@ -217,7 +218,10 @@ export class MostDiagnosticsBackend {
     }
     const functions: number[] = []
     let enabled = true
-    for (let id = 0; id < 0x1000; id += 1) {
+    const functionLimit = this.functionMapClosesAtLastBoundary
+      ? boundaries[boundaries.length - 1] + 1
+      : 0x1000
+    for (let id = 0; id < functionLimit; id += 1) {
       if (boundaries.includes(id)) enabled = !enabled
       if (enabled) functions.push(id)
     }
@@ -226,6 +230,7 @@ export class MostDiagnosticsBackend {
   }
 
   private decodeFunctionBoundaries(data: number[]): number[] {
+    this.functionMapClosesAtLastBoundary = false
     // Some Jaguar nodes return each 12-bit boundary as a normal MOST unsigned
     // word (00 00, 00 03, 0D 00...), while others use two packed 12-bit values
     // per three bytes. An unpacked stream has a clear zero upper nibble on every
@@ -247,6 +252,15 @@ export class MostDiagnosticsBackend {
           boundaries.push((((data[index + 1] & 0x0f) << 8) | data[index + 2]) & 0xfff)
         }
       }
+    }
+
+    // Packed FktIDs lists are circular RLE maps. Some nodes, including the
+    // Jaguar DAB tuner, repeat the first boundary at the end to close the map.
+    // That closing boundary is not another transition in the linear 0x000-
+    // 0xFFF range and must be removed before checking the ordering.
+    if (boundaries.length > 1 && boundaries[boundaries.length - 1] === boundaries[0]) {
+      boundaries.pop()
+      this.functionMapClosesAtLastBoundary = true
     }
 
     // RLE transition boundaries must be ordered. Treat malformed data as an

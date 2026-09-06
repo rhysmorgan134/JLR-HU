@@ -11,6 +11,7 @@ import LocalParkingRoundedIcon from '@mui/icons-material/LocalParkingRounded'
 import AudioDiskOverview from './components/mediaComponents/AudioDiskPlayer/AudioDiskOverview'
 import AmFmOverview from './components/mediaComponents/AmFm/AmFmOverview'
 import CarplayOverview from './components/mediaComponents/CarplayOverview'
+import DabOverview from './components/mediaComponents/DAB/DabOverview'
 import SourceSelection from './components/SourceSelection'
 import { useAudioControlStore, useCanGatewayStore, useClimateStore, useParkingAssistStore, usePersistantStore } from './store/store'
 
@@ -30,6 +31,7 @@ function Base() {
   const openCurrentSource = () => {
     if (currentSource === 'AudioDiskPlayer') navigate('/AudioDiskPlayer')
     if (currentSource === 'AmFmTuner') navigate('/AmFmTuner')
+    if (currentSource === 'DabTuner') navigate('/DabTuner')
     if (currentSource === 'Carplay') navigate('/carplay')
   }
 
@@ -37,6 +39,8 @@ function Base() {
     ? <AudioDiskOverview />
     : currentSource === 'AmFmTuner'
       ? <AmFmOverview />
+      : currentSource === 'DabTuner'
+        ? <DabOverview />
       : currentSource === 'Carplay'
         ? <CarplayOverview />
         : <Box sx={{ height: '100%', display: 'grid', placeItems: 'center', color: 'text.secondary' }}><Typography>Select an audio source</Typography></Box>

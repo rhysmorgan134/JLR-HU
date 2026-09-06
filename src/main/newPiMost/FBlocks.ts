@@ -119,7 +119,12 @@ const SDARSSshadow: Device = {
   instanceID: 0xa1
 }
 const SDARSshadowFunctions = [0x0, 0xc80, 0xc81, 0xe00]
-const DABTuner: Device = null
+const DABTuner: Device = {
+  addressHigh: 0x01,
+  addressLow: 0x85,
+  fBlockID: 0x43,
+  instanceID: 0x01
+}
 const DABTunerShadow: Device = {
   addressHigh: 0x01,
   addressLow: 0x6e,
@@ -379,7 +384,7 @@ export class CanGateway extends FBlock {
     if (message.data.length < 1) return
 
     this.updateStatus({
-      alarmSensors: message.data.readUInt8(0) === 0
+      alarmSensors: message.data.readUInt8(0) !== 0
     })
   }
 
@@ -395,7 +400,7 @@ export class CanGateway extends FBlock {
     if (message.data.length < 2) return
 
     this.updateStatus({
-      externalTemp: message.data.readUInt16BE(0) / 100
+      externalTemp: message.data.readUInt8(1) / 2 - 25
     })
   }
 
@@ -450,6 +455,22 @@ export class CanGateway extends FBlock {
 
     this.updateStatus({
       driveAwayLocking: message.data.readUInt8(0)
+    })
+  }
+
+  0xe29(message: MostRxMessage): void {
+    if (message.data.length < 1) return
+
+    this.updateStatus({
+      passiveArming: message.data.readUInt8(0) !== 0
+    })
+  }
+
+  0xe2a(message: MostRxMessage): void {
+    if (message.data.length < 1) return
+
+    this.updateStatus({
+      autoLock: message.data.readUInt8(0) !== 0
     })
   }
 
@@ -511,7 +532,7 @@ export class CanGateway extends FBlock {
   }
 
   setAlarmSensors({ enabled }: { enabled: boolean }): void {
-    this.setProperty(0xe09, [enabled ? 0 : 1])
+    this.setProperty(0xe09, [enabled ? 1 : 0])
   }
 
   setGlobalWindows({ open, close }: { open: boolean; close: boolean }): void {
@@ -524,7 +545,9 @@ export class CanGateway extends FBlock {
 
   setTripMode({ mode }: { mode: number }): void {
     if (!Number.isInteger(mode) || mode < 0x01 || mode > 0x03) return
-    this.logger.info(`setting trip mode ${mode}: F5/E15 SET 00 ${mode.toString(16).padStart(2, '0')}`)
+    this.logger.info(
+      `setting trip mode ${mode}: F5/E15 SET 00 ${mode.toString(16).padStart(2, '0')}`
+    )
     this.setProperty(0xe15, [0x00, mode])
     this.updateStatus({ tripMode: mode })
   }
@@ -1215,6 +1238,8 @@ export class Satellite extends FBlock {
 
 export class DabTuner extends FBlock {
   status: Object
+  private arrayWindowsReady: boolean
+  private arrayWindowsPending: Promise<boolean> | null
   constructor(
     subscriptions: number[],
     socketmost: SocketMostUsb,
@@ -1231,7 +1256,18 @@ export class DabTuner extends FBlock {
       socket,
       subscriptionManager
     )
-    this.status = {}
+    this.status = {
+      scanning: false,
+      scanProgress: null,
+      serviceWindowOffset: 0,
+      ensembleWindowOffset: 0,
+      ensembles: {},
+      services: {},
+      presets: {}
+    }
+    this.arrayWindowsReady = false
+    this.arrayWindowsPending = null
+    this.room = 'dabTuner'
   }
 
   allocate(message: MostRxMessage): void {}
@@ -1245,6 +1281,484 @@ export class DabTuner extends FBlock {
   startSource(): void {}
 
   stopSource(): void {}
+
+  0x090(message: MostRxMessage): void {
+    const data = message.data.subarray(0, message.telLen || message.data.length)
+    const senderHandle = data.length >= 2 ? data.readUInt16BE(0) : null
+    const arrayWindowFktID = data.length >= 4 ? data.readUInt16BE(2) : null
+    const currentWindows =
+      (this.status as { arrayWindows?: Record<string, number | null> }).arrayWindows || {}
+
+    this.updateStatus({
+      listOperation: this.rawStatus(message),
+      ...(message.opType === OpType.resultAck && senderHandle !== null
+        ? {
+            arrayWindows: {
+              ...currentWindows,
+              [senderHandle === 1 ? 'ensembles' : senderHandle === 2 ? 'services' : senderHandle]:
+                arrayWindowFktID
+            }
+          }
+        : {})
+    })
+  }
+
+  0x092(message: MostRxMessage): void {
+    if (message.opType === OpType.errorAck || message.opType === OpType.error) {
+      this.logger.warn(`DAB array movement rejected: ${this.convertMessageToHex(message)}`)
+      this.updateStatus({
+        arrayMovementError: Array.from(message.data.subarray(0, message.telLen))
+      })
+    }
+  }
+
+  0x200(message: MostRxMessage): void {
+    if (message.opType === OpType.processing && message.data.length > 0) {
+      this.updateStatus({
+        scanning: true,
+        scanProgress: Math.min(message.data.readUInt8(0), 100),
+        scanError: null
+      })
+      return
+    }
+
+    if (message.opType === OpType.error) {
+      this.updateStatus({
+        scanning: false,
+        scanError: Array.from(message.data)
+      })
+      return
+    }
+
+    if (message.opType === OpType.result || message.opType === OpType.resultAck) {
+      this.updateStatus({ scanning: false, scanProgress: 100, scanError: null })
+    }
+  }
+
+  0x203(message: MostRxMessage): void {
+    if (message.opType === OpType.processing) {
+      this.updateStatus({ serviceSelectionPending: true, serviceSelectionError: null })
+      return
+    }
+
+    if (message.opType === OpType.error || message.opType === OpType.errorAck) {
+      this.updateStatus({
+        serviceSelectionPending: false,
+        serviceSelectionError: Array.from(message.data.subarray(0, message.telLen))
+      })
+      return
+    }
+
+    this.updateStatus({
+      serviceSelectionPending: false,
+      serviceSelectionResult: this.rawStatus(message),
+      serviceSelectionError: null
+    })
+  }
+
+  0x211(message: MostRxMessage): void {
+    this.updateStatus({ currentAudioService: this.rawStatus(message) })
+  }
+
+  0x212(message: MostRxMessage): void {
+    this.updateStatus({ currentAudioComponent: this.rawStatus(message) })
+  }
+
+  0x213(message: MostRxMessage): void {
+    this.updateStatus({ tunerStatus: this.rawStatus(message) })
+  }
+
+  0x402(message: MostRxMessage): void {
+    this.updateStatus({ announcementStatus: this.rawStatus(message) })
+  }
+
+  0x400(message: MostRxMessage): void {
+    this.updateStatus({ announcementFilter: this.rawStatus(message) })
+  }
+
+  0x420(message: MostRxMessage): void {
+    this.updateStatus({
+      radioText: this.extractText(message.data),
+      radioTextData: Array.from(message.data)
+    })
+  }
+
+  0x430(message: MostRxMessage): void {
+    this.updateStatus({
+      frequencyTable: message.data.length > 0 ? message.data.readUInt8(0) : null,
+      frequencyTableData: Array.from(message.data)
+    })
+  }
+
+  0x501(message: MostRxMessage): void {
+    this.updateNamedRecord('ensembles', message, {
+      ensembleId: message.data.length >= 7 ? [message.data[5], message.data[6]] : undefined
+    })
+  }
+
+  0x511(message: MostRxMessage): void {
+    this.updateNamedRecord('services', message, {
+      ensembleId: message.data.length >= 7 ? [message.data[5], message.data[6]] : undefined,
+      serviceId:
+        message.data.length >= 11 ? [message.data[8], message.data[9], message.data[10]] : undefined
+    })
+  }
+
+  0x530(message: MostRxMessage): void {
+    this.updateStatus({ audioComponentWindow: this.rawStatus(message) })
+  }
+
+  0xc0f(message: MostRxMessage): void {
+    this.updateStatus({ serviceListState: this.rawStatus(message) })
+  }
+
+  0xc10(message: MostRxMessage): void {
+    this.updateStatus({ sourceMetadata: this.rawStatus(message) })
+  }
+
+  0xc20(message: MostRxMessage): void {
+    this.updateStatus({ serviceSelectionState: this.rawStatus(message) })
+  }
+
+  0xc30(message: MostRxMessage): void {
+    this.updateStatus({ dabSettings: this.rawStatus(message) })
+  }
+
+  0xd11(message: MostRxMessage): void {
+    this.updateStatus({ presetListState: this.rawStatus(message) })
+  }
+
+  0xd50(message: MostRxMessage): void {
+    const data = message.data
+    const bank = data.length > 0 ? data.readUInt8(0) : 0
+    const preset = data.length > 1 ? data.readUInt8(1) : 0
+    const current = (this.status as { presets?: Record<string, unknown> }).presets || {}
+    const key = `${bank}:${preset}`
+
+    this.updateStatus({
+      presets: {
+        ...current,
+        [key]: {
+          bank,
+          preset,
+          name: this.extractText(data),
+          data: Array.from(data)
+        }
+      }
+    })
+  }
+
+  0xe52(message: MostRxMessage): void {
+    this.updateStatus({ extendedStatus: this.rawStatus(message) })
+  }
+
+  selectPreset({ preset }: { preset: number }): void {
+    if (!Number.isInteger(preset) || preset < 1 || preset > 6) {
+      this.logger.warn(`invalid DAB preset: ${preset}`)
+      return
+    }
+    this.socketmost.sendControlMessage(this.physicalMessage(OpType.setGet, 0xd11, [0x01, preset]))
+    this.updateStatus({ selectedPreset: preset })
+  }
+
+  selectService({
+    serviceId,
+    ensembleId,
+    name
+  }: {
+    serviceId: number[]
+    ensembleId: number[]
+    name?: string
+  }): void {
+    if (!this.validBytes(serviceId, 3) || !this.validBytes(ensembleId, 2)) {
+      this.logger.warn('invalid DAB service or ensemble identifier')
+      return
+    }
+    this.socketmost.sendControlMessage(
+      this.physicalMessage(OpType.setGet, 0x203, [
+        0x00,
+        0x01,
+        0x06,
+        ...serviceId,
+        0x01,
+        ...ensembleId
+      ])
+    )
+    this.updateStatus({
+      selectedService: name || null,
+      selectedServiceId: serviceId,
+      selectedEnsembleId: ensembleId
+    })
+  }
+
+  async requestFullServiceList(): Promise<void> {
+    await this.ensureArrayWindows()
+    this.requestList(0x03, 0x00, 0x00)
+  }
+
+  async requestEnsembleServices({ ensembleId }: { ensembleId: number[] }): Promise<void> {
+    if (!this.validBytes(ensembleId, 2)) {
+      this.logger.warn('invalid DAB ensemble identifier')
+      return
+    }
+    await this.ensureArrayWindows()
+    this.requestList(0x02, ensembleId[0], ensembleId[1])
+  }
+
+  async requestPtyServices({ pty }: { pty: number }): Promise<void> {
+    if (!Number.isInteger(pty) || pty < 0 || pty > 0xff) {
+      this.logger.warn(`invalid DAB PTY: ${pty}`)
+      return
+    }
+    await this.ensureArrayWindows()
+    this.requestList(0x01, pty, 0x00)
+    this.updateStatus({ selectedPty: pty })
+  }
+
+  async requestEnsembleList(): Promise<void> {
+    if (!(await this.ensureArrayWindows())) return
+    await this.moveArrayWindow('ensembles', 'top', 5)
+  }
+
+  async createArrayWindows(): Promise<void> {
+    await this.ensureArrayWindows(true)
+  }
+
+  moveServiceWindow({
+    direction,
+    steps = 5
+  }: {
+    direction: 'top' | 'bottom' | 'up' | 'down'
+    steps?: number
+  }): void {
+    void this.moveArrayWindow('services', direction, steps)
+  }
+
+  moveEnsembleWindow({
+    direction,
+    steps = 5
+  }: {
+    direction: 'top' | 'bottom' | 'up' | 'down'
+    steps?: number
+  }): void {
+    void this.moveArrayWindow('ensembles', direction, steps)
+  }
+
+  startAutoTune(): void {
+    this.updateStatus({ scanning: true, scanProgress: 0, scanError: null })
+    this.socketmost.sendControlMessage(this.physicalMessage(OpType.startResult, 0x200, [0x02]))
+  }
+
+  cancelAutoTune(): void {
+    this.socketmost.sendControlMessage(this.physicalMessage(OpType.abort, 0x200, []))
+    this.updateStatus({ scanning: false })
+  }
+
+  setAnnouncement({ type, enabled }: { type: number; enabled: boolean }): void {
+    if (!Number.isInteger(type) || type < 0 || type > 0xff) {
+      this.logger.warn(`invalid DAB announcement type: ${type}`)
+      return
+    }
+    this.socketmost.sendControlMessage(
+      this.physicalMessage(OpType.setGet, 0x400, [0x00, type, 0x00, type, enabled ? 0x01 : 0x00])
+    )
+  }
+
+  setFmTraffic({ enabled }: { enabled: boolean }): void {
+    this.socketmost.sendControlMessage(
+      this.physicalMessage(OpType.set, 0xc30, [
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x01,
+        enabled ? 0x05 : 0x00,
+        0x00
+      ])
+    )
+    this.updateStatus({ fmTraffic: enabled })
+  }
+
+  setCountry({ table }: { table: number }): void {
+    if (!Number.isInteger(table) || table < 0 || table > 0xff) {
+      this.logger.warn(`invalid DAB frequency table: ${table}`)
+      return
+    }
+    this.socketmost.sendControlMessage(this.physicalMessage(OpType.set, 0x430, [table]))
+    this.updateStatus({ frequencyTable: table })
+    this.startAutoTune()
+  }
+
+  private rawStatus(message: MostRxMessage): { opType: number; data: number[] } {
+    return { opType: message.opType, data: Array.from(message.data) }
+  }
+
+  private updateNamedRecord(
+    type: 'ensembles' | 'services',
+    message: MostRxMessage,
+    identifiers: { ensembleId?: number[]; serviceId?: number[] } = {}
+  ): void {
+    const data = message.data
+    const index = data.length >= 2 ? data.readUInt16BE(0) : 0
+    const current =
+      (this.status as { ensembles?: Record<string, unknown>; services?: Record<string, unknown> })[
+        type
+      ] || {}
+
+    // A record from an ArrayWindow proves that the DAB tuner already owns the
+    // corresponding OEM-created window. This is particularly important after
+    // a renderer/main-process reload, when our in-memory creation flag is lost
+    // but the physical tuner retains sender handles 0x0001/0x0002.
+    this.arrayWindowsReady = true
+
+    this.updateStatus({
+      arrayWindowsReady: true,
+      [type]: {
+        ...current,
+        [index]: {
+          index,
+          name: this.extractText(data),
+          data: Array.from(data),
+          ...identifiers
+        }
+      }
+    })
+  }
+
+  private requestList(type: number, argumentHigh: number, argumentLow: number): void {
+    this.socketmost.sendControlMessage(
+      this.physicalMessage(OpType.setGet, 0xc0f, [
+        0x05,
+        0x11,
+        type,
+        argumentHigh,
+        argumentLow,
+        0x00
+      ])
+    )
+    this.updateStatus({ serviceListFilter: { type, argument: [argumentHigh, argumentLow] } })
+  }
+
+  private async ensureArrayWindows(force = false): Promise<boolean> {
+    const dabStatus = this.status as {
+      ensembles?: Record<string, unknown>
+      services?: Record<string, unknown>
+    }
+    const hasExistingWindowRecords =
+      Object.keys(dabStatus.ensembles || {}).length > 0 ||
+      Object.keys(dabStatus.services || {}).length > 0
+
+    if (hasExistingWindowRecords && !force) {
+      this.arrayWindowsReady = true
+      return true
+    }
+    if (this.arrayWindowsReady && !force) return true
+    if (this.arrayWindowsPending) return this.arrayWindowsPending
+
+    this.arrayWindowsPending = (async () => {
+      const ensembleResult = await this.sendMethod(
+        this.physicalMessage(
+          OpType.startResultAck,
+          0x090,
+          [0x00, 0x01, 0x05, 0x00, 0xff, 0xff, 0x0f]
+        )
+      )
+      if (ensembleResult !== 1) {
+        this.logger.warn('DAB ensemble array window creation failed')
+        return false
+      }
+
+      const serviceResult = await this.sendMethod(
+        this.physicalMessage(
+          OpType.startResultAck,
+          0x090,
+          [0x00, 0x02, 0x05, 0x10, 0xff, 0xff, 0x0f]
+        )
+      )
+      if (serviceResult !== 1) {
+        this.logger.warn('DAB service array window creation failed')
+        return false
+      }
+
+      this.arrayWindowsReady = true
+      this.updateStatus({ arrayWindowsReady: true })
+      return true
+    })()
+
+    try {
+      return await this.arrayWindowsPending
+    } finally {
+      this.arrayWindowsPending = null
+    }
+  }
+
+  private async moveArrayWindow(
+    window: 'ensembles' | 'services',
+    direction: 'top' | 'bottom' | 'up' | 'down',
+    steps: number
+  ): Promise<void> {
+    const movingModes = { top: 0x00, bottom: 0x01, up: 0x02, down: 0x03 }
+    if (!(direction in movingModes) || !Number.isInteger(steps) || steps < 1 || steps > 0xffff) {
+      this.logger.warn(`invalid DAB array movement: ${direction} ${steps}`)
+      return
+    }
+    if (!(await this.ensureArrayWindows())) return
+
+    const senderHandle = window === 'ensembles' ? 0x01 : 0x02
+    const windowFktID = window === 'ensembles' ? 0x0501 : 0x0511
+    this.socketmost.sendControlMessage(
+      this.physicalMessage(OpType.startResultAck, 0x092, [
+        0x00,
+        senderHandle,
+        (windowFktID >> 8) & 0xff,
+        windowFktID & 0xff,
+        movingModes[direction],
+        (steps >> 8) & 0xff,
+        steps & 0xff,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0xff,
+        0xff
+      ])
+    )
+
+    const offsetKey = window === 'services' ? 'serviceWindowOffset' : 'ensembleWindowOffset'
+    const currentOffset = Number((this.status as Record<string, unknown>)[offsetKey]) || 0
+    const nextOffset =
+      direction === 'top'
+        ? 0
+        : direction === 'bottom'
+        ? currentOffset
+        : Math.max(0, currentOffset + (direction === 'down' ? steps : -steps))
+    this.updateStatus({
+      [offsetKey]: nextOffset,
+      arrayMovementError: null,
+      lastArrayMovement: { window, direction, steps }
+    })
+  }
+
+  private validBytes(value: number[], length: number): boolean {
+    return (
+      Array.isArray(value) &&
+      value.length === length &&
+      value.every((byte) => Number.isInteger(byte) && byte >= 0 && byte <= 0xff)
+    )
+  }
+
+  private extractText(data: Buffer): string {
+    const strings = Array.from(data)
+      .map((byte) => (byte >= 0x20 && byte <= 0x7e ? String.fromCharCode(byte) : '\0'))
+      .join('')
+      .split('\0')
+      .map((value) => value.trim())
+      .filter((value) => value.length >= 2)
+
+    return strings.sort((left, right) => right.length - left.length)[0] || ''
+  }
 }
 
 export class TvTuner extends FBlock {
@@ -1448,7 +1962,13 @@ export class Climate extends FBlock {
   }
 
   setSeat({ side, temperature }: { side: 1 | 2; temperature: number }): void {
-    if ((side !== 1 && side !== 2) || !Number.isInteger(temperature) || temperature < -3 || temperature > 3) return
+    if (
+      (side !== 1 && side !== 2) ||
+      !Number.isInteger(temperature) ||
+      temperature < -3 ||
+      temperature > 3
+    )
+      return
     const parsed = temperature < 0 ? 16 + Math.abs(temperature) : temperature
     this.action([0x16, side, parsed, 0x01])
   }
@@ -1514,9 +2034,12 @@ export class AudioControl extends FBlock {
 
   async switchSource(device: FBlock) {
     this.logger.info('performing switch to ' + device)
+    let data406: number[] | null = null
+    let data408: number[] | null = null
+
     if (this.currentSource) {
       this.logger.info('source already active, stopping source')
-      const data406 = [
+      data406 = [
         0x00,
         0x03,
         this.currentSource.shadowDevice.fBlockID,
@@ -1528,7 +2051,7 @@ export class AudioControl extends FBlock {
         0x01,
         0x11
       ]
-      const data408 = [
+      data408 = [
         0x00,
         0x02,
         this.currentSource.shadowDevice.fBlockID,
@@ -1536,14 +2059,6 @@ export class AudioControl extends FBlock {
         0x01,
         0x11
       ]
-      await this.currentSource.stopSource()
-      this.logger.info('stopped source')
-      await this.sendMethod(this.physicalMessage(OpType.startResultAck, 0x406, data406))
-      await this.sleep(50)
-      this.logger.info('406 complete')
-      await this.sendMethod(this.physicalMessage(OpType.startResultAck, 0x408, data408))
-      await this.sleep(50)
-      this.logger.info('408 complete')
     }
 
     const data405 = [
@@ -1575,6 +2090,19 @@ export class AudioControl extends FBlock {
     let result = await this.sendMethod(this.physicalMessage(OpType.startResultAck, 0x405, data405))
     await this.sleep(50)
     this.logger.info(`405 result ${result}`)
+
+    if (this.currentSource && data406 && data408) {
+      await this.sendMethod(this.physicalMessage(OpType.startResultAck, 0x408, data408))
+      await this.sleep(50)
+      this.logger.info('408 complete')
+
+      await this.currentSource.stopSource()
+      this.logger.info('stopped source')
+      await this.sendMethod(this.physicalMessage(OpType.startResultAck, 0x406, data406))
+      await this.sleep(50)
+      this.logger.info('406 complete')
+    }
+
     result = await this.sendMethod(this.physicalMessage(OpType.startResultAck, 0x407, data407))
     await this.sleep(50)
 

@@ -244,6 +244,32 @@ export abstract class FBlock extends EventEmitter {
     }
   }
 
+  // noinspection JSUnusedGlobalSymbols
+  0xc80(message: MostRxMessage) {
+    if (message.opType !== OpType.startResultAck) {
+      this.logger.warn(
+        `${this.constructor.name} shadow 0xc80 received unsupported op type: ` +
+          this.convertMessageToHex(message)
+      )
+      this.socketmost.sendControlMessage(
+        this.createErrorMessage(message, ErrorTypes.OpTypeNotAvailable)
+      )
+      return
+    }
+
+    const data = message.data.subarray(0, message.telLen)
+
+    this.socketmost.sendControlMessage(
+      this.createResponseMessage(message, data, OpType.processingAck)
+    )
+
+    setTimeout(() => {
+      this.socketmost.sendControlMessage(
+        this.createResponseMessage(message, data, OpType.resultAck)
+      )
+    }, 60)
+  }
+
   0x101(message: MostRxMessage) {
     //Allocate
     this.socketmost.sendControlMessage(

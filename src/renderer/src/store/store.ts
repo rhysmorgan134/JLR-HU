@@ -155,6 +155,47 @@ interface AmFmTunerStore {
   fma: RadioPresetBank
 }
 
+export type DabRecord = {
+  index: number
+  name: string
+  data: number[]
+  ensembleId?: number[]
+  serviceId?: number[]
+  preset?: number
+}
+
+interface DabTunerStore {
+  scanning: boolean
+  scanProgress: number | null
+  scanError: number[] | null
+  radioText: string
+  frequencyTable: number | null
+  ensembles: Record<string, DabRecord>
+  services: Record<string, DabRecord>
+  presets: Record<string, DabRecord & { bank?: number; preset?: number }>
+  serviceWindowOffset: number
+  ensembleWindowOffset: number
+  currentAudioService?: { opType: number; data: number[] }
+  currentAudioComponent?: { opType: number; data: number[] }
+  tunerStatus?: { opType: number; data: number[] }
+  selectedPreset?: number
+  selectedService?: string | null
+  fmTraffic?: boolean
+  selectPreset: (preset: number) => void
+  selectService: (service: DabRecord) => void
+  requestFullServiceList: () => void
+  requestEnsembleList: () => void
+  requestEnsembleServices: (ensembleId: number[]) => void
+  requestPtyServices: (pty: number) => void
+  moveServiceWindow: (direction: 'top' | 'bottom' | 'up' | 'down', steps?: number) => void
+  moveEnsembleWindow: (direction: 'top' | 'bottom' | 'up' | 'down', steps?: number) => void
+  startAutoTune: () => void
+  cancelAutoTune: () => void
+  setAnnouncement: (type: number, enabled: boolean) => void
+  setFmTraffic: (enabled: boolean) => void
+  setCountry: (table: number) => void
+}
+
 interface Volume {
   audioVolume: number | null
   parkingVolumeFront: number | null
@@ -749,6 +790,35 @@ export const useAudioControlStore = create<AudioControlStore>()(() => ({
   }
 }))
 
+export const useDabTunerStore = create<DabTunerStore>()(() => ({
+  scanning: false,
+  scanProgress: null,
+  scanError: null,
+  radioText: '',
+  frequencyTable: null,
+  ensembles: {},
+  services: {},
+  presets: {},
+  serviceWindowOffset: 0,
+  ensembleWindowOffset: 0,
+  selectPreset: (preset) => socket.emit('button', { device: 'dabTuner', function: 'selectPreset', args: { preset } }),
+  selectService: (service) => {
+    if (!service.serviceId || !service.ensembleId) return
+    socket.emit('button', { device: 'dabTuner', function: 'selectService', args: { serviceId: service.serviceId, ensembleId: service.ensembleId, name: service.name } })
+  },
+  requestFullServiceList: () => socket.emit('button', { device: 'dabTuner', function: 'requestFullServiceList' }),
+  requestEnsembleList: () => socket.emit('button', { device: 'dabTuner', function: 'requestEnsembleList' }),
+  requestEnsembleServices: (ensembleId) => socket.emit('button', { device: 'dabTuner', function: 'requestEnsembleServices', args: { ensembleId } }),
+  requestPtyServices: (pty) => socket.emit('button', { device: 'dabTuner', function: 'requestPtyServices', args: { pty } }),
+  moveServiceWindow: (direction, steps = 5) => socket.emit('button', { device: 'dabTuner', function: 'moveServiceWindow', args: { direction, steps } }),
+  moveEnsembleWindow: (direction, steps = 5) => socket.emit('button', { device: 'dabTuner', function: 'moveEnsembleWindow', args: { direction, steps } }),
+  startAutoTune: () => socket.emit('button', { device: 'dabTuner', function: 'startAutoTune' }),
+  cancelAutoTune: () => socket.emit('button', { device: 'dabTuner', function: 'cancelAutoTune' }),
+  setAnnouncement: (type, enabled) => socket.emit('button', { device: 'dabTuner', function: 'setAnnouncement', args: { type, enabled } }),
+  setFmTraffic: (enabled) => socket.emit('button', { device: 'dabTuner', function: 'setFmTraffic', args: { enabled } }),
+  setCountry: (table) => socket.emit('button', { device: 'dabTuner', function: 'setCountry', args: { table } })
+}))
+
 export const useAudioDiskPlayer = create<AudioDiskPlayer>()(() => ({
   deckStatus: null,
   diskTime: null,
@@ -884,6 +954,14 @@ socket.on('AmFmTuner', (data) => {
   })
 
   console.log('🔥 AMFM ZUSTAND AFTER:', useAmFmTunerStore.getState())
+})
+
+socket.on('DabTuner', (data) => {
+  useDabTunerStore.setState((state) =>
+    produce(state, (draft) => {
+      _.merge(draft, data)
+    })
+  )
 })
 
 socket.on('AudioControl', (data) => {
