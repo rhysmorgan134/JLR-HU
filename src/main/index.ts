@@ -163,7 +163,14 @@ function createWindow(): void {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
   app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
-  systemPreferences.askForMediaAccess('microphone')
+  // askForMediaAccess is only implemented by Electron on macOS. Calling it on
+  // Linux rejects window creation and leaves the Raspberry Pi showing an
+  // uninitialised white BrowserWindow.
+  if (process.platform === 'darwin' && typeof systemPreferences.askForMediaAccess === 'function') {
+    void systemPreferences.askForMediaAccess('microphone').catch((error) => {
+      console.warn('Unable to request microphone access:', error)
+    })
+  }
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
     details.responseHeaders!['Cross-Origin-Opener-Policy'] = ['same-origin']
     details.responseHeaders!['Cross-Origin-Embedder-Policy'] = ['require-corp']
