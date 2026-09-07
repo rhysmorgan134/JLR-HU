@@ -25,6 +25,7 @@ import SoftwareUpdate from './components/settings/SoftwareUpdate'
 import CarplaySettings from './components/settings/CarplaySettings'
 import SystemInformation from './components/settings/SystemInformation'
 import TimeSettings from './components/settings/TimeSettings'
+import AppAlertToast from './components/AppAlertToast'
 import './App.css'
 
 export const ColorModeContext = createContext({ toggleColorMode: () => {} })
@@ -98,5 +99,5 @@ export default function App() {
       MuiDialog: { styleOverrides: { paper: { backgroundImage: 'linear-gradient(145deg,#1b2634,#101721)', border: '1px solid rgba(189,221,255,.14)' } } }
     }
   }), [])
-  return <ColorModeContext.Provider value={{ toggleColorMode: () => {} }}><ThemeProvider theme={theme}><CssBaseline /><Router>{settings && <Carplay receivingVideo={receivingVideo} setReceivingVideo={setReceivingVideo} settings={settings} command={command} commandCounter={commandCounter} />}<ParkingAssistOverlay /><AppRoutes /></Router></ThemeProvider></ColorModeContext.Provider>
+  return <ColorModeContext.Provider value={{ toggleColorMode: () => {} }}><ThemeProvider theme={theme}><CssBaseline /><Router>{settings && <Carplay receivingVideo={receivingVideo} setReceivingVideo={setReceivingVideo} settings={settings} command={command} commandCounter={commandCounter} />}<AppAlertToast /><ParkingAssistOverlay /><AppRoutes /></Router></ThemeProvider></ColorModeContext.Provider>
 }

@@ -333,6 +333,7 @@ export class CanGateway extends FBlock {
   mostCcf303Captured: boolean
   mostCcfProperties: Record<string, number>
   networkMaster: NetworkMaster
+  clusterTextSequence: number
   constructor(
     subscriptions: number[],
     socketmost: SocketMostUsb,
@@ -346,6 +347,7 @@ export class CanGateway extends FBlock {
     this.mostCcf303Captured = false
     this.mostCcfProperties = {}
     this.networkMaster = networkMaster
+    this.clusterTextSequence = 0
     this.networkMaster.on('CanGatewayAvailable', () => {
       this.subscribe()
     })
@@ -428,7 +430,7 @@ export class CanGateway extends FBlock {
       message.data.readUInt8(2) === 0x00
     ) {
       this.updateStatus({
-        distanceUnit: message.data.readUInt8(0) === 0x01 ? 'miles' : 'kilometres'
+        distanceUnit: message.data.readUInt8(0) === 0x01 ? 'kilometres' : 'miles'
       })
       return
     }
@@ -459,7 +461,7 @@ export class CanGateway extends FBlock {
       const value = message.data.readUInt8(offset + 2)
 
       if (setting === 0x01 && (value === 0x01 || value === 0x02)) {
-        update.distanceUnit = value === 0x01 ? 'miles' : 'kilometres'
+        update.distanceUnit = value === 0x01 ? 'kilometres' : 'miles'
       } else if (setting === 0x02 && (value === 0x01 || value === 0x02)) {
         update.temperatureUnit = value === 0x01 ? 'fahrenheit' : 'celsius'
       } else if (setting === 0x81 && (value === 0x01 || value === 0x02)) {
@@ -597,13 +599,31 @@ export class CanGateway extends FBlock {
   }
 
   setDistanceUnit({ unit }: { unit: 'miles' | 'kilometres' }): void {
-    const value = unit === 'miles' ? 0x01 : 0x02
+    const value = unit === 'kilometres' ? 0x01 : 0x02
     this.setProperty(0x302, [0x01, 0x01, value])
     this.setProperty(0xe15, [value, 0x00, 0x00])
   }
 
   setTemperatureUnit({ unit }: { unit: 'fahrenheit' | 'celsius' }): void {
     this.setProperty(0x302, [0x01, 0x02, unit === 'fahrenheit' ? 0x01 : 0x02])
+  }
+
+  sendInstrumentClusterText({ text = 'Hello World' }: { text?: string } = {}): void {
+    const printableText = String(text)
+      .replace(/[^\x20-\x7e]/g, '')
+      .slice(0, 32)
+    if (!printableText) return
+
+    this.clusterTextSequence = (this.clusterTextSequence % 0xff) + 1
+    const textBytes = Array.from(Buffer.from(printableText, 'ascii'))
+    const data = [
+      0x00, 0x00, this.clusterTextSequence,
+      0x50, 0xa1, 0x01, 0x06, 0x00, 0x00, 0x00, 0x04, 0x05,
+      0x01, 0x03, 0x01, ...textBytes, 0x00
+    ]
+
+    this.logger.info(`sending instrument cluster test text: ${printableText}`)
+    this.socketmost.sendControlMessage(this.physicalMessage(OpType.startResultAck, 0xc0e, data))
   }
 
   setClockFromSystem(date: Date, uses24HourClock: boolean, updateTime = true): void {

@@ -27,11 +27,15 @@ export default function ApplicationSettings() {
   }
 
   return <SettingsPage title="Application settings">
-    <Box sx={{ height: '100%', display: 'grid', gridTemplateRows: '68px minmax(0,1fr)', gap: 1 }}>
+    <Box sx={{ height: '100%', display: 'grid', gridTemplateRows: '68px 68px minmax(0,1fr)', gap: 1 }}>
       <Box sx={{ borderRadius: 2, px: 1.4, display: 'flex', alignItems: 'center', gap: 1.2, background: 'rgba(255,255,255,.035)' }}>
         <Box sx={{ width: 40, height: 40, borderRadius: 2, display: 'grid', placeItems: 'center', color: 'primary.main', background: 'var(--accent-soft)' }}><BugReportRoundedIcon /></Box>
         <Box sx={{ flex: 1 }}><Typography sx={{ fontSize: 15, fontWeight: 600 }}>Diagnostics-only mode</Typography><Typography sx={{ fontSize: 11, color: 'text.secondary' }}>Disable head-unit behaviour while retaining MOST tools.</Typography></Box>
         <Switch checked={diagnosticMode} disabled={!settings} onChange={(_, enabled) => settings && saveSettings({ ...settings, diagnosticMode: enabled } as typeof settings)} />
+      </Box>
+      <Box sx={{ borderRadius: 2, px: 1.4, display: 'flex', alignItems: 'center', gap: 1.2, background: 'rgba(255,255,255,.035)' }}>
+        <Box sx={{ flex: 1 }}><Typography sx={{ fontSize: 15, fontWeight: 600 }}>MOST failure alerts</Typography><Typography sx={{ fontSize: 11, color: 'text.secondary' }}>Show a toast when a subscription fails or a MOST request returns an error.</Typography></Box>
+        <Switch checked={settings?.showErrorToasts !== false} disabled={!settings} onChange={(_, enabled) => settings && saveSettings({ ...settings, showErrorToasts: enabled })} />
       </Box>
       <Box sx={{ minHeight: 0 }}>
         <Typography sx={{ mb: .6, fontSize: 10.5, fontWeight: 700, letterSpacing: 1.2, color: 'text.secondary' }}>CLASS LOGGING</Typography>

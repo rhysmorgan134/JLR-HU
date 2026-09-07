@@ -292,6 +292,7 @@ interface CanGatewayStore {
   addTrip: () => void
   setDistanceUnit: (unit: 'miles' | 'kilometres') => void
   setTemperatureUnit: (unit: 'fahrenheit' | 'celsius') => void
+  sendInstrumentClusterText: (text?: string) => void
 }
 
 interface ParkingAssistStore {
@@ -653,7 +654,13 @@ export const useCanGatewayStore = create<CanGatewayStore>()((set, get) => ({
   setDistanceUnit: (unit) =>
     socket.emit('button', { device: 'canGateway', function: 'setDistanceUnit', args: { unit } }),
   setTemperatureUnit: (unit) =>
-    socket.emit('button', { device: 'canGateway', function: 'setTemperatureUnit', args: { unit } })
+    socket.emit('button', { device: 'canGateway', function: 'setTemperatureUnit', args: { unit } }),
+  sendInstrumentClusterText: (text = 'Hello World') =>
+    socket.emit('button', {
+      device: 'canGateway',
+      function: 'sendInstrumentClusterText',
+      args: { text }
+    })
 }))
 
 export const useClimateStore = create<ClimateStore>()(() => ({

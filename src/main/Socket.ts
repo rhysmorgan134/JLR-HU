@@ -180,6 +180,10 @@ export class Socket extends EventEmitter {
     this.io.emit('update:progress', data)
   }
 
+  sendAppAlert(data: { title: string; message: string; severity?: 'warning' | 'error' }) {
+    this.io.emit('appAlert', data)
+  }
+
   sendToRoom(room: string, data: Object, type: string, value: boolean | number | string | object) {
     this.io.to(room).emit(type, value)
   }

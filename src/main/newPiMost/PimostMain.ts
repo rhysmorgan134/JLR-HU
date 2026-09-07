@@ -66,6 +66,15 @@ export class PimostMain {
     this.logger.debug('pimost starting')
     this.socketmost = new SocketMostUsb()
     this.subscriptionManager = new SubscriptionManager(this.socketmost)
+    this.subscriptionManager.on('failed', (subscription) => {
+      this.socket.sendAppAlert({
+        title: 'Subscription failed',
+        message: `${subscription.owner || 'Application'} · FBlock 0x${subscription.fBlockID
+          .toString(16)
+          .toUpperCase()} instance 0x${subscription.instanceID.toString(16).toUpperCase()}`,
+        severity: 'warning'
+      })
+    })
     this.mostDiagnostics = new MostDiagnosticsBackend(
       this.socketmost,
       socket,
@@ -262,6 +271,24 @@ export class PimostMain {
 
     this.socketmost.on(Os8104Events.SocketMostMessageRxEvent, (message) => {
       this.mostDiagnostics.observeRx(message)
+      if (message.opType === 0x0f || message.opType === 0x09) {
+        const errorCode = message.data?.length ? message.data.readUInt8(0) : null
+        const errorNames: Record<number, string> = {
+          0x01: 'FBlock not available',
+          0x02: 'Instance not available',
+          0x03: 'Function not available',
+          0x04: 'Operation not available',
+          0x05: 'Parameter error',
+          0x06: 'Parameter unavailable'
+        }
+        this.socket.sendAppAlert({
+          title: 'MOST request failed',
+          message: `FBlock 0x${message.fBlockID.toString(16).toUpperCase()} · function 0x${message.fktID
+            .toString(16)
+            .toUpperCase()}${errorCode == null ? '' : ` · ${errorNames[errorCode] || `error 0x${errorCode.toString(16).toUpperCase()}`}`}`,
+          severity: 'error'
+        })
+      }
       if (!this.headUnitMode) return
       //this.logger.info(`message received ${this.convertMessageToHex(message)}`)
       switch (message.fBlockID) {

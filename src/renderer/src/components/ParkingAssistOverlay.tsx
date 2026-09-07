@@ -3,6 +3,7 @@ import { Box, Chip, IconButton, Typography } from '@mui/material'
 import VideocamOffRoundedIcon from '@mui/icons-material/VideocamOffRounded'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import { useCarplayStore, useParkingAssistStore } from '../store/store'
+import jaguarTopView from '../media/jaguar-xf-top.svg'
 
 const frontPaths = [
   ['M 108 101 L 91 98 Q 82 93 76 85 L 99 73 Q 104 82 112 86 Z', 'M 91 98 Q 82 93 76 85 L 58 68 Q 73 55 91 48 L 99 73 Q 86 78 76 85 Z', 'M 58 68 Q 73 55 91 48 L 83 23 Q 55 33 33 53 Z'],
@@ -35,7 +36,7 @@ function ParkingRadar({ front, rear }: { front: number[]; rear: number[] }) {
       <text x="150" y="16" textAnchor="middle" fill="rgba(189,221,255,.45)" fontSize="9" letterSpacing="2">FRONT</text>
       {front.map((value, index) => <RadarSensor key={`front-${index}`} value={value} paths={frontPaths[index]} />)}
       {rear.map((value, index) => <RadarSensor key={`rear-${index}`} value={value} paths={rearPaths[index]} />)}
-      <image href="/svgs/jaguar-xf-top.svg" x="55" y="80" width="190" height="280" preserveAspectRatio="xMidYMid meet" filter="url(#car-shadow)" />
+      <image href={jaguarTopView} x="55" y="80" width="190" height="280" preserveAspectRatio="xMidYMid meet" filter="url(#car-shadow)" />
       <text x="150" y="435" textAnchor="middle" fill="rgba(189,221,255,.45)" fontSize="9" letterSpacing="2">REAR</text>
     </svg>
   </Box>

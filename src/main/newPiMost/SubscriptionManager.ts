@@ -149,6 +149,7 @@ export class SubscriptionManager extends EventEmitter {
       if (this.inProgSubscription !== subscription) return
       this.failedSubscriptions.push(subscription)
       this.logger.error(`FAILED SUBSCRIPTION: ${this.convertMessageToHex(subscription)}`)
+      this.emit('failed', subscription)
       this.inProgSubscription = null
       this.subscriptionInProg = false
       this.notificationCheckTimer = null

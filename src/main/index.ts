@@ -39,6 +39,7 @@ const EXTRA_CONFIG: ExtraConfig = {
   microphone: '',
   piMost: false,
   canbus: false,
+  showErrorToasts: true,
   autoTimeSync: true,
   bindings: DEFAULT_BINDINGS,
   most: {},

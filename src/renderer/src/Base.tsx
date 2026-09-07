@@ -41,8 +41,9 @@ function Base() {
         : <Box sx={{ height: '100%', display: 'grid', placeItems: 'center', color: 'text.secondary' }}><Typography>Select an audio source</Typography></Box>
 
   const imperial = trip.distanceUnit !== 'kilometres'
+  const consumption = trip.avgMpg == null || imperial ? trip.avgMpg : trip.avgMpg * 0.354006
   const tripValues = [
-    ['Average', trip.avgMpg, 'mpg'],
+    ['Average', consumption, imperial ? 'mpg' : 'km/l'],
     ['Range', trip.range, imperial ? 'mi' : 'km'],
     ['Distance', trip.distance, imperial ? 'mi' : 'km'],
     ['Avg speed', trip.avgSpeed, imperial ? 'mph' : 'km/h'],
