@@ -3,6 +3,7 @@ const fs = require('fs/promises')
 const path = require('path')
 
 const port = Number(process.env.PORT || 4318)
+const listenAddress = process.env.LISTEN_ADDRESS || '192.168.0.3'
 const dataDirectory = process.env.LOG_DIRECTORY || '/data'
 const maximumBodyBytes = 5 * 1024 * 1024
 
@@ -69,7 +70,7 @@ const server = http.createServer(async (request, response) => {
   }
 })
 
-server.listen(port, '0.0.0.0', () => {
-  console.log(`JLR-HU log receiver listening on 0.0.0.0:${port}`)
+server.listen(port, listenAddress, () => {
+  console.log(`JLR-HU log receiver listening on ${listenAddress}:${port}`)
   console.log(`Writing logs to ${dataDirectory}`)
 })

@@ -3,10 +3,10 @@ services:
     build: .
     container_name: jlr-hu-log-receiver
     restart: unless-stopped
-    ports:
-      - "192.168.0.3:4318:4318"
+    network_mode: host
     volumes:
       - ./received-logs:/data
     environment:
-      PORT: 4318
+      PORT: ${PORT:-4318}
+      LISTEN_ADDRESS: 192.168.0.3
       LOG_DIRECTORY: /data

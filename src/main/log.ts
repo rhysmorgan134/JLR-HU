@@ -2,6 +2,8 @@ import winston, { LoggerOptions } from 'winston'
 import 'winston-daily-rotate-file'
 import http from 'http'
 import os from 'os'
+import fs from 'fs'
+import path from 'path'
 import { Writable } from 'stream'
 import { LOGGER_NAMES, LoggerConfig, LoggerName, loggerEnabledByDefault } from './Globals'
 
@@ -12,19 +14,51 @@ const remoteLogQueue: string[] = []
 let remoteLoggingEnabled = false
 let remoteLogFlushTimer: NodeJS.Timeout | null = null
 let remoteLogRequestInProgress = false
+let remoteLogSpoolPath: string | null = null
+let spoolWrite: Promise<void> = Promise.resolve()
+
+export function configureRemoteLogSpool(directory: string): void {
+  fs.mkdirSync(directory, { recursive: true })
+  remoteLogSpoolPath = path.join(directory, 'pending.jsonl')
+  if (!fs.existsSync(remoteLogSpoolPath)) return
+  const persisted = fs.readFileSync(remoteLogSpoolPath, 'utf8').split('\n').filter(Boolean)
+  remoteLogQueue.unshift(...persisted)
+}
+
+const appendToSpool = (line: string): void => {
+  if (!remoteLogSpoolPath) return
+  const spoolPath = remoteLogSpoolPath
+  spoolWrite = spoolWrite.then(() => fs.promises.appendFile(spoolPath, `${line}\n`, 'utf8')).catch(() => undefined)
+}
+
+const removeSentFromSpool = (count: number): void => {
+  if (!remoteLogSpoolPath) return
+  const spoolPath = remoteLogSpoolPath
+  spoolWrite = spoolWrite.then(async () => {
+    const contents = await fs.promises.readFile(spoolPath, 'utf8').catch(() => '')
+    const remaining = contents.split('\n').filter(Boolean).slice(count)
+    const temporaryPath = `${spoolPath}.tmp`
+    await fs.promises.writeFile(temporaryPath, remaining.length ? `${remaining.join('\n')}\n` : '', 'utf8')
+    await fs.promises.rename(temporaryPath, spoolPath)
+  }).catch(() => undefined)
+}
 
 const scheduleRemoteFlush = (delay = 1000): void => {
   if (!remoteLoggingEnabled || remoteLogFlushTimer || remoteLogRequestInProgress) return
   remoteLogFlushTimer = setTimeout(() => {
     remoteLogFlushTimer = null
-    flushRemoteLogs()
+    void flushRemoteLogs().catch(() => undefined)
   }, delay)
   remoteLogFlushTimer.unref()
 }
 
-const flushRemoteLogs = (): void => {
-  if (!remoteLoggingEnabled || remoteLogRequestInProgress || remoteLogQueue.length === 0) return
-  const logs = remoteLogQueue.splice(0, 100).map((line) => {
+const flushRemoteLogs = async (force = false): Promise<number> => {
+  await spoolWrite
+  if ((!remoteLoggingEnabled && !force) || remoteLogRequestInProgress || remoteLogQueue.length === 0) {
+    return 0
+  }
+  const lines = remoteLogQueue.slice(0, 100)
+  const logs = lines.map((line) => {
     try {
       return JSON.parse(line)
     } catch {
@@ -34,46 +68,58 @@ const flushRemoteLogs = (): void => {
   const body = JSON.stringify({ application: 'JLR-HU', deviceId: os.hostname(), logs })
   remoteLogRequestInProgress = true
 
-  const request = http.request({
-    hostname: remoteLogUrl.hostname,
-    port: remoteLogUrl.port,
-    path: remoteLogUrl.pathname,
-    method: 'POST',
-    timeout: 3000,
-    headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
-  }, (response) => {
-    response.resume()
-    response.once('end', () => {
-      remoteLogRequestInProgress = false
-      if (response.statusCode == null || response.statusCode < 200 || response.statusCode >= 300) {
-        remoteLogQueue.unshift(...logs.map((entry) => JSON.stringify(entry)))
-        if (remoteLogQueue.length > 2000) remoteLogQueue.splice(0, remoteLogQueue.length - 2000)
-        scheduleRemoteFlush(5000)
-      } else {
-        scheduleRemoteFlush()
-      }
+  return new Promise((resolve, reject) => {
+    const request = http.request({
+      hostname: remoteLogUrl.hostname,
+      port: remoteLogUrl.port,
+      path: remoteLogUrl.pathname,
+      method: 'POST',
+      timeout: 3000,
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+    }, (response) => {
+      response.resume()
+      response.once('end', () => {
+        remoteLogRequestInProgress = false
+        if (response.statusCode == null || response.statusCode < 200 || response.statusCode >= 300) {
+          scheduleRemoteFlush(5000)
+          reject(new Error(`log receiver returned HTTP ${response.statusCode ?? 'unknown'}`))
+        } else {
+          remoteLogQueue.splice(0, lines.length)
+          removeSentFromSpool(lines.length)
+          scheduleRemoteFlush()
+          resolve(logs.length)
+        }
+      })
     })
-  })
 
-  request.once('timeout', () => request.destroy(new Error('remote log request timed out')))
-  request.once('error', () => {
-    remoteLogRequestInProgress = false
-    remoteLogQueue.unshift(...logs.map((entry) => JSON.stringify(entry)))
-    if (remoteLogQueue.length > 2000) remoteLogQueue.splice(0, remoteLogQueue.length - 2000)
-    scheduleRemoteFlush(5000)
+    request.once('timeout', () => request.destroy(new Error('remote log request timed out')))
+    request.once('error', () => {
+      remoteLogRequestInProgress = false
+      scheduleRemoteFlush(5000)
+      reject(new Error('unable to connect to the log receiver at 192.168.0.3:4318'))
+    })
+    request.end(body)
   })
-  request.end(body)
+}
+
+export async function sendRemoteLogsNow(): Promise<number> {
+  const queuedAtStart = remoteLogQueue.length
+  let sent = 0
+  while (sent < queuedAtStart) {
+    const batchSize = await flushRemoteLogs(true)
+    if (batchSize === 0) break
+    sent += batchSize
+  }
+  return sent
 }
 
 const remoteLogStream = new Writable({
   write(chunk, _encoding, callback) {
-    if (remoteLoggingEnabled) {
-      const line = chunk.toString().trim()
-      if (line) {
-        remoteLogQueue.push(line)
-        if (remoteLogQueue.length > 2000) remoteLogQueue.shift()
-        scheduleRemoteFlush(remoteLogQueue.length >= 100 ? 0 : 1000)
-      }
+    const line = chunk.toString().trim()
+    if (line) {
+      remoteLogQueue.push(line)
+      appendToSpool(line)
+      if (remoteLoggingEnabled) scheduleRemoteFlush(remoteLogQueue.length >= 100 ? 0 : 1000)
     }
     callback()
   }

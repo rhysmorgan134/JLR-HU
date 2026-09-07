@@ -1,6 +1,8 @@
-import { Box, Switch, Typography } from '@mui/material'
+import { Alert, Box, Button, Switch, Typography } from '@mui/material'
 import BugReportRoundedIcon from '@mui/icons-material/BugReportRounded'
-import { useCarplayStore } from '../../store/store'
+import SendRoundedIcon from '@mui/icons-material/SendRounded'
+import { useState } from 'react'
+import { socket, useCarplayStore } from '../../store/store'
 import SettingsPage from './SettingsPage'
 import { LOGGER_NAMES, loggerEnabledByDefault } from '../../../../main/Globals'
 
@@ -17,6 +19,8 @@ const loggerLabels: Partial<Record<(typeof LOGGER_NAMES)[number], string>> = {
 }
 
 export default function ApplicationSettings() {
+  const [sendingLogs, setSendingLogs] = useState(false)
+  const [sendResult, setSendResult] = useState<{ ok: boolean; message: string } | null>(null)
   const settings = useCarplayStore((state) => state.settings)
   const saveSettings = useCarplayStore((state) => state.saveSettings)
   const diagnosticMode = Boolean(settings && 'diagnosticMode' in settings && settings.diagnosticMode)
@@ -24,6 +28,14 @@ export default function ApplicationSettings() {
   const setLoggerEnabled = (name: (typeof LOGGER_NAMES)[number], enabled: boolean) => {
     if (!settings) return
     saveSettings({ ...settings, loggerConfig: { ...loggerConfig, [name]: enabled } })
+  }
+  const sendLogsNow = () => {
+    setSendingLogs(true)
+    setSendResult(null)
+    socket.timeout(10000).emit('logs:sendNow', (error: Error | null, result: { ok: boolean; message: string }) => {
+      setSendingLogs(false)
+      setSendResult(error ? { ok: false, message: 'The JLR backend did not respond' } : result)
+    })
   }
 
   return <SettingsPage title="Application settings">
@@ -38,7 +50,11 @@ export default function ApplicationSettings() {
         <Switch checked={settings?.showErrorToasts !== false} disabled={!settings} onChange={(_, enabled) => settings && saveSettings({ ...settings, showErrorToasts: enabled })} />
       </Box>
       <Box sx={{ minHeight: 0 }}>
-        <Typography sx={{ mb: .6, fontSize: 10.5, fontWeight: 700, letterSpacing: 1.2, color: 'text.secondary' }}>CLASS LOGGING</Typography>
+        <Box sx={{ mb: .6, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography sx={{ flex: 1, fontSize: 10.5, fontWeight: 700, letterSpacing: 1.2, color: 'text.secondary' }}>CLASS LOGGING</Typography>
+          {sendResult && <Alert severity={sendResult.ok ? 'success' : 'error'} sx={{ py: 0, fontSize: 10 }}>{sendResult.message}</Alert>}
+          <Button size="small" variant="outlined" startIcon={<SendRoundedIcon />} disabled={sendingLogs} onClick={sendLogsNow}>{sendingLogs ? 'Sending…' : 'Send logs now'}</Button>
+        </Box>
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: .5 }}>
           {LOGGER_NAMES.map((name) => <Box key={name} sx={{ minWidth: 0, height: 36, px: .8, borderRadius: 1.4, display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,.035)' }}><Typography noWrap sx={{ flex: 1, fontSize: 11, fontWeight: 500 }}>{loggerLabels[name] || name}</Typography><Switch size="small" checked={loggerConfig[name] ?? loggerEnabledByDefault(name)} disabled={!settings} onChange={(_, enabled) => setLoggerEnabled(name, enabled)} /></Box>)}
         </Box>

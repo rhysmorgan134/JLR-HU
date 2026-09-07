@@ -9,13 +9,14 @@ import { PimostMain } from './newPiMost/PimostMain'
 import { AppUpdater } from './AppUpdater'
 
 import { ExtraConfig, KeyBindings } from './Globals'
-import { configureLogging } from './log'
+import { configureLogging, configureRemoteLogSpool, sendRemoteLogsNow } from './log'
 import { SystemInfo } from './SystemInfo'
 // import CarplayNode, {DEFAULT_CONFIG, CarplayMessage} from "node-carplay/node";
 
 let mainWindow: BrowserWindow
 const appPath: string = app.getPath('userData')
 const configPath: string = appPath + '/config.json'
+configureRemoteLogSpool(join(appPath, 'remote-logs'))
 
 console.log(configPath)
 
@@ -77,6 +78,14 @@ fs.stat(configPath, (err) => {
   configureLogging(config.loggerConfig)
   socket = new Socket(config, saveSettings)
   socket.on('quitApplication', quit)
+  socket.on('logs:sendNow', async (callback: (result: object) => void) => {
+    try {
+      const sent = await sendRemoteLogsNow()
+      callback({ ok: true, sent, message: sent ? `Sent ${sent} log entries` : 'No queued logs to send' })
+    } catch (error) {
+      callback({ ok: false, message: error instanceof Error ? error.message : String(error) })
+    }
+  })
   const systemInfo = new SystemInfo(socket, app.getVersion())
   new AppUpdater(socket)
   if (config.most) {

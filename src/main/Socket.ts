@@ -95,6 +95,7 @@ export class Socket extends EventEmitter {
       socket.on('update:install', (data, callback) => this.emit('update:install', { data, callback }))
       socket.on('system:reboot', () => this.emit('system:reboot'))
       socket.on('systemInfo:get', () => this.emit('systemInfo:get'))
+      socket.on('logs:sendNow', (callback) => this.emit('logs:sendNow', callback))
     })
 
     this.io.listen(4000)
