@@ -24,7 +24,7 @@ export default function SystemInformation() {
 
   const cards = [
     { icon: ComputerRoundedIcon, title: 'Operating system', rows: [['Platform', `${info.platformName} ${info.release}`], ['Architecture', info.architecture], ['Host name', info.hostname], ['App version', info.appVersion]] },
-    { icon: LanRoundedIcon, title: 'Network', rows: [['Interface', info.networkConnected ? 'Connected' : 'Disconnected'], ['IP address', info.ipAddresses.join(', ') || 'Not assigned'], ['Internet', info.internetConnected ? 'Available' : 'Unavailable']] },
+    { icon: LanRoundedIcon, title: 'Network', rows: [['Interface', info.networkConnected ? 'Connected' : 'Disconnected'], ['Wi-Fi', info.wifiSsid || 'Not connected'], ['IP address', info.ipAddresses.join(', ') || 'Not assigned'], ['Internet', info.internetConnected ? 'Available' : 'Unavailable']] },
     { icon: PublicRoundedIcon, title: 'Locale & clock', rows: [['Locale', info.locale || '—'], ['Time zone', info.timeZone || '—'], ['Clock format', info.uses24HourClock ? '24-hour' : '12-hour'], ['MOST sync', info.internetConnected ? 'Enabled' : 'Waiting for internet']] },
     { icon: MemoryRoundedIcon, title: 'Hardware', rows: [['Processor', info.cpuModel || '—'], ['CPU cores', String(info.cpuCount || '—')], ['CPU temperature', info.cpuTemperature == null ? 'Unavailable' : `${info.cpuTemperature.toFixed(1)}°C`], ['Memory', `${bytes(info.freeMemory)} free / ${bytes(info.totalMemory)}`], ['Uptime', uptime(info.uptimeSeconds)]] }
   ]

@@ -1,0 +1,12 @@
+services:
+  jlr-hu-log-receiver:
+    build: .
+    container_name: jlr-hu-log-receiver
+    restart: unless-stopped
+    ports:
+      - "192.168.0.3:4318:4318"
+    volumes:
+      - ./received-logs:/data
+    environment:
+      PORT: 4318
+      LOG_DIRECTORY: /data

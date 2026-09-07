@@ -343,6 +343,7 @@ export interface SystemInfoState {
   uses24HourClock: boolean
   networkConnected: boolean
   internetConnected: boolean
+  wifiSsid: string | null
   ipAddresses: string[]
   uptimeSeconds: number
   totalMemory: number
@@ -468,6 +469,7 @@ export const useSystemInfoStore = create<SystemInfoState>()(() => ({
   uses24HourClock: true,
   networkConnected: false,
   internetConnected: false,
+  wifiSsid: null,
   ipAddresses: [],
   uptimeSeconds: 0,
   totalMemory: 0,

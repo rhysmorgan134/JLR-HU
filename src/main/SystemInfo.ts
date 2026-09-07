@@ -4,6 +4,7 @@ import { EventEmitter } from 'events'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { Socket } from './Socket'
+import { setRemoteLoggingNetwork } from './log'
 
 const execFileAsync = promisify(execFile)
 
@@ -18,6 +19,7 @@ export type SystemInfoSnapshot = {
   uses24HourClock: boolean
   networkConnected: boolean
   internetConnected: boolean
+  wifiSsid: string | null
   ipAddresses: string[]
   uptimeSeconds: number
   totalMemory: number
@@ -59,6 +61,8 @@ export class SystemInfo extends EventEmitter {
     const uses24HourClock = !new Intl.DateTimeFormat(locale, { hour: 'numeric' })
       .resolvedOptions().hour12
     const cpus = os.cpus()
+    const wifiSsid = await this.wifiSsid()
+    setRemoteLoggingNetwork(wifiSsid)
 
     const snapshot: SystemInfoSnapshot = {
       platform: process.platform,
@@ -71,6 +75,7 @@ export class SystemInfo extends EventEmitter {
       uses24HourClock,
       networkConnected: ipAddresses.length > 0,
       internetConnected: ipAddresses.length > 0 && (await this.hasInternetAccess()),
+      wifiSsid,
       ipAddresses,
       uptimeSeconds: os.uptime(),
       totalMemory: os.totalmem(),
@@ -120,6 +125,48 @@ export class SystemInfo extends EventEmitter {
         const { stdout } = await execFileAsync('osx-cpu-temp')
         const value = Number.parseFloat(stdout)
         return Number.isFinite(value) ? value : null
+      } catch {
+        return null
+      }
+    }
+
+    return null
+  }
+
+  private async wifiSsid(): Promise<string | null> {
+    if (process.platform === 'linux') {
+      try {
+        const { stdout } = await execFileAsync('/usr/sbin/iwgetid', ['-r'])
+        const ssid = stdout.trim()
+        if (ssid) return ssid
+      } catch {
+        try {
+          const { stdout } = await execFileAsync('/usr/bin/nmcli', ['-t', '-f', 'active,ssid', 'dev', 'wifi'])
+          const active = stdout.split(/\r?\n/).find((line) => line.startsWith('yes:'))
+          if (active) return active.slice(4).replace(/\\:/g, ':') || null
+        } catch {
+          return null
+        }
+      }
+    }
+
+    if (process.platform === 'darwin') {
+      for (const device of ['en0', 'en1']) {
+        try {
+          const { stdout } = await execFileAsync('/usr/sbin/networksetup', ['-getairportnetwork', device])
+          const match = stdout.match(/^Current Wi-Fi Network: (.+)$/m)
+          if (match?.[1]) return match[1].trim()
+        } catch {
+          // Try the other conventional Wi-Fi interface.
+        }
+      }
+    }
+
+    if (process.platform === 'win32') {
+      try {
+        const { stdout } = await execFileAsync('netsh', ['wlan', 'show', 'interfaces'])
+        const match = stdout.match(/^\s*SSID\s*:\s*(.+)$/mi)
+        if (match?.[1]) return match[1].trim()
       } catch {
         return null
       }
