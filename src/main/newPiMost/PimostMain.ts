@@ -131,8 +131,8 @@ export class PimostMain {
       this.mostTime = time
       this.synchroniseMostClock()
     })
-    this.networkMaster.on('ClimateAvailable', () => this.climate.subscribe())
-    this.networkMaster.on('AmplifierAvailable', () => this.amplifier.subscribe())
+    // this.networkMaster.on('ClimateAvailable', () => this.climate.subscribe())
+    // this.networkMaster.on('AmplifierAvailable', () => this.amplifier.subscribe())
 
     this.socket.on('newConnection', () => {
       this.socket.sendStatusUpdate('AmFmTuner', this.amFmTuner.status)
@@ -254,6 +254,8 @@ export class PimostMain {
 
     this.hmi.on('HMIActive', () => {
       setTimeout(() => this.audioControl.subscribe(), 500)
+      setTimeout(() => this.canGateway.subscribe(), 500)
+      setTimeout(() => this.climate.subscribe(), 500)
       setTimeout(() => {
         const lastSource = this.socket.config.lastSource
         if (lastSource && !this.audioControl.currentSource) {
@@ -262,7 +264,9 @@ export class PimostMain {
             .then(() => this.activateSource(lastSource))
             .catch((error) => {
               this.logger.error(
-                `Last source restore failed: ${error instanceof Error ? error.message : String(error)}`
+                `Last source restore failed: ${
+                  error instanceof Error ? error.message : String(error)
+                }`
               )
             })
         }
@@ -283,9 +287,13 @@ export class PimostMain {
         }
         this.socket.sendAppAlert({
           title: 'MOST request failed',
-          message: `FBlock 0x${message.fBlockID.toString(16).toUpperCase()} · function 0x${message.fktID
+          message: `FBlock 0x${message.fBlockID
             .toString(16)
-            .toUpperCase()}${errorCode == null ? '' : ` · ${errorNames[errorCode] || `error 0x${errorCode.toString(16).toUpperCase()}`}`}`,
+            .toUpperCase()} · function 0x${message.fktID.toString(16).toUpperCase()}${
+            errorCode == null
+              ? ''
+              : ` · ${errorNames[errorCode] || `error 0x${errorCode.toString(16).toUpperCase()}`}`
+          }`,
           severity: 'error'
         })
       }
@@ -424,7 +432,6 @@ export class PimostMain {
       await this.audioControl.switchSource(device)
       if (!(device instanceof Carplay)) device.subscribe()
     }
-
   }
 
   private synchroniseMostClock(): void {
@@ -445,12 +452,14 @@ export class PimostMain {
 
     this.lastClockSync = Date.now()
     this.logger.info(
-      `synchronising MOST clock ${this.mostTime.hours.toString().padStart(2, '0')}:${this.mostTime.minutes
+      `synchronising MOST clock ${this.mostTime.hours
         .toString()
-        .padStart(2, '0')} -> ${now.getHours().toString().padStart(2, '0')}:${now
-        .getMinutes()
+        .padStart(2, '0')}:${this.mostTime.minutes.toString().padStart(2, '0')} -> ${now
+        .getHours()
         .toString()
-        .padStart(2, '0')} (${desired24Hour ? '24-hour' : '12-hour'}, ${this.systemStatus.locale})`
+        .padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')} (${
+        desired24Hour ? '24-hour' : '12-hour'
+      }, ${this.systemStatus.locale})`
     )
     this.canGateway.setClockFromSystem(now, desired24Hour, difference > 1)
   }
