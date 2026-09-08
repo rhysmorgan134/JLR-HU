@@ -608,10 +608,10 @@ export class CanGateway extends FBlock {
     this.setProperty(0x302, [0x01, 0x02, unit === 'fahrenheit' ? 0x01 : 0x02])
   }
 
-  sendInstrumentClusterText({ text = 'Hello World' }: { text?: string } = {}): void {
+  sendInstrumentClusterText({ text = 'Hello' }: { text?: string } = {}): void {
     const printableText = String(text)
       .replace(/[^\x20-\x7e]/g, '')
-      .slice(0, 32)
+      .slice(0, 8)
     if (!printableText) return
 
     this.clusterTextSequence = (this.clusterTextSequence % 0xff) + 1
@@ -1330,6 +1330,7 @@ export class DabTuner extends FBlock {
   status: Object
   private arrayWindowsReady: boolean
   private arrayWindowsPending: Promise<boolean> | null
+  private pendingService: { name: string | null; serviceId: number[]; ensembleId: number[] } | null
   constructor(
     subscriptions: number[],
     socketmost: SocketMostUsb,
@@ -1357,6 +1358,7 @@ export class DabTuner extends FBlock {
     }
     this.arrayWindowsReady = false
     this.arrayWindowsPending = null
+    this.pendingService = null
     this.room = 'dabTuner'
   }
 
@@ -1427,27 +1429,57 @@ export class DabTuner extends FBlock {
 
   0x203(message: MostRxMessage): void {
     if (message.opType === OpType.processing) {
-      this.updateStatus({ serviceSelectionPending: true, serviceSelectionError: null })
+      this.updateStatus({
+        serviceSelectionPending: true,
+        pendingServiceName: this.pendingService?.name ?? null,
+        serviceSelectionError: null
+      })
       return
     }
 
     if (message.opType === OpType.error || message.opType === OpType.errorAck) {
+      this.pendingService = null
       this.updateStatus({
         serviceSelectionPending: false,
+        pendingServiceName: null,
         serviceSelectionError: Array.from(message.data.subarray(0, message.telLen))
       })
       return
     }
 
+    const result = message.data.readUInt8(0)
+    const successful = result === 0x02
+    const selected = successful ? this.pendingService : null
+    this.pendingService = null
     this.updateStatus({
       serviceSelectionPending: false,
+      pendingServiceName: null,
       serviceSelectionResult: this.rawStatus(message),
-      serviceSelectionError: null
+      serviceSelectionError: successful ? null : [result],
+      ...(selected ? {
+        selectedService: selected.name,
+        selectedServiceId: selected.serviceId,
+        selectedEnsembleId: selected.ensembleId,
+        radioText: ''
+      } : {})
     })
   }
 
   0x211(message: MostRxMessage): void {
-    this.updateStatus({ currentAudioService: this.rawStatus(message) })
+    const name = this.extractText(message.data.subarray(13))
+    this.updateStatus({
+      currentAudioService: this.rawStatus(message),
+      ...(name
+        ? {
+            currentServiceName: name,
+            selectedService: name,
+            selectedServiceId:
+              message.data.length >= 8
+                ? Array.from(message.data.subarray(5, 8))
+                : undefined
+          }
+        : {})
+    })
   }
 
   0x212(message: MostRxMessage): void {
@@ -1574,10 +1606,11 @@ export class DabTuner extends FBlock {
         ...ensembleId
       ])
     )
+    this.pendingService = { name: name || null, serviceId, ensembleId }
     this.updateStatus({
-      selectedService: name || null,
-      selectedServiceId: serviceId,
-      selectedEnsembleId: ensembleId
+      serviceSelectionPending: true,
+      pendingServiceName: name || null,
+      serviceSelectionError: null
     })
   }
 
@@ -1796,8 +1829,10 @@ export class DabTuner extends FBlock {
 
     const senderHandle = window === 'ensembles' ? 0x01 : 0x02
     const windowFktID = window === 'ensembles' ? 0x0501 : 0x0511
-    this.socketmost.sendControlMessage(
+    const result = await this.sendMethod(
       this.physicalMessage(OpType.startResultAck, 0x092, [
+        // Multipart sequence bytes shown in captures are inserted by
+        // socketmost and must not be included in this logical payload.
         0x00,
         senderHandle,
         (windowFktID >> 8) & 0xff,
@@ -1815,6 +1850,11 @@ export class DabTuner extends FBlock {
         0xff
       ])
     )
+
+    if (result !== 1) {
+      this.logger.warn(`DAB ${window} array movement failed: ${direction} ${steps}`)
+      return
+    }
 
     const offsetKey = window === 'services' ? 'serviceWindowOffset' : 'ensembleWindowOffset'
     const currentOffset = Number((this.status as Record<string, unknown>)[offsetKey]) || 0
@@ -1848,6 +1888,49 @@ export class DabTuner extends FBlock {
       .filter((value) => value.length >= 2)
 
     return strings.sort((left, right) => right.length - left.length)[0] || ''
+  }
+}
+
+export class Vehicle extends FBlock {
+  status: Object
+
+  constructor(
+    subscriptions: number[],
+    socketmost: SocketMostUsb,
+    autoSubscribe: boolean,
+    socket: Socket,
+    subscriptionManager: SubscriptionManager
+  ) {
+    super(
+      subscriptions,
+      vehicle1,
+      vehicle1Shadow,
+      socketmost,
+      autoSubscribe,
+      socket,
+      subscriptionManager
+    )
+    this.status = { 0xda0: [], 0xda1: [] }
+  }
+
+  allocate(_message: MostRxMessage): void {}
+  deallocate(_message: MostRxMessage): void {}
+  parseMessage(_message: MostRxMessage): void {}
+  parseShadowMessage(_message: MostRxMessage): void {}
+  startSource(): void {}
+  stopSource(): void {}
+
+  0xda0(message: MostRxMessage): void {
+    this.respondWithEmptyStatus(message)
+  }
+
+  0xda1(message: MostRxMessage): void {
+    this.respondWithEmptyStatus(message)
+  }
+
+  private respondWithEmptyStatus(message: MostRxMessage): void {
+    if (message.opType !== OpType.get) return
+    this.socketmost.sendControlMessage(this.createResponseMessage(message, [], OpType.status))
   }
 }
 
@@ -2112,6 +2195,7 @@ export class AudioControl extends FBlock {
       Math.max(0, message.data.readUInt8(offset) - 0x05)
 
     this.updateStatus({
+      audioVolume: message.data.readUInt8(2),
       phoneVolume: decodeLevel(7),
       navigationVolume: decodeLevel(9),
       voiceVolume: decodeLevel(10),

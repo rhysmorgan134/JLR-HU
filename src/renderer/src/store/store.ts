@@ -180,6 +180,10 @@ interface DabTunerStore {
   tunerStatus?: { opType: number; data: number[] }
   selectedPreset?: number
   selectedService?: string | null
+  currentServiceName?: string | null
+  serviceSelectionPending?: boolean
+  pendingServiceName?: string | null
+  serviceSelectionError?: number[] | null
   fmTraffic?: boolean
   selectPreset: (preset: number) => void
   selectService: (service: DabRecord) => void

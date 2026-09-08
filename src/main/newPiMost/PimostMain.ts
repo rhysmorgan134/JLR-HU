@@ -16,7 +16,8 @@ import {
   NetworkMaster,
   Satellite,
   Telephone,
-  TvTuner
+  TvTuner,
+  Vehicle
 } from './FBlocks'
 import winston from 'winston'
 import { Socket } from '../Socket'
@@ -46,6 +47,7 @@ export class PimostMain {
   canGateway: CanGateway
   networkMaster: NetworkMaster
   climate: Climate
+  vehicle: Vehicle
   logger: winston.Logger
   socket: Socket
   subscriptionManager: SubscriptionManager
@@ -114,6 +116,7 @@ export class PimostMain {
       this.subscriptionManager
     )
     this.amplifier = new Amplifier([], this.socketmost, true, socket, this.subscriptionManager)
+    this.vehicle = new Vehicle([], this.socketmost, false, socket, this.subscriptionManager)
     this.canGateway = new CanGateway(
       [],
       this.socketmost,
@@ -343,6 +346,9 @@ export class PimostMain {
           break
         case 0x02:
           this.networkMaster.checkMessage(message)
+          break
+        case 0x05:
+          this.vehicle.checkMessage(message)
           break
         case 0xf5:
           this.canGateway.checkMessage(message)

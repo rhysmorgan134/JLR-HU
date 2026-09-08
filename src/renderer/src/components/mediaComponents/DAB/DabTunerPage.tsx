@@ -47,7 +47,16 @@ export default function DabTunerPage() {
   const presets = useMemo(() => Object.values(state.presets)
     .filter((item) => item.name && (item.bank ?? 1) === 1)
     .sort((left, right) => (left.preset ?? 0) - (right.preset ?? 0)), [state.presets])
-  const station = state.selectedService || services[0]?.name || 'No service selected'
+  const station = state.serviceSelectionPending
+    ? 'Tuning…'
+    : state.serviceSelectionError
+      ? 'Unable to tune'
+      : state.currentServiceName || state.selectedService || 'No service selected'
+  const stationDetail = state.serviceSelectionPending
+    ? state.pendingServiceName ? `Searching for ${state.pendingServiceName}` : 'Searching for service'
+    : state.serviceSelectionError
+      ? 'The selected service is unavailable'
+      : state.radioText || ensembles.map((item) => item.name).slice(0, 2).join(' · ') || 'Digital radio'
   const available = view === 'stations' ? services : view === 'presets' ? presets : ensembles
   const windowOffset = view === 'stations' ? state.serviceWindowOffset : view === 'ensembles' ? state.ensembleWindowOffset : 0
   const visible = available.slice(windowOffset, windowOffset + 10)
@@ -79,7 +88,7 @@ export default function DabTunerPage() {
       <Box className="glass-panel" sx={{ borderRadius: 3, p: 2, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', position: 'relative', overflow: 'hidden' }}>
         <Box sx={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 88% 12%,rgba(48,196,255,.25),transparent 38%)', pointerEvents: 'none' }} />
         <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}><Box sx={{ display: 'flex', alignItems: 'center', gap: .8 }}><RadioRoundedIcon sx={{ color: 'primary.main', fontSize: 18 }} /><Typography sx={{ fontSize: 10.5, color: 'text.secondary', letterSpacing: 1.6 }}>DAB · DIGITAL</Typography></Box><Chip size="small" label={state.frequencyTable === 4 ? 'CANADA L' : 'UK'} sx={{ height: 24, fontSize: 10, background: 'rgba(255,255,255,.06)', color: 'text.secondary' }} /></Box>
-        <Box sx={{ position: 'relative' }}><Typography noWrap sx={{ fontSize: 34, fontWeight: 250, letterSpacing: -1.2 }}>{station}</Typography><Typography noWrap sx={{ mt: .5, fontSize: 14, color: 'text.secondary' }}>{state.radioText || ensembles.map((item) => item.name).slice(0, 2).join(' · ') || 'Digital radio'}</Typography></Box>
+        <Box sx={{ position: 'relative' }}><Typography noWrap sx={{ fontSize: 34, fontWeight: 250, letterSpacing: -1.2 }}>{station}</Typography><Typography noWrap sx={{ mt: .5, fontSize: 14, color: 'text.secondary' }}>{stationDetail}</Typography>{state.serviceSelectionPending && <LinearProgress sx={{ mt: 1.2, height: 4, borderRadius: 4 }} />}</Box>
         <Box sx={{ position: 'relative' }}>{state.scanning ? <><Box sx={{ display: 'flex', justifyContent: 'space-between', mb: .7 }}><Typography sx={{ fontSize: 10.5, color: 'text.secondary', letterSpacing: 1 }}>AUTO TUNING</Typography><Typography sx={{ fontSize: 12, color: 'primary.main' }}>{state.scanProgress ?? 0}%</Typography></Box><LinearProgress variant="determinate" value={state.scanProgress ?? 0} sx={{ height: 7, mb: 1, borderRadius: 5, background: 'rgba(255,255,255,.07)' }} /><Button fullWidth size="small" color="inherit" startIcon={<CloseRoundedIcon />} onClick={state.cancelAutoTune} sx={{ border: '1px solid var(--stroke)', color: 'text.secondary' }}>Cancel scan</Button></> : <Button fullWidth startIcon={<TuneRoundedIcon />} onClick={state.startAutoTune} sx={{ height: 44, color: '#041018', fontWeight: 700, background: 'linear-gradient(135deg,#8be4ff,#40c4ff)' }}>Auto tune</Button>}</Box>
       </Box>
 

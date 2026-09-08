@@ -25,6 +25,9 @@ export class SubscriptionManager extends EventEmitter {
     this.notificationCheckTimer = null
     this.logger = getLogger('SubscriptionManager')
     this.attempts = 0
+
+
+
     this.socketmost.on(Os8104Events.SocketMostMessageRxEvent, (message: MostRxMessage) => {
       if (this.subscriptionInProg) {
         if (
