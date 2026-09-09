@@ -1,0 +1,124 @@
+name: Release ARM Linux AppImage
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to build, for example v0.0.1-alpha.6
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: arm-linux-release-${{ github.ref }}-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    name: Build ARM64 AppImage on Raspberry Pi
+    runs-on: [self-hosted, linux, ARM64, jlr-hu-builder]
+    timeout-minutes: 60
+
+    steps:
+      - name: Resolve release tag
+        id: release
+        shell: bash
+        env:
+          MANUAL_TAG: ${{ inputs.tag }}
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            tag="${MANUAL_TAG}"
+          else
+            tag="${GITHUB_REF_NAME}"
+          fi
+
+          if [[ ! "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release tag: ${tag}" >&2
+            exit 1
+          fi
+
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          echo "version=${tag#v}" >> "${GITHUB_OUTPUT}"
+
+      - name: Check out JLR-HU release
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release.outputs.tag }}
+          clean: true
+
+      - name: Check out SocketMost
+        uses: actions/checkout@v4
+        with:
+          repository: rhysmorgan134/SocketMost
+          token: ${{ secrets.SOCKETMOST_REPO_TOKEN || github.token }}
+          path: _socketmost
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Build SocketMost package
+        shell: bash
+        run: |
+          npm ci --prefix _socketmost
+          npm run build --prefix _socketmost
+          npm pack ./_socketmost --pack-destination "${RUNNER_TEMP}"
+
+      - name: Install JLR-HU dependencies
+        shell: bash
+        run: |
+          npm ci --ignore-scripts
+          npm install --no-save --ignore-scripts "${RUNNER_TEMP}"/socketmost-*.tgz
+          npx electron-builder install-app-deps
+
+      - name: Apply release version
+        shell: bash
+        run: npm version --no-git-tag-version --allow-same-version "${{ steps.release.outputs.version }}"
+
+      - name: Build ARM64 AppImage
+        shell: bash
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: |
+          npx electron-vite build
+          npx electron-builder --linux AppImage --arm64 --config
+
+      - name: Verify release artifact
+        shell: bash
+        run: |
+          shopt -s nullglob
+          artifacts=(dist/*.AppImage)
+          if (( ${#artifacts[@]} == 0 )); then
+            echo "No ARM64 AppImage was produced" >&2
+            exit 1
+          fi
+          file "${artifacts[@]}"
+          sha256sum "${artifacts[@]}" | tee dist/SHA256SUMS-arm64.txt
+
+      - name: Publish GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          if ! gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            gh release create "${RELEASE_TAG}" --verify-tag --generate-notes --title "${RELEASE_TAG}"
+          fi
+          gh release upload "${RELEASE_TAG}" dist/*.AppImage dist/SHA256SUMS-arm64.txt --clobber
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: JLR-HU-${{ steps.release.outputs.version }}-linux-arm64
+          path: |
+            dist/*.AppImage
+            dist/SHA256SUMS-arm64.txt
+          if-no-files-found: error
+          retention-days: 14

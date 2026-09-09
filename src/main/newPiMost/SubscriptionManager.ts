@@ -56,10 +56,12 @@ export class SubscriptionManager extends EventEmitter {
             this.notificationCheckTimer = null
           }
           this.subscriptionInProg = false
-          this.activeSubscriptions.push(this.inProgSubscription)
+          const activeSubscription = this.inProgSubscription
+          this.activeSubscriptions.push(activeSubscription)
           this.inProgSubscription = null
           this.checkForNextSub()
           this.attempts = 0
+          this.emit('active', activeSubscription)
           this.emit('changed')
         }
       }
@@ -94,6 +96,13 @@ export class SubscriptionManager extends EventEmitter {
     } else {
       this.logger.warn(`${this.convertMessageToHex(details)} Already queued/active`)
     }
+  }
+
+  isActive(fBlockID: number, instanceID: number): boolean {
+    return this.activeSubscriptions.some(
+      (subscription) =>
+        subscription.fBlockID === fBlockID && subscription.instanceID === instanceID
+    )
   }
 
   checkForNextSub() {

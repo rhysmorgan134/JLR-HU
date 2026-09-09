@@ -59,6 +59,7 @@ export class PimostMain {
   private systemStatus: SystemInfoSnapshot | null = null
   private mostTime: { hours: number; minutes: number } | null = null
   private lastClockSync = 0
+  private restoreLastSourceWhenAudioControlIsReady = false
   constructor(socket: Socket, systemInfo?: SystemInfo) {
     this.socket = socket
     this.headUnitMode = !Boolean(
@@ -76,6 +77,16 @@ export class PimostMain {
           .toUpperCase()} instance 0x${subscription.instanceID.toString(16).toUpperCase()}`,
         severity: 'warning'
       })
+    })
+    this.subscriptionManager.on('active', (subscription) => {
+      if (
+        this.restoreLastSourceWhenAudioControlIsReady &&
+        subscription.fBlockID === 0xf0 &&
+        subscription.instanceID === 0x01
+      ) {
+        this.restoreLastSourceWhenAudioControlIsReady = false
+        this.restoreLastSource()
+      }
     })
     this.mostDiagnostics = new MostDiagnosticsBackend(
       this.socketmost,
@@ -260,20 +271,19 @@ export class PimostMain {
       setTimeout(() => this.canGateway.subscribe(), 500)
       setTimeout(() => this.climate.subscribe(), 500)
       setTimeout(() => {
-        const lastSource = this.socket.config.lastSource
-        if (lastSource && !this.audioControl.currentSource) {
-          this.logger.info(`restoring last source ${lastSource}`)
-          this.sourceCycleQueue = this.sourceCycleQueue
-            .then(() => this.activateSource(lastSource))
-            .catch((error) => {
-              this.logger.error(
-                `Last source restore failed: ${
-                  error instanceof Error ? error.message : String(error)
-                }`
-              )
-            })
+        if (this.subscriptionManager.isActive(0xf0, 0x01)) this.restoreLastSource()
+        else {
+          this.restoreLastSourceWhenAudioControlIsReady = true
+          this.logger.info('waiting for AudioControl subscription before restoring last source')
         }
       }, 700)
+    })
+    this.hmi.on('HMIShutdown', () => {
+      this.restoreLastSourceWhenAudioControlIsReady = false
+    })
+
+    this.socketmost.on(Os8104Events.Unlocked, () => {
+      this.restoreLastSourceWhenAudioControlIsReady = false
     })
 
     this.socketmost.on(Os8104Events.SocketMostMessageRxEvent, (message) => {
@@ -310,9 +320,9 @@ export class PimostMain {
         case 0x10:
           this.hmi.checkMessage(message)
           break
-        // case 0x24:
-        //   this.auxInput.checkMessage(message)
-        //   break
+        case 0x24:
+          this.auxInput.checkMessage(message)
+          break
         case 0x31:
           if (message.instanceID === 0xa1 || message.instanceID === 0x2) {
             this.audioDiskPlayer.checkMessage(message)
@@ -438,6 +448,20 @@ export class PimostMain {
       await this.audioControl.switchSource(device)
       if (!(device instanceof Carplay)) device.subscribe()
     }
+  }
+
+  private restoreLastSource(): void {
+    const lastSource = this.socket.config.lastSource
+    if (!lastSource || this.audioControl.currentSource) return
+
+    this.logger.info(`restoring last source ${lastSource}`)
+    this.sourceCycleQueue = this.sourceCycleQueue
+      .then(() => this.activateSource(lastSource))
+      .catch((error) => {
+        this.logger.error(
+          `Last source restore failed: ${error instanceof Error ? error.message : String(error)}`
+        )
+      })
   }
 
   private synchroniseMostClock(): void {

@@ -40,8 +40,8 @@ export class Socket extends EventEmitter {
           ...settings,
           lastSource: settings.lastSource ?? this.config.lastSource
         }
-        this.saveSettings(settings)
-        this.emit('appSettings', settings)
+        this.saveSettings(this.config)
+        this.emit('appSettings', this.config)
         this.sendSettings()
       })
 

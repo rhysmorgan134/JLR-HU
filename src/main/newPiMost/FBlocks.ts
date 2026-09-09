@@ -179,6 +179,7 @@ const canGateway: Device = {
 // const netblock:Device = {addressHigh: 0x01, addressLow: 0x6e,}
 export class HMI extends FBlock {
   status: Object
+  private activeEventTimeout: ReturnType<typeof setTimeout> | null = null
   constructor(
     subscriptions: number[],
     socketmost: SocketMostUsb,
@@ -210,7 +211,11 @@ export class HMI extends FBlock {
         `shadow ${message.fBlockID.toString(16)} instID ${message.instanceID.toString(16)} active`
       )
       this.socketmost.sendControlMessage(this.createResponseMessage(message, [], OpType.status))
-      this.emit('HMIActive')
+      if (this.activeEventTimeout) clearTimeout(this.activeEventTimeout)
+      this.activeEventTimeout = setTimeout(() => {
+        this.activeEventTimeout = null
+        this.emit('HMIActive')
+      }, 1500)
       setTimeout(() => {
         this.updateStatus({ screensaver: false })
       }, 500)
@@ -221,6 +226,10 @@ export class HMI extends FBlock {
         }, 500)
       }
     } else if (message.data[0] === 0x02) {
+      if (this.activeEventTimeout) {
+        clearTimeout(this.activeEventTimeout)
+        this.activeEventTimeout = null
+      }
       this.logger.info(
         `shadow ${message.fBlockID.toString(16)} instID ${message.instanceID.toString(16)} standby`
       )
@@ -230,6 +239,10 @@ export class HMI extends FBlock {
         this.updateStatus({ screensaver: true })
       }, 200)
     } else if (message.data[0] === 0x03) {
+      if (this.activeEventTimeout) {
+        clearTimeout(this.activeEventTimeout)
+        this.activeEventTimeout = null
+      }
       this.logger.info(
         `shadow ${message.fBlockID.toString(16)} instID ${message.instanceID.toString(16)} disabled`
       )
@@ -2596,7 +2609,6 @@ export class Amplifier extends FBlock {
 
 export class NetworkMaster extends FBlock {
   status: Object
-  private registryRequestTimeout: ReturnType<typeof setTimeout> | null = null
 
   constructor(
     subscriptions: number[],
@@ -2623,20 +2635,7 @@ export class NetworkMaster extends FBlock {
 
     //this.socketmost.sendCheckForLock()
 
-    this.socketmost.on(Os8104Events.Locked, () => {
-      if (this.registryRequestTimeout) clearTimeout(this.registryRequestTimeout)
-      this.registryRequestTimeout = setTimeout(() => {
-        this.registryRequestTimeout = null
-        this.getCentralRegistry()
-      }, 50)
-    })
-
     this.socketmost.on(Os8104Events.Unlocked, () => {
-      if (this.registryRequestTimeout) {
-        clearTimeout(this.registryRequestTimeout)
-        this.registryRequestTimeout = null
-      }
-
       this.updateStatus({
         networkMap: {},
         networkStatus: NetworkStatus.notOk,
@@ -2715,7 +2714,6 @@ export class NetworkMaster extends FBlock {
 
     this.logger.info(`NetworkMaster configuration: ${configurationState}\n${formattedDevices}`)
 
-    this.getCentralRegistry()
   }
 
   0xa01(message: MostRxMessage): void {
