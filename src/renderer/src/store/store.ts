@@ -1098,13 +1098,33 @@ socket.on('systemInfo', (data) => {
 })
 
 let parkingSensorTimeout: ReturnType<typeof setTimeout> | undefined
+const parkingSensorKeys: Array<keyof ParkingSensors> = [
+  'frontLeft',
+  'frontCentreLeft',
+  'frontCentreRight',
+  'frontRight',
+  'rearLeft',
+  'rearCentreLeft',
+  'rearCentreRight',
+  'rearRight'
+]
+
 socket.on('CanGateway', (data) => {
   useCanGatewayStore.setState((state) => ({ ...state, ...data }))
   if (data?.parkingSensors) {
-    useParkingAssistStore.setState((state) => ({
-      parkingSensors: { ...state.parkingSensors, ...data.parkingSensors },
+    const currentSensors = useParkingAssistStore.getState().parkingSensors
+    const sensorsChanged = parkingSensorKeys.some(
+      (key) =>
+        data.parkingSensors[key] !== undefined &&
+        data.parkingSensors[key] !== currentSensors[key]
+    )
+
+    if (!sensorsChanged) return
+
+    useParkingAssistStore.setState({
+      parkingSensors: { ...currentSensors, ...data.parkingSensors },
       parkingActive: true
-    }))
+    })
     if (parkingSensorTimeout) clearTimeout(parkingSensorTimeout)
     parkingSensorTimeout = setTimeout(() => {
       useParkingAssistStore.setState({ parkingActive: false })

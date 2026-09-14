@@ -12,6 +12,7 @@ export class SubscriptionManager extends EventEmitter {
   failedSubscriptions: SubscriptionRecordList
   socketmost: SocketMostUsb
   notificationCheckTimer: NodeJS.Timeout | null
+  unsubscribeAllTimer: NodeJS.Timeout | null
   attempts: number
   logger: winston.Logger
   constructor(socketmost: SocketMostUsb) {
@@ -23,10 +24,9 @@ export class SubscriptionManager extends EventEmitter {
     this.inProgSubscription = null
     this.socketmost = socketmost
     this.notificationCheckTimer = null
+    this.unsubscribeAllTimer = null
     this.logger = getLogger('SubscriptionManager')
     this.attempts = 0
-
-
 
     this.socketmost.on(Os8104Events.SocketMostMessageRxEvent, (message: MostRxMessage) => {
       if (this.subscriptionInProg) {
@@ -80,6 +80,47 @@ export class SubscriptionManager extends EventEmitter {
     })
   }
 
+  unsubcribe(details: SubscriptionRecord | null = null) {
+    if (details == null) {
+      this.unsubscribeAllTimer = setInterval(() => {
+        if (this.activeSubscriptions.length > 0) {
+          let temp_unsubscribe = this.activeSubscriptions.pop()
+          this.logger.info('unsubscribing ' + JSON.stringify(temp_unsubscribe))
+          this.socketmost.sendControlMessage({
+            data: [0x02, 0x01, 0x6e],
+            fBlockID: temp_unsubscribe!.fBlockID,
+            fktID: 0x01,
+            instanceID: temp_unsubscribe!.instanceID,
+            opType: OpType.set,
+            targetAddressHigh: temp_unsubscribe!.targetAddressHigh,
+            targetAddressLow: temp_unsubscribe!.targetAddressLow
+          })
+        } else {
+          clearInterval(this.unsubscribeAllTimer!)
+        }
+      }, 20)
+    } else {
+      this.activeSubscriptions = this.activeSubscriptions.filter(
+        (subscription) =>
+          !(
+            subscription.fBlockID === details!.fBlockID &&
+            subscription.targetAddressHigh === details!.targetAddressHigh &&
+            subscription.targetAddressLow === details!.targetAddressLow
+          )
+      )
+      this.logger.info('unsubscribing ' + JSON.stringify(details))
+      this.socketmost.sendControlMessage({
+        data: [0x02, 0x01, 0x6e],
+        fBlockID: details!.fBlockID,
+        fktID: 0x01,
+        instanceID: details!.instanceID,
+        opType: OpType.set,
+        targetAddressHigh: details!.targetAddressHigh,
+        targetAddressLow: details!.targetAddressLow
+      })
+    }
+  }
+
   createSubscription(details: SubscriptionRecord) {
     this.logger.warn(`Adding subscription to queue ${this.convertMessageToHex(details)} `)
     const alreadyKnown = [
@@ -100,8 +141,7 @@ export class SubscriptionManager extends EventEmitter {
 
   isActive(fBlockID: number, instanceID: number): boolean {
     return this.activeSubscriptions.some(
-      (subscription) =>
-        subscription.fBlockID === fBlockID && subscription.instanceID === instanceID
+      (subscription) => subscription.fBlockID === fBlockID && subscription.instanceID === instanceID
     )
   }
 
@@ -133,11 +173,7 @@ export class SubscriptionManager extends EventEmitter {
     const functions = subscription.subscriptionList
     const data =
       functions.length === 0
-        ? [
-            0x00,
-            subscription.sourceAddressHigh,
-            subscription.sourceAddressLow
-          ]
+        ? [0x00, subscription.sourceAddressHigh, subscription.sourceAddressLow]
         : [
             0x01,
             subscription.sourceAddressHigh,

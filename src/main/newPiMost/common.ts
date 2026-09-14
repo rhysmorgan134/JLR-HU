@@ -25,6 +25,7 @@ export abstract class FBlock extends EventEmitter {
   inProgressMultipart: Object
   subscriptionManager: SubscriptionManager
   subscriptionRecord: SubscriptionRecord | null
+  state: string
   protected constructor(
     subscriptions: number[],
     physicalDevice: Device | null,
@@ -52,6 +53,7 @@ export abstract class FBlock extends EventEmitter {
     this.methodSend = new MethodSend(this.logger, this.socketmost)
     this.room = null
     this.socket = socket
+    this.state = 'disabled'
     this.subscriptionRecord =
       this.physicalDevice != null
         ? {
@@ -222,6 +224,7 @@ export abstract class FBlock extends EventEmitter {
         )} instID ${message.instanceID.toString(16)} active`
       )
       this.socketmost.sendControlMessage(this.createResponseMessage(message, [], OpType.status))
+      this.state = 'active'
       if (this.autoSubscribe) {
         setTimeout(() => {
           this.subscribe()
@@ -233,6 +236,7 @@ export abstract class FBlock extends EventEmitter {
           16
         )} instID ${message.instanceID.toString(16)} standby`
       )
+      this.state = 'standby'
       this.socketmost.sendControlMessage(this.createResponseMessage(message, [], OpType.status))
     } else if (message.data[0] === 0x03) {
       this.logger.warn(
@@ -240,6 +244,7 @@ export abstract class FBlock extends EventEmitter {
           16
         )} instID ${message.instanceID.toString(16)} disabled`
       )
+      this.state = 'disabled'
       this.socketmost.sendControlMessage(this.createResponseMessage(message, [], OpType.status))
     }
   }
@@ -328,13 +333,14 @@ export abstract class FBlock extends EventEmitter {
   }
 
   unsubscribe() {
-    this.socketmost.sendControlMessage(
-      this.physicalMessage(OpType.set, 0x01, [
-        0x02,
-        this.socketmost.settings.nodeAddressHigh,
-        this.socketmost.settings.nodeAddressLow
-      ])
-    )
+    this.subscriptionManager.unsubcribe(this.subscriptionRecord)
+    // this.socketmost.sendControlMessage(
+    //   this.physicalMessage(OpType.set, 0x01, [
+    //     0x02,
+    //     this.socketmost.settings.nodeAddressHigh,
+    //     this.socketmost.settings.nodeAddressLow
+    //   ])
+    // )
   }
 
   physicalMessage(opType: number, functionId: number, data: number[]): SocketMostSendMessage {
@@ -397,14 +403,24 @@ export abstract class FBlock extends EventEmitter {
 
 class MethodSend extends EventEmitter {
   waitingResponse: boolean
-  functionID: number
+  functionID: number | null
   retryCount: number
   maxRetries: number
   responseMessage: MostRxMessage | null
-  messageToSend: SocketMostSendMessage
+  messageToSend: SocketMostSendMessage | null
   logger: winston.Logger
   checkInterval: null | NodeJS.Timeout
   socketmost: SocketMostUsb
+  private activeRequest: {
+    message: SocketMostSendMessage
+    resolve: (value: number) => void
+    reject: (reason: number) => void
+  } | null
+  private requestQueue: Array<{
+    message: SocketMostSendMessage
+    resolve: (value: number) => void
+    reject: (reason: number) => void
+  }>
   constructor(logger: winston.Logger, socketmost: SocketMostUsb, maxRetries = 3) {
     super()
     this.maxRetries = maxRetries
@@ -412,48 +428,106 @@ class MethodSend extends EventEmitter {
     this.functionID = null
     this.messageToSend = null
     this.waitingResponse = false
+    this.retryCount = 0
+    this.checkInterval = null
+    this.activeRequest = null
+    this.requestQueue = []
     this.logger = logger
     this.socketmost = socketmost
   }
 
-  sendMessage(message: SocketMostSendMessage) {
-    return new Promise((resolve, reject) => {
-      this.waitingResponse = true
-      this.functionID = message.fktID
-      this.retryCount = 0
-      this.responseMessage = null
-      this.messageToSend = message
-      this.logger.info(`sending message as method ${this.convertMessageToHex(message)}`)
-      this.socketmost.sendControlMessage(message)
-      this.emit('waiting', true)
-      this.once('finished', (opType) => {
-        if (opType === OpType.resultAck) {
-          resolve(1)
-        } else {
-          reject(-1)
-        }
-      })
+  sendMessage(message: SocketMostSendMessage): Promise<number> {
+    return new Promise<number>((resolve, reject) => {
+      this.requestQueue.push({ message, resolve, reject })
+      this.sendNextMessage()
     })
   }
 
+  private sendNextMessage(): void {
+    if (this.activeRequest || this.requestQueue.length === 0) return
+
+    this.activeRequest = this.requestQueue.shift()!
+    const message = this.activeRequest.message
+    this.waitingResponse = true
+    this.functionID = message.fktID
+    this.retryCount = 0
+    this.responseMessage = null
+    this.messageToSend = message
+    this.logger.info(`sending message as method ${this.convertMessageToHex(message)}`)
+    this.emit('waiting', true)
+    this.socketmost.sendControlMessage(message)
+    this.startResponseTimeout()
+  }
+
+  private startResponseTimeout(): void {
+    if (this.checkInterval) clearTimeout(this.checkInterval)
+    this.checkInterval = setTimeout(() => {
+      const request = this.activeRequest
+      if (!request) return
+
+      if (this.retryCount < this.maxRetries) {
+        this.retryCount += 1
+        this.logger.warn(
+          `method 0x${request.message.fktID.toString(16)} timed out; retry ${this.retryCount}/${
+            this.maxRetries
+          }`
+        )
+        this.socketmost.sendControlMessage(request.message)
+        this.startResponseTimeout()
+        return
+      }
+
+      this.logger.error(
+        `method 0x${request.message.fktID.toString(16)} failed after ${this.maxRetries} retries`
+      )
+      this.finishRequest(OpType.errorAck)
+    }, 1000)
+  }
+
+  private finishRequest(opType: OpType): void {
+    const request = this.activeRequest
+    if (!request) return
+
+    this.activeRequest = null
+    this.waitingResponse = false
+    this.functionID = null
+    this.messageToSend = null
+    if (this.checkInterval) clearTimeout(this.checkInterval)
+    this.checkInterval = null
+
+    if (opType === OpType.resultAck) request.resolve(1)
+    else request.reject(-1)
+
+    if (this.requestQueue.length > 0) this.sendNextMessage()
+    else this.emit('waiting', false)
+  }
+
   checkMessage(message: MostRxMessage) {
-    this.logger.debug(`checking ${message.fktID} against ${this.functionID}`)
-    if (message.fktID === this.functionID) {
+    const sentMessage = this.activeRequest?.message
+    if (!sentMessage) return
+
+    this.logger.debug(`checking ${message.fktID} against ${sentMessage.fktID}`)
+    const isExpectedResponse =
+      message.fktID === sentMessage.fktID &&
+      message.fBlockID === sentMessage.fBlockID &&
+      message.instanceID === sentMessage.instanceID &&
+      message.sourceAddrHigh === sentMessage.targetAddressHigh &&
+      message.sourceAddrLow === sentMessage.targetAddressLow
+
+    if (isExpectedResponse) {
       this.responseMessage = message
       switch (this.responseMessage.opType) {
         case OpType.processingAck:
-          this.logger.debug(`message processing 0x${this.functionID.toString(16)}`)
+          this.logger.debug(`message processing 0x${sentMessage.fktID.toString(16)}`)
+          this.startResponseTimeout()
           break
         case OpType.errorAck:
           this.logger.debug(`Method Error ${this.convertMessageToHex(this.responseMessage)}`)
-          clearInterval(this.checkInterval)
-          this.emit('finished', this.responseMessage.opType)
-          this.emit('waiting', false)
+          this.finishRequest(this.responseMessage.opType)
           break
         case OpType.resultAck:
           this.logger.debug(`Method resolved ${this.convertMessageToHex(this.responseMessage)}`)
-          this.emit('finished', this.responseMessage.opType)
-          this.emit('waiting', false)
+          this.finishRequest(this.responseMessage.opType)
       }
     }
   }

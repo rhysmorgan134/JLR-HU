@@ -139,17 +139,15 @@ function createWindow(): void {
   })
 
   mainWindow.webContents.session.setDevicePermissionHandler((details) => {
-    if (details.device.vendorId === 4884) {
-      return true
-    } else {
-      return false
-    }
+    const isPiMost = details.device.vendorId === 0x1314 && details.device.productId === 0x1520
+    const isStm32Dfu = details.device.vendorId === 0x0483 && details.device.productId === 0xdf11
+    return isPiMost || isStm32Dfu
   })
 
   mainWindow.webContents.session.on('select-usb-device', (event, details, callback) => {
     event.preventDefault()
     const selectedDevice = details.deviceList.find((device) => {
-      return device.vendorId === 4884 && (device.productId === 5408 || device.productId === 5408)
+      return device.vendorId === 0x0483 && device.productId === 0xdf11
     })
 
     callback(selectedDevice?.deviceId)

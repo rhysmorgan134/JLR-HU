@@ -537,13 +537,13 @@ export class CanGateway extends FBlock {
       parkingSensors: {
         ...this.status['parkingSensors'],
 
-        frontLeft: 31 - (message.data.readUInt8(0) & 31),
+        frontLeft: 31 - ((message.data.readUInt8(0) & 0x7c) >>> 2),
 
-        frontCentreLeft: 31 - (message.data.readUInt8(1) & 31),
+        frontCentreLeft: 31 - ((message.data.readUInt8(1) & 0x7c) >>> 2),
 
-        frontCentreRight: 31 - (message.data.readUInt8(2) & 31),
+        frontCentreRight: 31 - ((message.data.readUInt8(2) & 0x7c) >>> 2),
 
-        frontRight: 31 - (message.data.readUInt8(3) & 31)
+        frontRight: 31 - ((message.data.readUInt8(3) & 0x7c) >>> 2)
       }
     })
   }
@@ -555,13 +555,13 @@ export class CanGateway extends FBlock {
       parkingSensors: {
         ...this.status['parkingSensors'],
 
-        rearLeft: 31 - (message.data.readUInt8(0) & 31),
+        rearLeft: 31 - ((message.data.readUInt8(0) & 0x7c) >>> 2),
 
-        rearCentreLeft: 31 - (message.data.readUInt8(1) & 31),
+        rearCentreLeft: 31 - ((message.data.readUInt8(1) & 0x7c) >>> 2),
 
-        rearCentreRight: 31 - (message.data.readUInt8(2) & 31),
+        rearCentreRight: 31 - ((message.data.readUInt8(2) & 0x7c) >>> 2),
 
-        rearRight: 31 - (message.data.readUInt8(3) & 31)
+        rearRight: 31 - ((message.data.readUInt8(3) & 0x7c) >>> 2)
       }
     })
   }
@@ -2163,6 +2163,7 @@ export class Climate extends FBlock {
 export class AudioControl extends FBlock {
   status: Object
   currentSource: FBlock | null
+  private sourceSwitchQueue: Promise<void>
   constructor(
     subscriptions: number[],
     socketmost: SocketMostUsb,
@@ -2181,6 +2182,7 @@ export class AudioControl extends FBlock {
       phoneVolume: null
     }
     this.currentSource = null
+    this.sourceSwitchQueue = Promise.resolve()
   }
 
   allocate(message: MostRxMessage): void {}
@@ -2254,7 +2256,15 @@ export class AudioControl extends FBlock {
     this.getVolumes()
   }
 
-  async switchSource(device: FBlock) {
+  switchSource(device: FBlock): Promise<void> {
+    const operation = this.sourceSwitchQueue
+      .catch(() => undefined)
+      .then(() => this.performSourceSwitch(device))
+    this.sourceSwitchQueue = operation.catch(() => undefined)
+    return operation
+  }
+
+  private async performSourceSwitch(device: FBlock): Promise<void> {
     this.logger.info('performing switch to ' + device)
     let data406: number[] | null = null
     let data408: number[] | null = null
@@ -2312,23 +2322,27 @@ export class AudioControl extends FBlock {
     let result = await this.sendMethod(this.physicalMessage(OpType.startResultAck, 0x405, data405))
     await this.sleep(50)
     this.logger.info(`405 result ${result}`)
+    if (result !== 1) throw new Error('source switch failed at AudioControl 0x405')
 
     if (this.currentSource && data406 && data408) {
-      await this.sendMethod(this.physicalMessage(OpType.startResultAck, 0x408, data408))
+      result = await this.sendMethod(this.physicalMessage(OpType.startResultAck, 0x408, data408))
       await this.sleep(50)
       this.logger.info('408 complete')
+      if (result !== 1) throw new Error('source switch failed at AudioControl 0x408')
 
       await this.currentSource.stopSource()
       this.logger.info('stopped source')
-      await this.sendMethod(this.physicalMessage(OpType.startResultAck, 0x406, data406))
+      result = await this.sendMethod(this.physicalMessage(OpType.startResultAck, 0x406, data406))
       await this.sleep(50)
       this.logger.info('406 complete')
+      if (result !== 1) throw new Error('source switch failed at AudioControl 0x406')
     }
 
     result = await this.sendMethod(this.physicalMessage(OpType.startResultAck, 0x407, data407))
     await this.sleep(50)
 
     this.logger.info(`407 result ${result}`)
+    if (result !== 1) throw new Error('source switch failed at AudioControl 0x407')
     this.currentSource = device
     this.updateStatus({ currentSource: device.constructor.name })
     const sourceName = device.constructor.name === 'Carplay' ? 'carplay' : device.constructor.name

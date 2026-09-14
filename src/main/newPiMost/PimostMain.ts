@@ -267,9 +267,11 @@ export class PimostMain {
     })
 
     this.hmi.on('HMIActive', () => {
+      this.logger.info('HMIActive')
       setTimeout(() => this.audioControl.subscribe(), 500)
       setTimeout(() => this.canGateway.subscribe(), 500)
       setTimeout(() => this.climate.subscribe(), 500)
+      setTimeout(() => this.socketmost.sendConnectMic(), 2000)
       setTimeout(() => {
         if (this.subscriptionManager.isActive(0xf0, 0x01)) this.restoreLastSource()
         else {
