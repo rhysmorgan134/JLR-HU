@@ -75,7 +75,11 @@ jobs:
         shell: bash
         run: |
           npm ci --ignore-scripts
-          npm install --no-save --ignore-scripts "${RUNNER_TEMP}"/socketmost-*.tgz
+          # SocketMost is externalised from the Electron main bundle. Register the
+          # packed build as a production dependency so electron-builder includes
+          # it (and its runtime dependencies) in the AppImage.
+          npm install --save-prod --ignore-scripts "${RUNNER_TEMP}"/socketmost-*.tgz
+          node -e "console.log('Packaging SocketMost from:', require.resolve('socketmost'))"
           npx electron-builder install-app-deps
 
       - name: Apply release version
