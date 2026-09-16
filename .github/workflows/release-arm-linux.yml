@@ -62,7 +62,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22.12.0'
           cache: npm
 
       - name: Build SocketMost package
@@ -80,8 +80,8 @@ jobs:
           # packed build as a production dependency so electron-builder includes
           # it (and its runtime dependencies) in the AppImage.
           npm install --save-prod --ignore-scripts "${RUNNER_TEMP}"/socketmost-*.tgz
-          node -e "const socketmost = require('socketmost'); if (typeof socketmost.SocketMostUsb !== 'function') throw new Error('SocketMostUsb is not exported by the packaged SocketMost build'); console.log('Packaging SocketMost from:', require.resolve('socketmost'))"
           npx electron-builder install-app-deps
+          ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron -e "const socketmost = require('socketmost'); if (typeof socketmost.SocketMostUsb !== 'function') throw new Error('SocketMostUsb is not exported by the packaged SocketMost build'); console.log('Packaging SocketMost from:', require.resolve('socketmost'))"
 
       - name: Apply release version
         shell: bash
