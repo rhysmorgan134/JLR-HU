@@ -55,6 +55,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: rhysmorgan134/SocketMost
+          ref: usb
           token: ${{ secrets.SOCKETMOST_REPO_TOKEN || github.token }}
           path: _socketmost
 
@@ -79,7 +80,7 @@ jobs:
           # packed build as a production dependency so electron-builder includes
           # it (and its runtime dependencies) in the AppImage.
           npm install --save-prod --ignore-scripts "${RUNNER_TEMP}"/socketmost-*.tgz
-          node -e "console.log('Packaging SocketMost from:', require.resolve('socketmost'))"
+          node -e "const socketmost = require('socketmost'); if (typeof socketmost.SocketMostUsb !== 'function') throw new Error('SocketMostUsb is not exported by the packaged SocketMost build'); console.log('Packaging SocketMost from:', require.resolve('socketmost'))"
           npx electron-builder install-app-deps
 
       - name: Apply release version
