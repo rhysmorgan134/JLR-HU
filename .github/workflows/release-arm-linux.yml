@@ -68,7 +68,10 @@ jobs:
       - name: Build SocketMost package
         shell: bash
         run: |
-          npm ci --prefix _socketmost
+          # This checkout is only compiled and packed here. Its native modules
+          # must not build against the host Node ABI; they are installed and
+          # rebuilt against Electron after the tarball is added to JLR-HU.
+          npm ci --ignore-scripts --prefix _socketmost
           npm run build --prefix _socketmost
           npm pack ./_socketmost --pack-destination "${RUNNER_TEMP}"
 
