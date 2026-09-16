@@ -84,6 +84,10 @@ jobs:
           # it (and its runtime dependencies) in the AppImage.
           npm install --save-prod --ignore-scripts "${RUNNER_TEMP}"/socketmost-*.tgz
           npx electron-builder install-app-deps
+          # npm ci intentionally skipped lifecycle scripts so native modules did
+          # not compile for host Node. Download Electron explicitly before using
+          # its matching ABI to validate the packaged SocketMost export.
+          node node_modules/electron/install.js
           ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron -e "const socketmost = require('socketmost'); if (typeof socketmost.SocketMostUsb !== 'function') throw new Error('SocketMostUsb is not exported by the packaged SocketMost build'); console.log('Packaging SocketMost from:', require.resolve('socketmost'))"
 
       - name: Apply release version
