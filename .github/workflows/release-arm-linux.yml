@@ -51,38 +51,16 @@ jobs:
           ref: ${{ steps.release.outputs.tag }}
           clean: true
 
-      - name: Check out SocketMost
-        uses: actions/checkout@v4
-        with:
-          repository: rhysmorgan134/SocketMost
-          ref: usb
-          token: ${{ secrets.SOCKETMOST_REPO_TOKEN || github.token }}
-          path: _socketmost
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22.12.0'
           cache: npm
 
-      - name: Build SocketMost package
-        shell: bash
-        run: |
-          # This checkout is only compiled and packed here. Its native modules
-          # must not build against the host Node ABI; they are installed and
-          # rebuilt against Electron after the tarball is added to JLR-HU.
-          npm ci --ignore-scripts --prefix _socketmost
-          npm run build --prefix _socketmost
-          npm pack ./_socketmost --pack-destination "${RUNNER_TEMP}"
-
       - name: Install JLR-HU dependencies
         shell: bash
         run: |
           npm ci --ignore-scripts
-          # SocketMost is externalised from the Electron main bundle. Register the
-          # packed build as a production dependency so electron-builder includes
-          # it (and its runtime dependencies) in the AppImage.
-          npm install --save-prod --ignore-scripts "${RUNNER_TEMP}"/socketmost-*.tgz
           npx electron-builder install-app-deps
           # npm ci intentionally skipped lifecycle scripts so native modules did
           # not compile for host Node. Download Electron explicitly before using
