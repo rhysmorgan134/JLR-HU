@@ -139,15 +139,18 @@ function createWindow(): void {
   })
 
   mainWindow.webContents.session.setDevicePermissionHandler((details) => {
-    const isPiMost = details.device.vendorId === 0x1314 && details.device.productId === 0x1520
+    const isCarplayDongle =
+      details.device.vendorId === 0x1314 && details.device.productId === 0x1520
     const isStm32Dfu = details.device.vendorId === 0x0483 && details.device.productId === 0xdf11
-    return isPiMost || isStm32Dfu
+    return isCarplayDongle || isStm32Dfu
   })
 
   mainWindow.webContents.session.on('select-usb-device', (event, details, callback) => {
     event.preventDefault()
     const selectedDevice = details.deviceList.find((device) => {
-      return device.vendorId === 0x0483 && device.productId === 0xdf11
+      const isCarplayDongle = device.vendorId === 0x1314 && device.productId === 0x1520
+      const isStm32Dfu = device.vendorId === 0x0483 && device.productId === 0xdf11
+      return isCarplayDongle || isStm32Dfu
     })
 
     callback(selectedDevice?.deviceId)
